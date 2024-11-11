@@ -5928,10 +5928,8 @@ opt_rescue	: k_rescue exc_list exc_var then
                   compstmt
                   opt_rescue
                     {
-                        NODE *err = $3;
                         if ($3) {
-                            err = NEW_ERRINFO(&@3);
-                            err = node_assign(p, $3, err, NO_LEX_CTXT, &@3);
+                            $3 = node_assign(p, $3, NEW_ERRINFO(&@3), NO_LEX_CTXT, &@3);
                         }
                         $$ = NEW_RESBODY($2, $3, $5, $6, &@$);
                         if ($2) {
