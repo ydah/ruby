@@ -6755,27 +6755,25 @@ assoc_list	: none
 
 assocs		: assoc
                     /*% ripper[brace]: rb_ary_new3(1, $:1) %*/
-                | assocs ',' assoc
+                | assocs[assoc_list] ',' assoc[tail]
                     {
-                        NODE *assocs = $1;
-                        NODE *tail = $3;
-                        if (!assocs) {
-                            assocs = tail;
+                        if (!$assoc_list) {
+                            $assoc_list = $tail;
                         }
-                        else if (tail) {
-                            if (RNODE_LIST(assocs)->nd_head) {
-                                NODE *n = RNODE_LIST(tail)->nd_next;
-                                if (!RNODE_LIST(tail)->nd_head && nd_type_p(n, NODE_LIST) &&
+                        else if ($tail) {
+                            if (RNODE_LIST($assoc_list)->nd_head) {
+                                NODE *n = RNODE_LIST($tail)->nd_next;
+                                if (!RNODE_LIST($tail)->nd_head && nd_type_p(n, NODE_LIST) &&
                                     nd_type_p((n = RNODE_LIST(n)->nd_head), NODE_HASH)) {
                                     /* DSTAR */
-                                    tail = RNODE_HASH(n)->nd_head;
+                                    $tail = RNODE_HASH(n)->nd_head;
                                 }
                             }
-                            if (tail) {
-                                assocs = list_concat(assocs, tail);
+                            if ($tail) {
+                                $assoc_list = list_concat($assoc_list, $tail);
                             }
                         }
-                        $$ = assocs;
+                        $$ = $assoc_list;
                     /*% ripper: rb_ary_push($:1, $:3) %*/
                     }
                 ;
