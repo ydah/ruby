@@ -6131,29 +6131,28 @@ regexp_contents: /* none */
                         $$ = 0;
                     /*% ripper: regexp_new! %*/
                     }
-                | regexp_contents string_content
+                | regexp_contents[head] string_content[tail]
                     {
-                        NODE *head = $1, *tail = $2;
-                        if (!head) {
-                            $$ = tail;
+                        if (!$head) {
+                            $$ = $tail;
                         }
-                        else if (!tail) {
-                            $$ = head;
+                        else if (!$tail) {
+                            $$ = $head;
                         }
                         else {
-                            switch (nd_type(head)) {
+                            switch (nd_type($head)) {
                               case NODE_STR:
-                                head = str2dstr(p, head);
+                                $head = str2dstr(p, $head);
                                 break;
                               case NODE_DSTR:
                                 break;
                               default:
-                                head = list_append(p, NEW_DSTR(0, &@$), head);
+                                $head = list_append(p, NEW_DSTR(0, &@$), $head);
                                 break;
                             }
-                            $$ = list_append(p, head, tail);
+                            $$ = list_append(p, $head, $tail);
                         }
-                    /*% ripper: regexp_add!($:1, $:2) %*/
+                    /*% ripper: regexp_add!($:head, $:tail) %*/
                     }
                 ;
 
