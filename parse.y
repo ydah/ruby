@@ -2977,16 +2977,15 @@ program		:  {
                   top_compstmt
                     {
                         if ($2 && !compile_for_eval) {
-                            NODE *node = $2;
                             /* last expression should not be void */
-                            if (nd_type_p(node, NODE_BLOCK)) {
-                                while (RNODE_BLOCK(node)->nd_next) {
-                                    node = RNODE_BLOCK(node)->nd_next;
+                            if (nd_type_p($2, NODE_BLOCK)) {
+                                while (RNODE_BLOCK($2)->nd_next) {
+                                    $2 = RNODE_BLOCK($2)->nd_next;
                                 }
-                                node = RNODE_BLOCK(node)->nd_head;
+                                $2 = RNODE_BLOCK($2)->nd_head;
                             }
-                            node = remove_begin(node);
-                            void_expr(p, node);
+                            $2 = remove_begin($2);
+                            void_expr(p, $2);
                         }
                         p->eval_tree = NEW_SCOPE(0, block_append(p, p->eval_tree, $2), &@$);
                     /*% ripper[final]: program!($:2) %*/
