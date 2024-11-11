@@ -6386,16 +6386,15 @@ args_tail	: f_kwarg(f_kw) ',' f_kwrest opt_f_block_arg
                     }
                 | args_forward
                     {
-                        ID fwd = $args_forward;
                         if (lambda_beginning_p() ||
                             (p->lex.lpar_beg >= 0 && p->lex.lpar_beg+1 == p->lex.paren_nest)) {
                             yyerror0("unexpected ... in lambda argument");
-                            fwd = 0;
+                            $args_forward = 0;
                         }
                         else {
                             add_forwarding_args(p);
                         }
-                        $$ = new_args_tail(p, 0, fwd, arg_FWD_BLOCK, &@1);
+                        $$ = new_args_tail(p, 0, $args_forward, arg_FWD_BLOCK, &@1);
                         $$->nd_ainfo.forwarding = 1;
                     /*% ripper: [Qnil, $:1, Qnil] %*/
                     }
