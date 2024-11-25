@@ -740,6 +740,72 @@ class TestAst < Test::Unit::TestCase
     EXP
   end
 
+  def test_rescue
+    assert_ast_eqaul("*x = p rescue p 1", <<~EXP)
+      (SCOPE@1:0-1:17
+       tbl: [:x]
+       args: nil
+       body:
+         (MASGN@1:0-1:17
+            (BLOCK@1:5-1:17
+               (RESCUE@1:5-1:17 (VCALL@1:5-1:6 :p)
+                  (RESBODY@1:7-1:17 nil nil
+                     (BLOCK@1:7-1:17
+                        (FCALL@1:14-1:17 :p
+                           (LIST@1:16-1:17 (INTEGER@1:16-1:17 1) nil))) nil) nil)) nil
+            (LASGN@1:1-1:2 :x nil)))
+    EXP
+
+    assert_ast_eqaul("*x = p 1 rescue p 1", <<~EXP)
+      (SCOPE@1:0-1:19
+       tbl: [:x]
+       args: nil
+       body:
+         (RESCUE@1:0-1:19
+            (BLOCK@1:0-1:19
+               (MASGN@1:0-1:8
+                  (FCALL@1:5-1:8 :p (LIST@1:7-1:8 (INTEGER@1:7-1:8 1) nil)) nil
+                  (LASGN@1:1-1:2 :x nil)))
+            (RESBODY@1:9-1:19 nil nil
+               (BLOCK@1:9-1:19
+                  (FCALL@1:16-1:19 :p (LIST@1:18-1:19 (INTEGER@1:18-1:19 1) nil)))
+               nil) nil))
+    EXP
+
+    assert_ast_eqaul("a, b = p rescue p", <<~EXP)
+      (SCOPE@1:0-1:17
+       tbl: [:a, :b]
+       args: nil
+       body:
+         (MASGN@1:0-1:17
+            (RESCUE@1:7-1:17 (VCALL@1:7-1:8 :p)
+               (RESBODY@1:9-1:17 nil nil (VCALL@1:16-1:17 :p) nil) nil)
+            (LIST@1:0-1:4 (LASGN@1:0-1:1 :a nil) (LASGN@1:3-1:4 :b nil) nil) nil))
+    EXP
+
+    assert_ast_eqaul("x = p rescue p", <<~EXP)
+      (SCOPE@1:0-1:14
+       tbl: [:x]
+       args: nil
+       body:
+         (LASGN@1:0-1:14 :x
+            (RESCUE@1:4-1:14 (VCALL@1:4-1:5 :p)
+               (RESBODY@1:6-1:14 nil nil (VCALL@1:13-1:14 :p) nil) nil)))
+    EXP
+
+    assert_ast_eqaul("x = p 1 rescue p 1", <<~EXP)
+      (SCOPE@1:0-1:18
+       tbl: [:x]
+       args: nil
+       body:
+         (LASGN@1:0-1:18 :x
+            (RESCUE@1:4-1:18 (FCALL@1:4-1:7 :p (LIST@1:6-1:7 (INTEGER@1:6-1:7 1) nil))
+               (RESBODY@1:8-1:18 nil nil
+                  (FCALL@1:15-1:18 :p (LIST@1:17-1:18 (INTEGER@1:17-1:18 1) nil)) nil)
+               nil)))
+    EXP
+  end
+
   def test_keep_script_lines_for_parse
     node = RubyVM::AbstractSyntaxTree.parse(<<~END, keep_script_lines: true)
 1.times do

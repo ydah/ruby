@@ -3190,8 +3190,8 @@ stmt		: keyword_alias fitem {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fitem
                         p->ctxt.in_rescue = $3.in_rescue;
                         NODE *resq;
                         YYLTYPE loc = code_loc_gen(&@2, &@4);
-                        resq = NEW_RESBODY(0, 0, remove_begin($4), 0, &loc);
-                        $$ = NEW_RESCUE(remove_begin($1), resq, 0, &@$);
+                        resq = NEW_RESBODY(0, 0, NEW_BLOCK(remove_begin($4), &loc), 0, &loc);
+                        $$ = NEW_RESCUE(NEW_BLOCK(remove_begin($1), &@$), resq, 0, &@$);
                     /*% ripper: rescue_mod!($:1, $:4) %*/
                     }
                 | k_END allow_exits '{' compstmt '}'
@@ -3223,10 +3223,17 @@ stmt		: keyword_alias fitem {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fitem
                   after_rescue stmt[resbody]
                     {
                         p->ctxt.in_rescue = $3.in_rescue;
-                        YYLTYPE loc = code_loc_gen(&@modifier_rescue, &@resbody);
-                        $resbody = NEW_RESBODY(0, 0, remove_begin($resbody), 0, &loc);
-                        loc.beg_pos = @mrhs_arg.beg_pos;
-                        $mrhs_arg = NEW_RESCUE($mrhs_arg, $resbody, 0, &loc);
+                        if ($mlhs->nd_head) {
+                            YYLTYPE loc = code_loc_gen(&@modifier_rescue, &@resbody);
+                            $resbody = NEW_RESBODY(0, 0, remove_begin($resbody), 0, &loc);
+                            loc.beg_pos = @mrhs_arg.beg_pos;
+                            $mrhs_arg = NEW_RESCUE($mrhs_arg, $resbody, 0, &loc);
+                        } else {
+                            YYLTYPE loc = code_loc_gen(&@modifier_rescue, &@resbody);
+                            $resbody = NEW_RESBODY(0, 0, NEW_BLOCK(remove_begin($resbody), &loc), 0, &loc);
+                            loc.beg_pos = @mrhs_arg.beg_pos;
+                            $mrhs_arg = NEW_BLOCK(NEW_RESCUE($mrhs_arg, $resbody, 0, &loc), &loc);
+                        }
                         $$ = node_assign(p, (NODE *)$mlhs, $mrhs_arg, $lex_ctxt, &@$);
                     /*% ripper: massign!($:1, rescue_mod!($:4, $:7)) %*/
                     }
