@@ -154,6 +154,8 @@ COMMONOBJS    = \
 		pack.$(OBJEXT) \
 		pathname.$(OBJEXT) \
 		parse.$(OBJEXT) \
+		parser_node_list.$(OBJEXT) \
+		parser_prettyprint.$(OBJEXT) \
 		parser_st.$(OBJEXT) \
 		proc.$(OBJEXT) \
 		process.$(OBJEXT) \
@@ -367,6 +369,7 @@ programs: $(PROGRAM) $(WPROGRAM) $(arch)-fake.rb
 $(PREP): $(MKFILES)
 
 miniruby$(EXEEXT): config.status $(NORMALMAINOBJ) $(MINIOBJS) $(COMMONOBJS) $(ARCHFILE)
+miniruby$(EXEEXT): {$(VPATH)}parser_ast.h {$(VPATH)}parser_prettyprint.c
 
 objs: $(ALLOBJS)
 
@@ -1024,6 +1027,12 @@ PHONY:
 	$(Q)$(BASERUBY) $(tooldir)/id2token.rb $(SRC_FILE) | \
 	$(LRAMA) $(YFLAGS) -o$@ -H$*.h - parse.y
 
+{$(VPATH)}parser_ast.h: $(PRISM_SRCDIR)/config.yml $(tooldir)/parser_template.rb $(srcdir)/template/parser_ast.h.erb
+	$(Q) $(BASERUBY) $(tooldir)/parser_template.rb parser_ast.h $@
+
+{$(VPATH)}parser_prettyprint.c: $(PRISM_SRCDIR)/config.yml $(tooldir)/parser_template.rb $(srcdir)/template/parser_prettyprint.c.erb
+	$(Q) $(BASERUBY) $(tooldir)/parser_template.rb parser_prettyprint.c $@
+
 $(PLATFORM_D):
 	$(Q) $(MAKEDIRS) $(PLATFORM_DIR) $(@D)
 	@$(NULLCMD) > $@
@@ -1107,6 +1116,7 @@ $(COROUTINE_H:/Context.h=/.time):
 
 # dependencies for generated C sources.
 parse.$(OBJEXT): {$(VPATH)}parse.c
+parser_prettyprint.$(OBJEXT): {$(VPATH)}parser_prettyprint.c
 miniprelude.$(OBJEXT): {$(VPATH)}miniprelude.c
 
 # dependencies for optional sources.
