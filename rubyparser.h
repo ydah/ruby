@@ -1188,20 +1188,25 @@ typedef struct RNode_ERROR {
     (n)->flags=(((n)->flags&~NODE_TYPEMASK)|((((unsigned long)(t))<<NODE_TYPESHIFT)&NODE_TYPEMASK))
 
 typedef struct node_buffer_struct node_buffer_t;
+typedef struct rb_node_buffer_struct rb_node_buffer_t;
 
 #ifdef UNIVERSAL_PARSER
 typedef struct rb_parser_config_struct rb_parser_config_t;
 #endif
 
+#include "parser_ast.h"
+
 typedef struct rb_ast_body_struct {
-    const NODE *root;
+    const rb_node_t *root;
     rb_parser_ary_t *script_lines;
     int line_count;
+    rb_encoding *encoding;
     signed int frozen_string_literal:2; /* -1: not specified, 0: false, 1: true */
     signed int coverage_enabled:2; /* -1: not specified, 0: false, 1: true */
 } rb_ast_body_t;
 typedef struct rb_ast_struct {
     node_buffer_t *node_buffer;
+    rb_node_buffer_t *rb_node_buffer;
     rb_ast_body_t body;
 #ifdef UNIVERSAL_PARSER
     const rb_parser_config_t *config;
