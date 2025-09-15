@@ -13,6 +13,7 @@
 #include "internal/gc.h"
 #include "shape.h"
 #include "vm_core.h"
+#include "rb_node_compile.h"
 #include "prism_compile.h"
 
 RUBY_EXTERN const int ruby_api_version[];
