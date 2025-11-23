@@ -10992,6 +10992,12 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const no
         }
         break;
       }
+      case RB_SYMBOL_NODE:{
+        if (!popped) {
+            ADD_INSN1(ret, node, putobject, rb_node_sym_string_val(node));
+        }
+        break;
+      }
 
       // NODE
       // case NODE_BLOCK:
