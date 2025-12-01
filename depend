@@ -267,6 +267,7 @@ array.$(OBJEXT): {$(VPATH)}ractor.h
 array.$(OBJEXT): {$(VPATH)}ruby_assert.h
 array.$(OBJEXT): {$(VPATH)}ruby_atomic.h
 array.$(OBJEXT): {$(VPATH)}rubyparser.h
+array.$(OBJEXT): {$(VPATH)}parser_ast.h
 array.$(OBJEXT): {$(VPATH)}shape.h
 array.$(OBJEXT): {$(VPATH)}st.h
 array.$(OBJEXT): {$(VPATH)}subst.h
