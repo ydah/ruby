@@ -1314,6 +1314,15 @@ static rb_false_node_t *rb_new_node_false_new(struct parser_params *p, const YYL
 static rb_self_node_t *rb_new_node_self_new(struct parser_params *p, const YYLTYPE *loc);
 static rb_call_node_t *rb_new_node_call_new(struct parser_params *p, rb_node_t *receiver, ID name, struct rb_arguments_node *arguments, const YYLTYPE *loc);
 static rb_symbol_node_t *rb_new_node_symbol_new(struct parser_params *p, rb_parser_string_t *string, const YYLTYPE *loc, const YYLTYPE *opening_loc, const YYLTYPE *value_loc, const YYLTYPE *closing_loc);
+static rb_string_node_t *rb_new_node_string_new(struct parser_params *p, rb_parser_string_t *string, const YYLTYPE *loc, const YYLTYPE *opening_loc, const YYLTYPE *content_loc, const YYLTYPE *closing_loc);
+static rb_array_node_t *rb_new_node_array_new(struct parser_params *p, const YYLTYPE *loc, const YYLTYPE *opening_loc, const YYLTYPE *closing_loc);
+static rb_return_node_t *rb_new_node_return_new(struct parser_params *p, struct rb_arguments_node *arguments, const YYLTYPE *loc, const YYLTYPE *keyword_loc);
+static rb_redo_node_t *rb_new_node_redo_new(struct parser_params *p, const YYLTYPE *loc);
+static rb_retry_node_t *rb_new_node_retry_new(struct parser_params *p, const YYLTYPE *loc);
+static rb_break_node_t *rb_new_node_break_new(struct parser_params *p, struct rb_arguments_node *arguments, const YYLTYPE *loc, const YYLTYPE *keyword_loc);
+static rb_next_node_t *rb_new_node_next_new(struct parser_params *p, struct rb_arguments_node *arguments, const YYLTYPE *loc, const YYLTYPE *keyword_loc);
+static rb_integer_node_t *rb_new_node_integer_new(struct parser_params *p, pm_integer_t *value, const YYLTYPE *loc);
+static rb_float_node_t *rb_new_node_float_new(struct parser_params *p, double value, const YYLTYPE *loc);
 
 #define NEW_RB_PROGRAM(s,loc) (rb_node_t *)rb_new_node_program_new(p,s,loc)
 #define NEW_RB_STATEMENTS(loc) rb_new_node_statements_new(p,loc)
@@ -1323,6 +1332,15 @@ static rb_symbol_node_t *rb_new_node_symbol_new(struct parser_params *p, rb_pars
 #define NEW_RB_SELF(loc) rb_new_node_self_new(p,loc)
 #define NEW_RB_CALL(r,m,a,loc) rb_new_node_call_new(p,r,m,a,loc)
 #define NEW_RB_SYMBOL(s,loc,op_loc,v_loc,cl_loc) rb_new_node_symbol_new(p,s,loc,op_loc,v_loc,cl_loc)
+#define NEW_RB_STRING(s,loc,op_loc,c_loc,cl_loc) rb_new_node_string_new(p,s,loc,op_loc,c_loc,cl_loc)
+#define NEW_RB_ARRAY(loc,op_loc,cl_loc) rb_new_node_array_new(p,loc,op_loc,cl_loc)
+#define NEW_RB_RETURN(a,loc,kw_loc) rb_new_node_return_new(p,a,loc,kw_loc)
+#define NEW_RB_REDO(loc) rb_new_node_redo_new(p,loc)
+#define NEW_RB_RETRY(loc) rb_new_node_retry_new(p,loc)
+#define NEW_RB_BREAK(a,loc,kw_loc) rb_new_node_break_new(p,a,loc,kw_loc)
+#define NEW_RB_NEXT(a,loc,kw_loc) rb_new_node_next_new(p,a,loc,kw_loc)
+#define NEW_RB_INTEGER(v,loc) rb_new_node_integer_new(p,v,loc)
+#define NEW_RB_FLOAT(v,loc) rb_new_node_float_new(p,v,loc)
 
 
 enum internal_node_type {
@@ -3703,7 +3721,7 @@ command		: fcall command_args       %prec tLOWEST
                 | k_return_arg call_args
                     {
                         CMDARG_POP();
-                        $$ = NEW_RETURN(ret_args(p, $2), &@$, &@1);
+                        $$ = NEW_RB_RETURN(ret_args(p, $2), &@$, &@1);
                     /*% ripper: return!($:2) %*/
                     }
                 | k_break_arg call_args
@@ -3711,7 +3729,7 @@ command		: fcall command_args       %prec tLOWEST
                         CMDARG_POP();
                         NODE *args = 0;
                         args = ret_args(p, $2);
-                        $$ = add_block_exit(p, NEW_BREAK(args, &@$, &@1));
+                        $$ = add_block_exit(p, NEW_RB_BREAK(args, &@$, &@1));
                     /*% ripper: break!($:2) %*/
                     }
                 | k_next_arg call_args
@@ -3719,7 +3737,7 @@ command		: fcall command_args       %prec tLOWEST
                         CMDARG_POP();
                         NODE *args = 0;
                         args = ret_args(p, $2);
-                        $$ = add_block_exit(p, NEW_NEXT(args, &@$, &@1));
+                        $$ = add_block_exit(p, NEW_RB_NEXT(args, &@$, &@1));
                     /*% ripper: next!($:2) %*/
                     }
                 ;
@@ -4493,7 +4511,7 @@ primary		: inline_primary
                 }
             | k_return[kw]
                 {
-                    $$ = NEW_RETURN(0, &@$, &@kw);
+                    $$ = NEW_RB_RETURN(0, &@$, &@kw);
                 /*% ripper: return0! %*/
                 }
             | k_yield[kw] '('[lpar] call_args[args] rparen[rpar]
@@ -4749,17 +4767,17 @@ primary		: inline_primary
                 }
             | keyword_break[kw]
                 {
-                    $$ = add_block_exit(p, NEW_BREAK(0, &@$, &@kw));
+                    $$ = add_block_exit(p, NEW_RB_BREAK(0, &@$, &@kw));
                 /*% ripper: break!(args_new!) %*/
                 }
             | keyword_next[kw]
                 {
-                    $$ = add_block_exit(p, NEW_NEXT(0, &@$, &@kw));
+                    $$ = add_block_exit(p, NEW_RB_NEXT(0, &@$, &@kw));
                 /*% ripper: next!(args_new!) %*/
                 }
             | keyword_redo[kw]
                 {
-                    $$ = add_block_exit(p, NEW_REDO(&@$, &@kw));
+                    $$ = add_block_exit(p, NEW_RB_REDO(&@$));
                 /*% ripper: redo! %*/
                 }
             | keyword_retry[kw]
@@ -4772,7 +4790,7 @@ primary		: inline_primary
                           case after_ensure: yyerror1(&@kw, "Invalid retry after ensure"); break;
                         }
                     }
-                    $$ = NEW_RETRY(&@$);
+                    $$ = NEW_RB_RETRY(&@$);
                 /*% ripper: retry! %*/
                 }
             ;
@@ -12656,6 +12674,86 @@ rb_new_node_symbol_new(struct parser_params *p, rb_parser_string_t *string, cons
     n->value_loc = *value_loc;
     n->closing_loc = *closing_loc;
     n->unescaped = string;
+    return n;
+}
+
+static rb_string_node_t *
+rb_new_node_string_new(struct parser_params *p, rb_parser_string_t *string, const YYLTYPE *loc, const YYLTYPE *opening_loc, const YYLTYPE *content_loc, const YYLTYPE *closing_loc)
+{
+    rb_string_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_STRING_NODE, rb_string_node_t, loc);
+    n->opening_loc = *opening_loc;
+    n->content_loc = *content_loc;
+    n->closing_loc = *closing_loc;
+    n->unescaped = string;
+    return n;
+}
+
+static rb_array_node_t *
+rb_new_node_array_new(struct parser_params *p, const YYLTYPE *loc, const YYLTYPE *opening_loc, const YYLTYPE *closing_loc)
+{
+    rb_array_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_ARRAY_NODE, rb_array_node_t, loc);
+    n->opening_loc = *opening_loc;
+    n->closing_loc = *closing_loc;
+    n->elements.size = 0;
+    n->elements.capacity = 0;
+    n->elements.nodes = NULL;
+    return n;
+}
+
+static rb_return_node_t *
+rb_new_node_return_new(struct parser_params *p, struct rb_arguments_node *arguments, const YYLTYPE *loc, const YYLTYPE *keyword_loc)
+{
+    rb_return_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_RETURN_NODE, rb_return_node_t, loc);
+    n->keyword_loc = *keyword_loc;
+    n->arguments = arguments;
+    return n;
+}
+
+static rb_redo_node_t *
+rb_new_node_redo_new(struct parser_params *p, const YYLTYPE *loc)
+{
+    rb_redo_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_REDO_NODE, rb_redo_node_t, loc);
+    return n;
+}
+
+static rb_retry_node_t *
+rb_new_node_retry_new(struct parser_params *p, const YYLTYPE *loc)
+{
+    rb_retry_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_RETRY_NODE, rb_retry_node_t, loc);
+    return n;
+}
+
+static rb_break_node_t *
+rb_new_node_break_new(struct parser_params *p, struct rb_arguments_node *arguments, const YYLTYPE *loc, const YYLTYPE *keyword_loc)
+{
+    rb_break_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_BREAK_NODE, rb_break_node_t, loc);
+    n->keyword_loc = *keyword_loc;
+    n->arguments = arguments;
+    return n;
+}
+
+static rb_next_node_t *
+rb_new_node_next_new(struct parser_params *p, struct rb_arguments_node *arguments, const YYLTYPE *loc, const YYLTYPE *keyword_loc)
+{
+    rb_next_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_NEXT_NODE, rb_next_node_t, loc);
+    n->keyword_loc = *keyword_loc;
+    n->arguments = arguments;
+    return n;
+}
+
+static rb_integer_node_t *
+rb_new_node_integer_new(struct parser_params *p, pm_integer_t *value, const YYLTYPE *loc)
+{
+    rb_integer_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_INTEGER_NODE, rb_integer_node_t, loc);
+    n->value = *value;
+    return n;
+}
+
+static rb_float_node_t *
+rb_new_node_float_new(struct parser_params *p, double value, const YYLTYPE *loc)
+{
+    rb_float_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_FLOAT_NODE, rb_float_node_t, loc);
+    n->value = value;
     return n;
 }
 
