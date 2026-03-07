@@ -10509,7 +10509,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 return kw->id[0];
             else {
                 if (kw->id[0] != kw->id[1])
-                    SET_LEX_STATE(EXPR_BEG | EXPR_LABEL);
+                    SET_LEX_STATE(EXPR_BEG);
                 return kw->id[1];
             }
         }
@@ -10535,7 +10535,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     if (!IS_lex_state_for(last_state, EXPR_DOT) && !expects_fname &&
         (result == tIDENTIFIER) && /* not EXPR_FNAME, not attrasgn */
         (lvar_defined(p, ident) || NUMPARAM_ID_P(ident))) {
-        SET_LEX_STATE(EXPR_END|EXPR_LABEL);
+        SET_LEX_STATE(EXPR_END);
     }
     return result;
 }
@@ -10987,7 +10987,7 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_BEG);
             return tOP_ASGN;
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG|EXPR_LABEL);
+        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         pushback(p, c);
         return '|';
 
@@ -11181,7 +11181,7 @@ parser_yylex(struct parser_params *p)
         return ';';
 
       case ',':
-        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+        SET_LEX_STATE(EXPR_BEG);
         return ',';
 
       case '~':
@@ -11213,7 +11213,7 @@ parser_yylex(struct parser_params *p)
         p->lex.paren_nest++;
         COND_PUSH(0);
         CMDARG_PUSH(0);
-        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+        SET_LEX_STATE(EXPR_BEG);
         return c;
 
       case '[':
@@ -11229,7 +11229,7 @@ parser_yylex(struct parser_params *p)
                 return tAREF;
             }
             pushback(p, c);
-            SET_LEX_STATE(EXPR_ARG|EXPR_LABEL);
+            SET_LEX_STATE(EXPR_ARG);
             return '[';
         }
         else if (IS_BEG()) {
@@ -11238,7 +11238,7 @@ parser_yylex(struct parser_params *p)
         else if (IS_ARG() && (space_seen || IS_lex_state(EXPR_LABELED))) {
             c = tLBRACK;
         }
-        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+        SET_LEX_STATE(EXPR_BEG);
         COND_PUSH(0);
         CMDARG_PUSH(0);
         return c;
@@ -11261,7 +11261,7 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_BEG);
         }
         else {
-            SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+            SET_LEX_STATE(EXPR_BEG);
         }
         ++p->lex.paren_nest;  /* after lambda_beginning_p() */
         COND_PUSH(0);
