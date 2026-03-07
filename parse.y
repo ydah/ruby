@@ -6182,8 +6182,9 @@ sym		: fname
 
 dsym		: tSYMBEG string_contents tSTRING_END
                     {
-                        SET_LEX_STATE(EXPR_END);
                         $$ = dsym_node(p, $2, &@$);
+                        /* tSTRING_END を lex した時点で EXPR_END は設定済み */
+                        /* SET_LEX_STATE(EXPR_END); */
                     /*% ripper: dyna_symbol!($:2) %*/
                     }
                 ;
