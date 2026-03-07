@@ -3936,7 +3936,12 @@ undef_list	: fitem
                         $$ = NEW_UNDEF($1, &@$);
                     /*% ripper: rb_ary_new3(1, $:1) %*/
                     }
-                | undef_list ',' {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fitem
+                | undef_list ','
+                    {
+                        /* `undef` 連結時も次の fitem は lexer 既定遷移で読める */
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM); */
+                    }
+                  fitem
                     {
                         nd_set_last_loc($1, @4.end_pos);
                         rb_parser_ary_push_node(p, RNODE_UNDEF($1)->nd_undefs, $4);
