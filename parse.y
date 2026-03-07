@@ -6162,8 +6162,8 @@ symbol		: ssym
 
 ssym		: tSYMBEG sym
                     {
-                        SET_LEX_STATE(EXPR_END);
-                        VALUE str = rb_id2str($2);
+                        VALUE str;
+                        str = rb_id2str($2);
                         /*
                          * TODO:
                          *   set_yylval_noname sets invalid id to yylval.
@@ -6172,6 +6172,8 @@ ssym		: tSYMBEG sym
                          */
                         if (!str) str = STR_NEW0();
                         $$ = NEW_SYM(str, &@$);
+                        /* `sym` lexing may leave EXPR_ENDFN, but `ssym` itself is a primary. */
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
                     /*% ripper: symbol_literal!(symbol!($:2)) %*/
                     }
                 ;
