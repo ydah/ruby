@@ -6298,7 +6298,8 @@ f_arglist	: f_paren_args
                         $$ = p->ctxt;
                         p->ctxt.in_kwarg = 1;
                         p->ctxt.in_argdef = 1;
-                        SET_LEX_STATE(p->lex.state|EXPR_LABEL); /* force for args */
+                        /* EXPR_ENDFN の時点で label 判定は可能 */
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(p->lex.state|EXPR_LABEL); */
                     }<ctxt>
                   f_args term
                     {
