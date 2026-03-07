@@ -3587,10 +3587,11 @@ defs_head	: k_def singleton dot_or_colon
                     }
                   def_name
                     {
-                        SET_LEX_STATE(EXPR_ENDFN|EXPR_LABEL); /* force for args */
                         $$ = def_head_save(p, $k_def);
                         $$->nd_mid = $def_name;
                         $$->nd_def = NEW_DEFS($singleton, $def_name, 0, &@$);
+                        /* `def_name` を lex した時点で ENDFN は設定済み */
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ENDFN|EXPR_LABEL); */
                     /*% ripper: [$:singleton, $:dot_or_colon, $:def_name] %*/
                     }
                 ;
