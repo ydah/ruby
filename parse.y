@@ -630,10 +630,8 @@ parser_pslr_accepts_token(struct parser_params *p, int token)
 }
 
 static inline int
-parser_pslr_force_expr_beg_p(struct parser_params *p)
+parser_pslr_accepts_expr_beg_token_p(struct parser_params *p)
 {
-    if (p->lex.state != EXPR_ENDFN) return FALSE;
-
     if (parser_pslr_accepts_token(p, keyword_begin)) return TRUE;
     if (parser_pslr_accepts_token(p, keyword_if)) return TRUE;
     if (parser_pslr_accepts_token(p, keyword_unless)) return TRUE;
@@ -658,8 +656,21 @@ parser_pslr_force_expr_beg_p(struct parser_params *p)
     if (parser_pslr_accepts_token(p, tREGEXP_BEG)) return TRUE;
     if (parser_pslr_accepts_token(p, tWORDS_BEG)) return TRUE;
     if (parser_pslr_accepts_token(p, tQWORDS_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tSYMBOLS_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tQSYMBOLS_BEG)) return TRUE;
     if (parser_pslr_accepts_token(p, tSYMBEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLPAREN)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLBRACK)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLBRACE)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLAMBDA)) return TRUE;
     return FALSE;
+}
+
+static inline int
+parser_pslr_force_expr_beg_p(struct parser_params *p)
+{
+    if (p->lex.state != EXPR_ENDFN) return FALSE;
+    return parser_pslr_accepts_expr_beg_token_p(p);
 }
 
 static inline int
@@ -729,6 +740,12 @@ parser_pslr_prefers_heredoc_p(struct parser_params *p)
 
     if (!accepts_heredoc) return FALSE;
     return !parser_pslr_accepts_token(p, tLSHFT);
+}
+
+static inline int
+parser_pslr_begin_like_p(struct parser_params *p)
+{
+    return parser_pslr_after_labeled_p(p) || parser_pslr_accepts_expr_beg_token_p(p);
 }
 
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
@@ -8707,7 +8724,7 @@ parser_peek_variable_name(struct parser_params *p)
 
 #define IS_ARG() IS_lex_state(EXPR_ARG_ANY)
 #define IS_END() IS_lex_state(EXPR_END_ANY)
-#define IS_BEG() (IS_lex_state(EXPR_BEG_ANY) || parser_pslr_after_labeled_p(p))
+#define IS_BEG() parser_pslr_begin_like_p(p)
 #define IS_SPCARG(c) (IS_ARG() && space_seen && !ISSPACE(c))
 #define IS_LABEL_POSSIBLE() parser_pslr_label_possible_p(p, cmd_state)
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
