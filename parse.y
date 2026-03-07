@@ -692,6 +692,15 @@ parser_pslr_label_possible_p(struct parser_params *p, int cmd_state)
     return parser_pslr_accepts_token(p, tLABEL);
 }
 
+static inline int
+parser_pslr_after_labeled_p(struct parser_params *p)
+{
+    if (!IS_lex_state(EXPR_ARG_ANY)) return FALSE;
+    if (!parser_pslr_accepts_token(p, tLBRACE)) return FALSE;
+    if (parser_pslr_accepts_token(p, '{')) return FALSE;
+    return TRUE;
+}
+
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
     parser_pslr_sync_current_state((ParseParam), (CurrentState))
 
@@ -8668,7 +8677,7 @@ parser_peek_variable_name(struct parser_params *p)
 
 #define IS_ARG() IS_lex_state(EXPR_ARG_ANY)
 #define IS_END() IS_lex_state(EXPR_END_ANY)
-#define IS_BEG() (IS_lex_state(EXPR_BEG_ANY) || IS_lex_state_all(EXPR_ARG|EXPR_LABELED))
+#define IS_BEG() (IS_lex_state(EXPR_BEG_ANY) || parser_pslr_after_labeled_p(p))
 #define IS_SPCARG(c) (IS_ARG() && space_seen && !ISSPACE(c))
 #define IS_LABEL_POSSIBLE() parser_pslr_label_possible_p(p, cmd_state)
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
@@ -8687,7 +8696,7 @@ parser_string_term(struct parser_params *p, int func)
     }
     if ((func & STR_FUNC_LABEL) && IS_LABEL_SUFFIX(0)) {
         nextc(p);
-        SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
+        SET_LEX_STATE(EXPR_ARG);
         return tLABEL_END;
     }
     SET_LEX_STATE(EXPR_END);
@@ -10446,7 +10455,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 
     if (IS_LABEL_POSSIBLE()) {
         if (IS_LABEL_SUFFIX(0)) {
-            SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
+            SET_LEX_STATE(EXPR_ARG);
             nextc(p);
             tokenize_ident(p);
             return tLABEL;
@@ -10505,7 +10514,8 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                     return keyword_do_block;
                 return keyword_do;
             }
-            if (IS_lex_state_for(state, (EXPR_BEG | EXPR_LABELED | EXPR_CLASS)))
+            if (IS_lex_state_for(state, (EXPR_BEG | EXPR_CLASS)) ||
+                parser_pslr_after_labeled_p(p))
                 return kw->id[0];
             else {
                 if (kw->id[0] != kw->id[1])
@@ -10662,10 +10672,11 @@ parser_yylex(struct parser_params *p)
       case '\n':
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
+        int after_labeled = parser_pslr_after_labeled_p(p);
         c = ((IS_lex_state(EXPR_BEG|EXPR_CLASS|EXPR_DOT) ||
               parser_pslr_expects_fname_p(p)) &&
-             !IS_lex_state(EXPR_LABELED));
-        if (c || IS_lex_state_all(EXPR_ARG|EXPR_LABELED)) {
+             !after_labeled);
+        if (c || after_labeled) {
             if (!fallthru) {
                 dispatch_scan_event(p, tIGNORED_NL);
             }
@@ -10848,7 +10859,7 @@ parser_yylex(struct parser_params *p)
         if (c == '<' &&
             !IS_lex_state(EXPR_DOT | EXPR_CLASS) &&
             !IS_END() &&
-            (!IS_ARG() || IS_lex_state(EXPR_LABELED) || space_seen)) {
+            (!IS_ARG() || parser_pslr_after_labeled_p(p) || space_seen)) {
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
         }
@@ -11235,7 +11246,7 @@ parser_yylex(struct parser_params *p)
         else if (IS_BEG()) {
             c = tLBRACK;
         }
-        else if (IS_ARG() && (space_seen || IS_lex_state(EXPR_LABELED))) {
+        else if (IS_ARG() && space_seen) {
             c = tLBRACK;
         }
         SET_LEX_STATE(EXPR_BEG);
@@ -11250,8 +11261,6 @@ parser_yylex(struct parser_params *p)
         else if ((c = parser_pslr_lbrace_token(p)) != 0) {
             /* Prefer parser-state disambiguation when it selects one brace token. */
         }
-        else if (IS_lex_state(EXPR_LABELED))
-            c = tLBRACE;      /* hash */
         else if (IS_lex_state(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
             c = '{';          /* block (primary) */
         else
