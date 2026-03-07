@@ -6217,7 +6217,8 @@ backref		: tNTH_REF
 
 superclass	: '<'
                     {
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* PSLR により lex_state 不要: '<' を lex した時点で EXPR_BEG は確定している */
+                        /* SET_LEX_STATE(EXPR_BEG); */
                         p->command_start = TRUE;
                     }
                   expr_value term
