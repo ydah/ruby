@@ -10222,6 +10222,7 @@ static enum yytokentype
 parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
 {
     const char *ptr = p->lex.pcur;
+    const int expects_fname = parser_pslr_expects_fname_p(p);
     register int c;
 
     SET_LEX_STATE(EXPR_END);
@@ -10279,7 +10280,7 @@ parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
       case '`': 	/* $`: string before last match */
       case '\'':	/* $': string after last match */
       case '+': 	/* $+: string matches last paren. */
-        if (IS_lex_state_for(last_state, EXPR_FNAME)) {
+        if (expects_fname) {
             tokadd(p, '$');
             tokadd(p, c);
             goto gvar;
@@ -10296,7 +10297,7 @@ parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
             c = nextc(p);
         } while (c != -1 && ISDIGIT(c));
         pushback(p, c);
-        if (IS_lex_state_for(last_state, EXPR_FNAME)) goto gvar;
+        if (expects_fname) goto gvar;
         tokfix(p);
         c = parse_numvar(p);
         set_yylval_node(NEW_NTH_REF(c, &_cur_loc));
@@ -10359,6 +10360,7 @@ static enum yytokentype
 parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
 {
     const char *ptr = p->lex.pcur;
+    const int expects_fname = parser_pslr_expects_fname_p(p);
     enum yytokentype result = tIVAR;
     register int c = nextc(p);
     YYLTYPE loc;
@@ -10371,7 +10373,7 @@ parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
         tokadd(p, '@');
         c = nextc(p);
     }
-    SET_LEX_STATE(IS_lex_state_for(last_state, EXPR_FNAME) ? EXPR_ENDFN : EXPR_END);
+    SET_LEX_STATE(expects_fname ? EXPR_ENDFN : EXPR_END);
     if (c == -1 || !parser_is_identchar(p)) {
         pushback(p, c);
         RUBY_SET_YYLLOC(loc);
