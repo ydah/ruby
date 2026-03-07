@@ -629,6 +629,39 @@ parser_pslr_accepts_token(struct parser_params *p, int token)
     return p->pslr.parser_state >= 0 && yy_state_accepts_token(p->pslr.parser_state, token);
 }
 
+static inline int
+parser_pslr_force_expr_beg_p(struct parser_params *p)
+{
+    if (p->lex.state != EXPR_ENDFN) return FALSE;
+
+    if (parser_pslr_accepts_token(p, keyword_begin)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_if)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_unless)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_case)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_while)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_until)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_for)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_return)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_yield)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_super)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_self)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_nil)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_true)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_false)) return TRUE;
+    if (parser_pslr_accepts_token(p, tINTEGER)) return TRUE;
+    if (parser_pslr_accepts_token(p, tFLOAT)) return TRUE;
+    if (parser_pslr_accepts_token(p, tRATIONAL)) return TRUE;
+    if (parser_pslr_accepts_token(p, tIMAGINARY)) return TRUE;
+    if (parser_pslr_accepts_token(p, tCHAR)) return TRUE;
+    if (parser_pslr_accepts_token(p, tSTRING_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tXSTRING_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tREGEXP_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tWORDS_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tQWORDS_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tSYMBEG)) return TRUE;
+    return FALSE;
+}
+
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
     parser_pslr_sync_current_state((ParseParam), (CurrentState))
 
@@ -6249,7 +6282,8 @@ f_paren_args	: '(' f_args rparen
                     {
                         $$ = $2;
                     /*% ripper: paren!($:2) %*/
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* PSLR bridge により ENDFN -> BEG を lexer 入口で補正する */
+                        /* SET_LEX_STATE(EXPR_BEG); */
                         p->command_start = TRUE;
                         p->ctxt.in_argdef = 0;
                     }
@@ -10507,6 +10541,9 @@ parser_yylex(struct parser_params *p)
             token_flush(p);
             return parse_string(p, &p->lex.strterm->u.literal);
         }
+    }
+    if (parser_pslr_force_expr_beg_p(p)) {
+        SET_LEX_STATE(EXPR_BEG);
     }
     cmd_state = p->command_start;
     p->command_start = FALSE;
