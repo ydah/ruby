@@ -3587,9 +3587,7 @@ defn_head	: k_def def_name
                 ;
 
 defs_head	: k_def singleton dot_or_colon
-                    {
-                        SET_LEX_STATE(EXPR_FNAME);
-                    }
+                    /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_FNAME); */
                   def_name
                     {
                         $$ = def_head_save(p, $k_def);
