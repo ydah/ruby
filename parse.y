@@ -3188,7 +3188,8 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 
 %%
 program		:  {
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* parser entry で EXPR_BEG を設定済み */
+                        /* SET_LEX_STATE(EXPR_BEG); */
                         local_push(p, ifndef_ripper(1)+0);
                         /* jumps are possible in the top-level loop. */
                         if (!ifndef_ripper(p->do_loop) + 0) init_block_exit(p);
@@ -9643,6 +9644,7 @@ static void
 parser_prepare(struct parser_params *p)
 {
     int c = nextc0(p, FALSE);
+    p->lex.state = EXPR_BEG;
     p->token_info_enabled = !compile_for_eval && RTEST(ruby_verbose);
     switch (c) {
       case '#':
