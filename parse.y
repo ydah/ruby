@@ -555,6 +555,9 @@ struct parser_params {
     ID it_id;
 
     struct lex_context ctxt;
+    struct {
+        int parser_state;
+    } pslr;
 
     NODE *eval_tree_begin;
     NODE *eval_tree;
@@ -611,6 +614,23 @@ struct parser_params {
     VALUE s_value_stack;
 #endif
 };
+
+static inline void
+parser_pslr_sync_current_state(struct parser_params *p, int parser_state)
+{
+    p->pslr.parser_state = parser_state;
+}
+
+static int yy_state_accepts_token(int yystate, int token);
+
+static inline int
+parser_pslr_accepts_token(struct parser_params *p, int token)
+{
+    return p->pslr.parser_state >= 0 && yy_state_accepts_token(p->pslr.parser_state, token);
+}
+
+#define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
+    parser_pslr_sync_current_state((ParseParam), (CurrentState))
 
 #define NUMPARAM_ID_P(id) numparam_id_p(p, id)
 #define NUMPARAM_ID_TO_IDX(id) (unsigned int)(((id) >> ID_SCOPE_SHIFT) - (tNUMPARAM_1 - 1))
@@ -4394,7 +4414,12 @@ primary		: inline_primary
                     nd_set_line($$, @kw.end_pos.lineno);
                 /*% ripper: begin!($:body) %*/
                 }
-            | tLPAREN_ARG compstmt(stmts)[body] {SET_LEX_STATE(EXPR_ENDARG);} ')'
+            | tLPAREN_ARG compstmt(stmts)[body]
+                {
+                    /* PSLR により lex_state 不要: '{' は parser state から判定する */
+                    /* SET_LEX_STATE(EXPR_ENDARG); */
+                }
+              ')'
                 {
                     if (nd_type_p($body, NODE_SELF)) RNODE_SELF($body)->nd_state = 0;
                     $$ = $body;
@@ -10440,6 +10465,25 @@ warn_cr(struct parser_params *p)
 }
 
 static enum yytokentype
+parser_pslr_lbrace_token(struct parser_params *p)
+{
+    int accepts_hash = parser_pslr_accepts_token(p, tLBRACE);
+    int accepts_primary_block = parser_pslr_accepts_token(p, '{');
+    int accepts_expr_block = parser_pslr_accepts_token(p, tLBRACE_ARG);
+
+    if (accepts_expr_block && !accepts_hash && !accepts_primary_block) {
+        return tLBRACE_ARG;
+    }
+    if (accepts_primary_block && !accepts_hash && !accepts_expr_block) {
+        return '{';
+    }
+    if (accepts_hash && !accepts_primary_block && !accepts_expr_block) {
+        return tLBRACE;
+    }
+    return 0;
+}
+
+static enum yytokentype
 parser_yylex(struct parser_params *p)
 {
     register int c;
@@ -11112,6 +11156,9 @@ parser_yylex(struct parser_params *p)
         ++p->lex.brace_nest;
         if (lambda_beginning_p())
             c = tLAMBEG;
+        else if ((c = parser_pslr_lbrace_token(p)) != 0) {
+            /* Prefer parser-state disambiguation when it selects one brace token. */
+        }
         else if (IS_lex_state(EXPR_LABELED))
             c = tLBRACE;      /* hash */
         else if (IS_lex_state(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
@@ -15495,6 +15542,7 @@ parser_initialize(struct parser_params *p)
 {
     /* note: we rely on TypedData_Make_Struct to set most fields to 0 */
     p->command_start = TRUE;
+    p->pslr.parser_state = -1;
     p->ruby_sourcefile_string = Qnil;
     p->lex.lpar_beg = -1; /* make lambda_beginning_p() == FALSE at first */
     string_buffer_init(p);
