@@ -3355,7 +3355,12 @@ k_END		: keyword_END lex_ctxt
                     /*% ripper: $:2 %*/
                     };
 
-stmt		: keyword_alias[kw] fitem[new] {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fitem[old]
+stmt		: keyword_alias[kw] fitem[new]
+                    {
+                        /* fitem の後でも、次の alias 対象は lexer 既定遷移で読める */
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM); */
+                    }
+                  fitem[old]
                     {
                         $$ = NEW_ALIAS($new, $old, &@$, &@kw);
                     /*% ripper: alias!($:new, $:old) %*/
