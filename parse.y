@@ -5412,7 +5412,8 @@ p_pktbl 	: {$$ = p->pktbl; p->pktbl = 0;};
 
 p_in_kwarg	:   {
                         $$ = p->ctxt;
-                        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+                        /* pattern body 開始は既存 lexer 遷移で読めるかを確認する */
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
                         p->command_start = FALSE;
                         p->ctxt.in_kwarg = 1;
                         p->ctxt.in_alt_pattern = 0;
