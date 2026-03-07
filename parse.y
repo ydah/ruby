@@ -690,9 +690,20 @@ parser_pslr_expects_fname_p(struct parser_params *p)
 }
 
 static inline int
+parser_pslr_after_dot_p(struct parser_params *p)
+{
+    /*
+     * Call-name-after-dot contexts accept operator method names but reject
+     * reserved words.
+     */
+    if (!parser_pslr_accepts_token(p, tCMP)) return FALSE;
+    return !parser_pslr_accepts_token(p, keyword_if);
+}
+
+static inline int
 parser_pslr_after_operator_p(struct parser_params *p)
 {
-    return IS_lex_state(EXPR_DOT) || parser_pslr_expects_fname_p(p);
+    return parser_pslr_after_dot_p(p) || parser_pslr_expects_fname_p(p);
 }
 
 static inline int
@@ -9816,7 +9827,7 @@ parser_prepare(struct parser_params *p)
     dispatch2(operator_ambiguous, TOKEN2VAL(tok), rb_str_new_cstr(syn))
 #endif
 #define warn_balanced(tok, op, syn) ((void) \
-    (!IS_lex_state_for(last_state, EXPR_CLASS|EXPR_DOT|EXPR_ENDFN) && \
+    (!(parser_pslr_after_dot_p(p) || IS_lex_state_for(last_state, EXPR_CLASS|EXPR_ENDFN)) && \
      !parser_pslr_expects_fname_p(p) && \
      space_seen && !ISSPACE(c) && \
      (ambiguous_operator(tok, op, syn), 0)), \
@@ -10475,7 +10486,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 {
     enum yytokentype result;
     bool is_ascii = true;
-    const enum lex_state_e last_state = p->lex.state;
+    const int after_dot = parser_pslr_after_dot_p(p);
     const int expects_fname = parser_pslr_expects_fname_p(p);
     ID ident;
     int enforce_keyword_end = 0;
@@ -10527,7 +10538,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         if ((p->ruby_sourceline > lineno) && (beg_pos <= column)) {
             const struct kwtable *kw;
 
-            if ((IS_lex_state(EXPR_DOT)) && (kw = rb_reserved_word(tok(p), toklen(p))) && (kw && kw->id[0] == keyword_end)) {
+            if (after_dot && (kw = rb_reserved_word(tok(p), toklen(p))) && (kw && kw->id[0] == keyword_end)) {
                 if (p->debug) rb_parser_printf(p, "enforce_keyword_end is enabled\n");
                 enforce_keyword_end = 1;
             }
@@ -10535,7 +10546,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     }
 #endif
 
-    if (is_ascii && (!IS_lex_state(EXPR_DOT) || enforce_keyword_end)) {
+    if (is_ascii && (!after_dot || enforce_keyword_end)) {
         const struct kwtable *kw;
 
         /* See if it is a reserved word.  */
@@ -10572,7 +10583,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         }
     }
 
-    if (IS_lex_state(EXPR_BEG_ANY | EXPR_ARG_ANY | EXPR_DOT)) {
+    if (IS_lex_state(EXPR_BEG_ANY | EXPR_ARG_ANY) || after_dot) {
         if (cmd_state) {
             SET_LEX_STATE(EXPR_CMDARG);
         }
@@ -10589,7 +10600,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 
     ident = tokenize_ident(p);
     if (result == tCONSTANT && is_local_id(ident)) result = tIDENTIFIER;
-    if (!IS_lex_state_for(last_state, EXPR_DOT) && !expects_fname &&
+    if (!after_dot && !expects_fname &&
         (result == tIDENTIFIER) && /* not EXPR_FNAME, not attrasgn */
         (lvar_defined(p, ident) || NUMPARAM_ID_P(ident))) {
         SET_LEX_STATE(EXPR_END);
@@ -10720,7 +10731,8 @@ parser_yylex(struct parser_params *p)
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
         int after_labeled = parser_pslr_after_labeled_p(p);
-        c = ((IS_lex_state(EXPR_BEG|EXPR_CLASS|EXPR_DOT) ||
+        c = ((IS_lex_state(EXPR_BEG|EXPR_CLASS) ||
+              parser_pslr_after_dot_p(p) ||
               parser_pslr_expects_fname_p(p)) &&
              !after_labeled);
         if (c || after_labeled) {
@@ -10914,7 +10926,8 @@ parser_yylex(struct parser_params *p)
             if (token) return token < 0 ? 0 : token;
         }
         if (c == '<' &&
-            !IS_lex_state(EXPR_DOT | EXPR_CLASS) &&
+            !parser_pslr_after_dot_p(p) &&
+            !IS_lex_state(EXPR_CLASS) &&
             !IS_END() &&
             (!IS_ARG() || parser_pslr_after_labeled_p(p) || space_seen)) {
             enum  yytokentype token = heredoc_identifier(p);
@@ -10975,7 +10988,7 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_ENDFN);
             return c;
         }
-        if (IS_lex_state(EXPR_DOT)) {
+        if (parser_pslr_after_dot_p(p)) {
             if (cmd_state)
                 SET_LEX_STATE(EXPR_CMDARG);
             else
