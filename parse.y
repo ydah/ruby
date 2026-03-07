@@ -6642,7 +6642,8 @@ singleton	: value_expr(singleton_expr)
 singleton_expr	: var_ref
                 | '('
                     {
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* PSLR bridge により ENDFN -> BEG を lexer 入口で補正する */
+                        /* SET_LEX_STATE(EXPR_BEG); */
                         p->ctxt.in_argdef = 0;
                     }
                   expr rparen
