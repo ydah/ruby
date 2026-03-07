@@ -662,6 +662,29 @@ parser_pslr_force_expr_beg_p(struct parser_params *p)
     return FALSE;
 }
 
+static inline int
+parser_pslr_expects_fname_p(struct parser_params *p)
+{
+    /*
+     * Distinguish fname-like contexts from ordinary expr starts by requiring
+     * both a reserved-word method name and an operator method name.
+     *
+     * - fname/fitem/sym states accept both `if` and `<=>`
+     * - normal expr starts accept `if` but not `<=>`
+     * - normal call-name-after-dot states accept `<=>` but not reserved words
+     */
+    if (!parser_pslr_accepts_token(p, keyword_if)) return FALSE;
+    if (!parser_pslr_accepts_token(p, tCMP)) return FALSE;
+    return TRUE;
+}
+
+static inline int
+parser_pslr_force_expr_fname_p(struct parser_params *p)
+{
+    if (IS_lex_state(EXPR_FNAME)) return FALSE;
+    return parser_pslr_expects_fname_p(p);
+}
+
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
     parser_pslr_sync_current_state((ParseParam), (CurrentState))
 
@@ -10131,7 +10154,8 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
 
           case 's':
             p->lex.strterm = NEW_STRTERM(str_ssym, term, paren);
-            SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);
+            /* quoted symbol 本体は strterm で読むので、返却後の FNAME/FITEM は不要 */
+            /* PSLR fname bridge により bare symbol 名は lexer 入口で補正する */
             return tSYMBEG;
 
           default:
@@ -10388,6 +10412,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     enum yytokentype result;
     bool is_ascii = true;
     const enum lex_state_e last_state = p->lex.state;
+    const int expects_fname = IS_lex_state(EXPR_FNAME) || parser_pslr_expects_fname_p(p);
     ID ident;
     int enforce_keyword_end = 0;
 
@@ -10400,7 +10425,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         result = tFID;
         tokadd(p, c);
     }
-    else if (c == '=' && IS_lex_state(EXPR_FNAME) &&
+    else if (c == '=' && expects_fname &&
              (!peek(p, '~') && !peek(p, '>') && (!peek(p, '=') || (peek_n(p, '>', 1))))) {
         result = tIDENTIFIER;
         tokadd(p, c);
@@ -10453,7 +10478,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         kw = rb_reserved_word(tok(p), toklen(p));
         if (kw) {
             enum lex_state_e state = p->lex.state;
-            if (IS_lex_state_for(state, EXPR_FNAME)) {
+            if (expects_fname) {
                 SET_LEX_STATE(EXPR_ENDFN);
                 set_yylval_name(rb_intern2(tok(p), toklen(p)));
                 return kw->id[0];
@@ -10490,7 +10515,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
             SET_LEX_STATE(EXPR_ARG);
         }
     }
-    else if (p->lex.state == EXPR_FNAME) {
+    else if (expects_fname) {
         SET_LEX_STATE(EXPR_ENDFN);
     }
     else {
@@ -10559,6 +10584,9 @@ parser_yylex(struct parser_params *p)
     }
     if (parser_pslr_force_expr_beg_p(p)) {
         SET_LEX_STATE(EXPR_BEG);
+    }
+    else if (parser_pslr_force_expr_fname_p(p)) {
+        SET_LEX_STATE(EXPR_FNAME);
     }
     cmd_state = p->command_start;
     p->command_start = FALSE;
@@ -11108,7 +11136,7 @@ parser_yylex(struct parser_params *p)
             pushback(p, c);
             break;
         }
-        SET_LEX_STATE(EXPR_FNAME);
+        /* PSLR fname bridge により lexer 入口で EXPR_FNAME を補正する */
         return tSYMBEG;
 
       case '/':
