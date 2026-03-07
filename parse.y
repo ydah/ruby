@@ -679,10 +679,9 @@ parser_pslr_expects_fname_p(struct parser_params *p)
 }
 
 static inline int
-parser_pslr_force_expr_fname_p(struct parser_params *p)
+parser_pslr_after_operator_p(struct parser_params *p)
 {
-    if (IS_lex_state(EXPR_FNAME)) return FALSE;
-    return parser_pslr_expects_fname_p(p);
+    return IS_lex_state(EXPR_DOT) || parser_pslr_expects_fname_p(p);
 }
 
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
@@ -8667,7 +8666,7 @@ parser_peek_variable_name(struct parser_params *p)
         (IS_lex_state(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || \
         IS_ARG())
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
-#define IS_AFTER_OPERATOR() IS_lex_state(EXPR_FNAME | EXPR_DOT)
+#define IS_AFTER_OPERATOR() parser_pslr_after_operator_p(p)
 
 static inline enum yytokentype
 parser_string_term(struct parser_params *p, int func)
@@ -9755,7 +9754,8 @@ parser_prepare(struct parser_params *p)
     dispatch2(operator_ambiguous, TOKEN2VAL(tok), rb_str_new_cstr(syn))
 #endif
 #define warn_balanced(tok, op, syn) ((void) \
-    (!IS_lex_state_for(last_state, EXPR_CLASS|EXPR_DOT|EXPR_FNAME|EXPR_ENDFN) && \
+    (!IS_lex_state_for(last_state, EXPR_CLASS|EXPR_DOT|EXPR_ENDFN) && \
+     !parser_pslr_expects_fname_p(p) && \
      space_seen && !ISSPACE(c) && \
      (ambiguous_operator(tok, op, syn), 0)), \
      (enum yytokentype)(tok))
@@ -10587,9 +10587,6 @@ parser_yylex(struct parser_params *p)
     if (parser_pslr_force_expr_beg_p(p)) {
         SET_LEX_STATE(EXPR_BEG);
     }
-    else if (parser_pslr_force_expr_fname_p(p)) {
-        SET_LEX_STATE(EXPR_FNAME);
-    }
     cmd_state = p->command_start;
     p->command_start = FALSE;
     p->token_seen = TRUE;
@@ -10659,7 +10656,8 @@ parser_yylex(struct parser_params *p)
       case '\n':
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
-        c = (IS_lex_state(EXPR_BEG|EXPR_CLASS|EXPR_FNAME|EXPR_DOT) &&
+        c = ((IS_lex_state(EXPR_BEG|EXPR_CLASS|EXPR_DOT) ||
+              parser_pslr_expects_fname_p(p)) &&
              !IS_lex_state(EXPR_LABELED));
         if (c || IS_lex_state_all(EXPR_ARG|EXPR_LABELED)) {
             if (!fallthru) {
@@ -10899,7 +10897,7 @@ parser_yylex(struct parser_params *p)
         return tSTRING_BEG;
 
       case '`':
-        if (IS_lex_state(EXPR_FNAME)) {
+        if (parser_pslr_expects_fname_p(p)) {
             SET_LEX_STATE(EXPR_ENDFN);
             return c;
         }
