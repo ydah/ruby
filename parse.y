@@ -701,6 +701,36 @@ parser_pslr_after_labeled_p(struct parser_params *p)
     return TRUE;
 }
 
+static inline enum yytokentype
+parser_pslr_lparen_token(struct parser_params *p)
+{
+    int accepts_group = parser_pslr_accepts_token(p, tLPAREN);
+    int accepts_arg = parser_pslr_accepts_token(p, tLPAREN_ARG);
+    int accepts_call = parser_pslr_accepts_token(p, '(');
+
+    if (accepts_group && !accepts_arg && !accepts_call) return tLPAREN;
+    if (accepts_arg && !accepts_group && !accepts_call) return tLPAREN_ARG;
+    if (accepts_call && !accepts_group && !accepts_arg) return '(';
+    return 0;
+}
+
+static inline int
+parser_pslr_prefers_token_p(struct parser_params *p, int preferred_token, int competing_token)
+{
+    if (!parser_pslr_accepts_token(p, preferred_token)) return FALSE;
+    return !parser_pslr_accepts_token(p, competing_token);
+}
+
+static inline int
+parser_pslr_prefers_heredoc_p(struct parser_params *p)
+{
+    int accepts_heredoc = parser_pslr_accepts_token(p, tSTRING_BEG) ||
+                          parser_pslr_accepts_token(p, tXSTRING_BEG);
+
+    if (!accepts_heredoc) return FALSE;
+    return !parser_pslr_accepts_token(p, tLSHFT);
+}
+
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
     parser_pslr_sync_current_state((ParseParam), (CurrentState))
 
@@ -10755,7 +10785,10 @@ parser_yylex(struct parser_params *p)
                 return tOP_ASGN;
             }
             pushback(p, c);
-            if (IS_SPCARG(c)) {
+            if (parser_pslr_prefers_token_p(p, tDSTAR, tPOW)) {
+                c = tDSTAR;
+            }
+            else if (IS_SPCARG(c)) {
                 rb_warning0("'**' interpreted as argument prefix");
                 c = tDSTAR;
             }
@@ -10773,7 +10806,10 @@ parser_yylex(struct parser_params *p)
                 return tOP_ASGN;
             }
             pushback(p, c);
-            if (IS_SPCARG(c)) {
+            if (parser_pslr_prefers_token_p(p, tSTAR, '*')) {
+                c = tSTAR;
+            }
+            else if (IS_SPCARG(c)) {
                 rb_warning0("'*' interpreted as argument prefix");
                 c = tSTAR;
             }
@@ -10856,6 +10892,10 @@ parser_yylex(struct parser_params *p)
 
       case '<':
         c = nextc(p);
+        if (c == '<' && parser_pslr_prefers_heredoc_p(p)) {
+            enum  yytokentype token = heredoc_identifier(p);
+            if (token) return token < 0 ? 0 : token;
+        }
         if (c == '<' &&
             !IS_lex_state(EXPR_DOT | EXPR_CLASS) &&
             !IS_END() &&
@@ -10959,7 +10999,10 @@ parser_yylex(struct parser_params *p)
             return tANDDOT;
         }
         pushback(p, c);
-        if (IS_SPCARG(c)) {
+        if (parser_pslr_prefers_token_p(p, tAMPER, '&')) {
+            c = tAMPER;
+        }
+        else if (IS_SPCARG(c)) {
             if ((c != ':') ||
                 (c = peekc_n(p, 1)) == -1 ||
                 !(c == '\'' || c == '"' ||
@@ -11017,7 +11060,8 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_BEG);
             return tOP_ASGN;
         }
-        if (IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
+        if (parser_pslr_prefers_token_p(p, tUPLUS, '+') ||
+            IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
             SET_LEX_STATE(EXPR_BEG);
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
@@ -11050,7 +11094,8 @@ parser_yylex(struct parser_params *p)
             p->lex.lpar_beg = p->lex.paren_nest;
             return tLAMBDA;
         }
-        if (IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
+        if (parser_pslr_prefers_token_p(p, tUMINUS, '-') ||
+            IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
             SET_LEX_STATE(EXPR_BEG);
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
@@ -11158,6 +11203,10 @@ parser_yylex(struct parser_params *p)
         return tSYMBEG;
 
       case '/':
+        if (parser_pslr_prefers_token_p(p, tREGEXP_BEG, '/')) {
+            p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
+            return tREGEXP_BEG;
+        }
         if (IS_BEG()) {
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
             return tREGEXP_BEG;
@@ -11208,7 +11257,10 @@ parser_yylex(struct parser_params *p)
         return '~';
 
       case '(':
-        if (IS_BEG()) {
+        if ((c = parser_pslr_lparen_token(p)) != 0) {
+            /* Prefer parser-state disambiguation when one paren token is exclusive. */
+        }
+        else if (IS_BEG()) {
             c = tLPAREN;
         }
         else if (!space_seen) {
