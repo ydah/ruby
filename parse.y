@@ -684,6 +684,14 @@ parser_pslr_after_operator_p(struct parser_params *p)
     return IS_lex_state(EXPR_DOT) || parser_pslr_expects_fname_p(p);
 }
 
+static inline int
+parser_pslr_label_possible_p(struct parser_params *p, int cmd_state)
+{
+    if (IS_lex_state(EXPR_ARG_ANY)) return TRUE;
+    if (cmd_state) return FALSE;
+    return parser_pslr_accepts_token(p, tLABEL);
+}
+
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
     parser_pslr_sync_current_state((ParseParam), (CurrentState))
 
@@ -8662,9 +8670,7 @@ parser_peek_variable_name(struct parser_params *p)
 #define IS_END() IS_lex_state(EXPR_END_ANY)
 #define IS_BEG() (IS_lex_state(EXPR_BEG_ANY) || IS_lex_state_all(EXPR_ARG|EXPR_LABELED))
 #define IS_SPCARG(c) (IS_ARG() && space_seen && !ISSPACE(c))
-#define IS_LABEL_POSSIBLE() (\
-        (IS_lex_state(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || \
-        IS_ARG())
+#define IS_LABEL_POSSIBLE() parser_pslr_label_possible_p(p, cmd_state)
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
 #define IS_AFTER_OPERATOR() parser_pslr_after_operator_p(p)
 
@@ -11197,7 +11203,7 @@ parser_yylex(struct parser_params *p)
         else if (!space_seen) {
             /* foo( ... ) => method call, no ambiguity */
         }
-        else if (IS_ARG() || IS_lex_state_all(EXPR_END|EXPR_LABEL)) {
+        else if (IS_ARG() || parser_pslr_accepts_token(p, tLPAREN_ARG)) {
             c = tLPAREN_ARG;
         }
         else if (IS_lex_state(EXPR_ENDFN) && !lambda_beginning_p()) {
