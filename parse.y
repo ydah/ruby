@@ -10168,7 +10168,7 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
         SET_LEX_STATE(EXPR_BEG);
         return tOP_ASGN;
     }
-    if (IS_SPCARG(c) || (IS_lex_state(EXPR_FITEM) && c == 's')) {
+    if (IS_SPCARG(c)) {
         goto quotation;
     }
     SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
