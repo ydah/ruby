@@ -3915,8 +3915,8 @@ cpath		: tCOLON3 cname
 fname		: operation
                 | op
                     {
-                        SET_LEX_STATE(EXPR_ENDFN);
                         $$ = $1;
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ENDFN); */
                     }
                 | reswords
                 ;
