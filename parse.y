@@ -10412,7 +10412,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     enum yytokentype result;
     bool is_ascii = true;
     const enum lex_state_e last_state = p->lex.state;
-    const int expects_fname = IS_lex_state(EXPR_FNAME) || parser_pslr_expects_fname_p(p);
+    const int expects_fname = parser_pslr_expects_fname_p(p);
     ID ident;
     int enforce_keyword_end = 0;
 
@@ -10524,7 +10524,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 
     ident = tokenize_ident(p);
     if (result == tCONSTANT && is_local_id(ident)) result = tIDENTIFIER;
-    if (!IS_lex_state_for(last_state, EXPR_DOT|EXPR_FNAME) &&
+    if (!IS_lex_state_for(last_state, EXPR_DOT) && !expects_fname &&
         (result == tIDENTIFIER) && /* not EXPR_FNAME, not attrasgn */
         (lvar_defined(p, ident) || NUMPARAM_ID_P(ident))) {
         SET_LEX_STATE(EXPR_END|EXPR_LABEL);
