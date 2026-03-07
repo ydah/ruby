@@ -6267,7 +6267,8 @@ f_arglist	: f_paren_args
                         p->ctxt.in_kwarg = $1.in_kwarg;
                         p->ctxt.in_argdef = 0;
                         $$ = $2;
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* term を lex した時点で EXPR_BEG は設定済み */
+                        /* SET_LEX_STATE(EXPR_BEG); */
                         p->command_start = TRUE;
                     /*% ripper: $:2 %*/
                     }
