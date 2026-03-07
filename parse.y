@@ -782,6 +782,88 @@ parser_pslr_ident_leaves_arg_state_p(struct parser_params *p)
     return parser_pslr_accepts_token(p, tLABEL);
 }
 
+static inline int
+parser_pslr_endfn_like_p(struct parser_params *p)
+{
+    return p->lex.state == EXPR_ENDFN;
+}
+
+static inline int
+parser_pslr_last_state_endfn_p(enum lex_state_e state)
+{
+    return IS_lex_state_for(state, EXPR_ENDFN);
+}
+
+static inline int
+parser_pslr_arg_state_fallback_p(struct parser_params *p)
+{
+    return IS_lex_state_for(p->lex.state, EXPR_ARG_ANY);
+}
+
+static inline int
+parser_pslr_end_state_fallback_p(struct parser_params *p)
+{
+    return IS_lex_state_for(p->lex.state, EXPR_END_ANY);
+}
+
+static inline int
+parser_pslr_space_arg_fallback_p(struct parser_params *p, int c, int space_seen)
+{
+    return parser_pslr_arg_state_fallback_p(p) && space_seen && !ISSPACE(c);
+}
+
+static inline int
+parser_pslr_qmark_is_ternary_p(struct parser_params *p)
+{
+    return parser_pslr_end_state_fallback_p(p);
+}
+
+static inline int
+parser_pslr_qmark_warn_space_char_p(struct parser_params *p)
+{
+    return !parser_pslr_arg_state_fallback_p(p);
+}
+
+static inline int
+parser_pslr_heredoc_fallback_p(struct parser_params *p, int space_seen)
+{
+    return !parser_pslr_after_dot_p(p) &&
+           !parser_pslr_class_context_p(p) &&
+           !parser_pslr_end_state_fallback_p(p) &&
+           (!parser_pslr_arg_state_fallback_p(p) || parser_pslr_after_labeled_p(p) || space_seen);
+}
+
+static inline int
+parser_pslr_colon3_prefix_p(struct parser_params *p)
+{
+    return parser_pslr_begin_like_p(p) || parser_pslr_space_arg_fallback_p(p, -1, TRUE);
+}
+
+static inline int
+parser_pslr_colon_symbol_literal_p(struct parser_params *p, int c)
+{
+    return parser_pslr_end_state_fallback_p(p) || ISSPACE(c) || c == '#';
+}
+
+static inline int
+parser_pslr_lparen_arg_fallback_p(struct parser_params *p, int space_seen)
+{
+    return space_seen &&
+           (parser_pslr_arg_state_fallback_p(p) || parser_pslr_accepts_token(p, tLPAREN_ARG));
+}
+
+static inline int
+parser_pslr_lbrack_arg_fallback_p(struct parser_params *p, int space_seen)
+{
+    return parser_pslr_arg_state_fallback_p(p) && space_seen;
+}
+
+static inline int
+parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
+{
+    return IS_lex_state_for(p->lex.state, EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN);
+}
+
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
     parser_pslr_sync_current_state((ParseParam), (CurrentState))
 
@@ -8756,10 +8838,8 @@ parser_peek_variable_name(struct parser_params *p)
     return 0;
 }
 
-#define IS_ARG() IS_lex_state(EXPR_ARG_ANY)
-#define IS_END() IS_lex_state(EXPR_END_ANY)
 #define IS_BEG() parser_pslr_begin_like_p(p)
-#define IS_SPCARG(c) (IS_ARG() && space_seen && !ISSPACE(c))
+#define IS_SPCARG(c) parser_pslr_space_arg_fallback_p(p, c, space_seen)
 #define IS_LABEL_POSSIBLE() parser_pslr_label_possible_p(p, cmd_state)
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
 #define IS_AFTER_OPERATOR() parser_pslr_after_operator_p(p)
@@ -9850,7 +9930,7 @@ parser_prepare(struct parser_params *p)
     dispatch2(operator_ambiguous, TOKEN2VAL(tok), rb_str_new_cstr(syn))
 #endif
 #define warn_balanced(tok, op, syn) ((void) \
-    (!(parser_pslr_after_dot_p(p) || parser_pslr_class_context_p(p) || IS_lex_state_for(last_state, EXPR_ENDFN)) && \
+    (!(parser_pslr_after_dot_p(p) || parser_pslr_class_context_p(p) || parser_pslr_last_state_endfn_p(last_state)) && \
      !parser_pslr_expects_fname_p(p) && \
      space_seen && !ISSPACE(c) && \
      (ambiguous_operator(tok, op, syn), 0)), \
@@ -10108,7 +10188,7 @@ parse_qmark(struct parser_params *p, int space_seen)
     rb_parser_string_t *lit;
     const char *start = p->lex.pcur;
 
-    if (IS_END()) {
+    if (parser_pslr_qmark_is_ternary_p(p)) {
         SET_LEX_STATE(EXPR_VALUE);
         return '?';
     }
@@ -10118,7 +10198,7 @@ parse_qmark(struct parser_params *p, int space_seen)
         return 0;
     }
     if (rb_enc_isspace(c, p->enc)) {
-        if (!IS_ARG()) {
+        if (parser_pslr_qmark_warn_space_char_p(p)) {
             int c2 = escaped_control_code(c);
             if (c2) {
                 WARN_SPACE_CHAR(c2, "?");
@@ -10947,11 +11027,7 @@ parser_yylex(struct parser_params *p)
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
         }
-        if (c == '<' &&
-            !parser_pslr_after_dot_p(p) &&
-            !parser_pslr_class_context_p(p) &&
-            !IS_END() &&
-            (!IS_ARG() || parser_pslr_after_labeled_p(p) || space_seen)) {
+        if (c == '<' && parser_pslr_heredoc_fallback_p(p, space_seen)) {
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
         }
@@ -11226,7 +11302,7 @@ parser_yylex(struct parser_params *p)
       case ':':
         c = nextc(p);
         if (c == ':') {
-            if (IS_BEG() || IS_SPCARG(-1)) {
+            if (parser_pslr_colon3_prefix_p(p)) {
                 SET_LEX_STATE(EXPR_BEG);
                 return tCOLON3;
             }
@@ -11234,7 +11310,7 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_DOT);
             return tCOLON2;
         }
-        if (IS_END() || ISSPACE(c) || c == '#') {
+        if (parser_pslr_colon_symbol_literal_p(p, c)) {
             pushback(p, c);
             c = warn_balanced(':', ":", "symbol literal");
             SET_LEX_STATE(EXPR_BEG);
@@ -11318,10 +11394,10 @@ parser_yylex(struct parser_params *p)
         else if (!space_seen) {
             /* foo( ... ) => method call, no ambiguity */
         }
-        else if (IS_ARG() || parser_pslr_accepts_token(p, tLPAREN_ARG)) {
+        else if (parser_pslr_lparen_arg_fallback_p(p, space_seen)) {
             c = tLPAREN_ARG;
         }
-        else if (IS_lex_state(EXPR_ENDFN) && !lambda_beginning_p()) {
+        else if (parser_pslr_endfn_like_p(p) && !lambda_beginning_p()) {
             rb_warning0("parentheses after method name is interpreted as "
                         "an argument list, not a decomposed argument");
         }
@@ -11350,7 +11426,7 @@ parser_yylex(struct parser_params *p)
         else if (IS_BEG()) {
             c = tLBRACK;
         }
-        else if (IS_ARG() && space_seen) {
+        else if (parser_pslr_lbrack_arg_fallback_p(p, space_seen)) {
             c = tLBRACK;
         }
         SET_LEX_STATE(EXPR_BEG);
@@ -11365,7 +11441,7 @@ parser_yylex(struct parser_params *p)
         else if ((c = parser_pslr_lbrace_token(p)) != 0) {
             /* Prefer parser-state disambiguation when it selects one brace token. */
         }
-        else if (IS_lex_state(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
+        else if (parser_pslr_brace_primary_block_fallback_p(p))
             c = '{';          /* block (primary) */
         else
             c = tLBRACE;      /* hash */
