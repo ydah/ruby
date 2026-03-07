@@ -11051,7 +11051,8 @@ parser_yylex(struct parser_params *p)
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
                 if (p->ctxt.in_argdef || IS_LABEL_POSSIBLE()) {
-                    SET_LEX_STATE(EXPR_ENDARG);
+                    /* PSLR brace bridge により EXPR_ENDARG は不要 */
+                    /* SET_LEX_STATE(EXPR_ENDARG); */
                     return tBDOT3;
                 }
                 if (p->lex.paren_nest == 0 && looking_at_eol_p(p)) {
@@ -11247,8 +11248,6 @@ parser_yylex(struct parser_params *p)
             c = tLBRACE;      /* hash */
         else if (IS_lex_state(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
             c = '{';          /* block (primary) */
-        else if (IS_lex_state(EXPR_ENDARG))
-            c = tLBRACE_ARG;  /* block (expr) */
         else
             c = tLBRACE;      /* hash */
         if (c != tLBRACE) {
