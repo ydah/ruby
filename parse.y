@@ -701,6 +701,19 @@ parser_pslr_after_dot_p(struct parser_params *p)
 }
 
 static inline int
+parser_pslr_class_context_p(struct parser_params *p)
+{
+    /*
+     * `class` / `module` heads accept a cpath (including leading `::`) but do
+     * not accept reserved words or operator method names.
+     */
+    if (!parser_pslr_accepts_token(p, tCONSTANT)) return FALSE;
+    if (!parser_pslr_accepts_token(p, tCOLON3)) return FALSE;
+    if (parser_pslr_accepts_token(p, keyword_if)) return FALSE;
+    return !parser_pslr_accepts_token(p, tCMP);
+}
+
+static inline int
 parser_pslr_after_operator_p(struct parser_params *p)
 {
     return parser_pslr_after_dot_p(p) || parser_pslr_expects_fname_p(p);
@@ -756,7 +769,9 @@ parser_pslr_prefers_heredoc_p(struct parser_params *p)
 static inline int
 parser_pslr_begin_like_p(struct parser_params *p)
 {
-    return parser_pslr_after_labeled_p(p) || parser_pslr_accepts_expr_beg_token_p(p);
+    return parser_pslr_after_labeled_p(p) ||
+           parser_pslr_class_context_p(p) ||
+           parser_pslr_accepts_expr_beg_token_p(p);
 }
 
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
@@ -9827,7 +9842,7 @@ parser_prepare(struct parser_params *p)
     dispatch2(operator_ambiguous, TOKEN2VAL(tok), rb_str_new_cstr(syn))
 #endif
 #define warn_balanced(tok, op, syn) ((void) \
-    (!(parser_pslr_after_dot_p(p) || IS_lex_state_for(last_state, EXPR_CLASS|EXPR_ENDFN)) && \
+    (!(parser_pslr_after_dot_p(p) || parser_pslr_class_context_p(p) || IS_lex_state_for(last_state, EXPR_ENDFN)) && \
      !parser_pslr_expects_fname_p(p) && \
      space_seen && !ISSPACE(c) && \
      (ambiguous_operator(tok, op, syn), 0)), \
@@ -10572,8 +10587,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                     return keyword_do_block;
                 return keyword_do;
             }
-            if (IS_lex_state_for(state, (EXPR_BEG | EXPR_CLASS)) ||
-                parser_pslr_after_labeled_p(p))
+            if (parser_pslr_begin_like_p(p))
                 return kw->id[0];
             else {
                 if (kw->id[0] != kw->id[1])
@@ -10731,7 +10745,7 @@ parser_yylex(struct parser_params *p)
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
         int after_labeled = parser_pslr_after_labeled_p(p);
-        c = ((IS_lex_state(EXPR_BEG|EXPR_CLASS) ||
+        c = ((IS_BEG() ||
               parser_pslr_after_dot_p(p) ||
               parser_pslr_expects_fname_p(p)) &&
              !after_labeled);
@@ -10927,7 +10941,7 @@ parser_yylex(struct parser_params *p)
         }
         if (c == '<' &&
             !parser_pslr_after_dot_p(p) &&
-            !IS_lex_state(EXPR_CLASS) &&
+            !parser_pslr_class_context_p(p) &&
             !IS_END() &&
             (!IS_ARG() || parser_pslr_after_labeled_p(p) || space_seen)) {
             enum  yytokentype token = heredoc_identifier(p);
@@ -10937,7 +10951,7 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_ARG);
         }
         else {
-            if (IS_lex_state(EXPR_CLASS))
+            if (parser_pslr_class_context_p(p))
                 p->command_start = TRUE;
             SET_LEX_STATE(EXPR_BEG);
         }
@@ -11204,7 +11218,7 @@ parser_yylex(struct parser_params *p)
       case ':':
         c = nextc(p);
         if (c == ':') {
-            if (IS_BEG() || IS_lex_state(EXPR_CLASS) || IS_SPCARG(-1)) {
+            if (IS_BEG() || IS_SPCARG(-1)) {
                 SET_LEX_STATE(EXPR_BEG);
                 return tCOLON3;
             }
