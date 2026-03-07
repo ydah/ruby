@@ -722,7 +722,6 @@ parser_pslr_after_operator_p(struct parser_params *p)
 static inline int
 parser_pslr_label_possible_p(struct parser_params *p, int cmd_state)
 {
-    if (IS_lex_state(EXPR_ARG_ANY)) return TRUE;
     if (cmd_state) return FALSE;
     return parser_pslr_accepts_token(p, tLABEL);
 }
@@ -730,7 +729,6 @@ parser_pslr_label_possible_p(struct parser_params *p, int cmd_state)
 static inline int
 parser_pslr_after_labeled_p(struct parser_params *p)
 {
-    if (!IS_lex_state(EXPR_ARG_ANY)) return FALSE;
     if (!parser_pslr_accepts_token(p, tLBRACE)) return FALSE;
     if (parser_pslr_accepts_token(p, '{')) return FALSE;
     return TRUE;
@@ -772,6 +770,16 @@ parser_pslr_begin_like_p(struct parser_params *p)
     return parser_pslr_after_labeled_p(p) ||
            parser_pslr_class_context_p(p) ||
            parser_pslr_accepts_expr_beg_token_p(p);
+}
+
+static inline int
+parser_pslr_ident_leaves_arg_state_p(struct parser_params *p)
+{
+    if (parser_pslr_begin_like_p(p)) return TRUE;
+    if (parser_pslr_after_dot_p(p)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLPAREN_ARG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLBRACE_ARG)) return TRUE;
+    return parser_pslr_accepts_token(p, tLABEL);
 }
 
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
@@ -10574,7 +10582,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 return kw->id[0];
             }
             SET_LEX_STATE(kw->state);
-            if (IS_lex_state(EXPR_BEG)) {
+            if (IS_lex_state_for(kw->state, EXPR_BEG)) {
                 p->command_start = TRUE;
             }
             if (kw->id[0] == keyword_do) {
@@ -10597,7 +10605,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         }
     }
 
-    if (IS_lex_state(EXPR_BEG_ANY | EXPR_ARG_ANY) || after_dot) {
+    if (parser_pslr_ident_leaves_arg_state_p(p)) {
         if (cmd_state) {
             SET_LEX_STATE(EXPR_CMDARG);
         }
@@ -11067,18 +11075,18 @@ parser_yylex(struct parser_params *p)
       case '|':
         if ((c = nextc(p)) == '|') {
             SET_LEX_STATE(EXPR_BEG);
-            if ((c = nextc(p)) == '=') {
-                set_yylval_id(idOROP);
-                SET_LEX_STATE(EXPR_BEG);
-                return tOP_ASGN;
-            }
-            pushback(p, c);
-            if (IS_lex_state_for(last_state, EXPR_BEG)) {
-                c = '|';
-                pushback(p, '|');
-                return c;
-            }
-            return tOROP;
+        if ((c = nextc(p)) == '=') {
+            set_yylval_id(idOROP);
+            SET_LEX_STATE(EXPR_BEG);
+            return tOP_ASGN;
+        }
+        pushback(p, c);
+        if (parser_pslr_prefers_token_p(p, '|', tOROP)) {
+            c = '|';
+            pushback(p, '|');
+            return c;
+        }
+        return tOROP;
         }
         if (c == '=') {
             set_yylval_id('|');
