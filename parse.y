@@ -887,13 +887,7 @@ parser_pslr_ident_leaves_arg_state_p(struct parser_params *p)
 static inline int
 parser_pslr_endfn_like_p(struct parser_params *p)
 {
-    return p->lex.state == EXPR_ENDFN;
-}
-
-static inline int
-parser_pslr_last_state_endfn_p(enum lex_state_e state)
-{
-    return IS_lex_state_for(state, EXPR_ENDFN);
+    return parser_pslr_pending_def_body_p(p);
 }
 
 static inline int
@@ -1004,7 +998,7 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
     int accepts_primary_block = parser_pslr_accepts_token(p, '{');
     int accepts_expr_block = parser_pslr_accepts_token(p, tLBRACE_ARG);
 
-    if (IS_lex_state_for(p->lex.state, EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN)) {
+    if (IS_lex_state_for(p->lex.state, EXPR_ARG_ANY | EXPR_END)) {
         return TRUE;
     }
     if (accepts_hash + accepts_primary_block + accepts_expr_block == 1) {
@@ -10114,7 +10108,7 @@ parser_prepare(struct parser_params *p)
     dispatch2(operator_ambiguous, TOKEN2VAL(tok), rb_str_new_cstr(syn))
 #endif
 #define warn_balanced(tok, op, syn) ((void) \
-    (!(parser_pslr_after_dot_p(p) || parser_pslr_class_context_p(p) || parser_pslr_last_state_endfn_p(last_state)) && \
+    (!(parser_pslr_after_dot_p(p) || parser_pslr_class_context_p(p) || parser_pslr_pending_def_body_p(p)) && \
      !parser_pslr_expects_fname_p(p) && \
      space_seen && !ISSPACE(c) && \
      (ambiguous_operator(tok, op, syn), 0)), \
@@ -10437,7 +10431,7 @@ parse_qmark(struct parser_params *p, int space_seen)
 }
 
 static enum yytokentype
-parse_percent(struct parser_params *p, const int space_seen, const enum lex_state_e last_state)
+parse_percent(struct parser_params *p, const int space_seen)
 {
     register int c;
     const char *ptok = p->lex.pcur;
@@ -10579,7 +10573,7 @@ parse_numvar(struct parser_params *p)
 }
 
 static enum yytokentype
-parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
+parse_gvar(struct parser_params *p)
 {
     const char *ptr = p->lex.pcur;
     const int expects_fname = parser_pslr_expects_fname_p(p);
@@ -10717,7 +10711,7 @@ parser_numbered_param(struct parser_params *p, int n)
 }
 
 static enum yytokentype
-parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
+parse_atmark(struct parser_params *p)
 {
     const char *ptr = p->lex.pcur;
     const int expects_fname = parser_pslr_expects_fname_p(p);
@@ -10957,7 +10951,6 @@ parser_yylex(struct parser_params *p)
     int space_seen = 0;
     int cmd_state;
     int label;
-    enum lex_state_e last_state;
     int fallthru = FALSE;
     int token_seen = p->token_seen;
 
@@ -10981,7 +10974,6 @@ parser_yylex(struct parser_params *p)
     token_flush(p);
 #endif
   retry:
-    last_state = p->lex.state;
     switch (c = nextc(p)) {
       case '\0':		/* NUL */
       case '\004':		/* ^D */
@@ -11708,13 +11700,13 @@ parser_yylex(struct parser_params *p)
         return '\\';
 
       case '%':
-        return parse_percent(p, space_seen, last_state);
+        return parse_percent(p, space_seen);
 
       case '$':
-        return parse_gvar(p, last_state);
+        return parse_gvar(p);
 
       case '@':
-        return parse_atmark(p, last_state);
+        return parse_atmark(p);
 
       case '_':
         if (was_bol(p) && whole_match_p(p, "__END__", 7, 0)) {
