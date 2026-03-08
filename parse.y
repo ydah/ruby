@@ -667,9 +667,18 @@ parser_pslr_accepts_expr_beg_token_p(struct parser_params *p)
 }
 
 static inline int
+parser_pslr_accepts_call_name_p(struct parser_params *p)
+{
+    return parser_pslr_accepts_token(p, tIDENTIFIER) ||
+           parser_pslr_accepts_token(p, tFID) ||
+           parser_pslr_accepts_token(p, tCONSTANT);
+}
+
+static inline int
 parser_pslr_force_expr_beg_p(struct parser_params *p)
 {
     if (p->lex.state != EXPR_ENDFN) return FALSE;
+    if (p->lex.lpar_beg == p->lex.paren_nest) return FALSE;
     return parser_pslr_accepts_expr_beg_token_p(p);
 }
 
@@ -686,7 +695,9 @@ parser_pslr_expects_fname_p(struct parser_params *p)
      */
     if (!parser_pslr_accepts_token(p, keyword_if)) return FALSE;
     if (!parser_pslr_accepts_token(p, tCMP)) return FALSE;
-    return TRUE;
+    if (parser_pslr_accepts_token(p, tINTEGER)) return FALSE;
+    if (parser_pslr_accepts_token(p, tSTRING_BEG)) return FALSE;
+    return parser_pslr_accepts_call_name_p(p);
 }
 
 static inline int
@@ -697,7 +708,8 @@ parser_pslr_after_dot_p(struct parser_params *p)
      * reserved words.
      */
     if (!parser_pslr_accepts_token(p, tCMP)) return FALSE;
-    return !parser_pslr_accepts_token(p, keyword_if);
+    if (parser_pslr_accepts_token(p, keyword_if)) return FALSE;
+    return parser_pslr_accepts_call_name_p(p);
 }
 
 static inline int
@@ -705,12 +717,14 @@ parser_pslr_class_context_p(struct parser_params *p)
 {
     /*
      * `class` / `module` heads accept a cpath (including leading `::`) but do
-     * not accept reserved words or operator method names.
+     * not accept reserved words, operator method names, or literal expr starts.
      */
     if (!parser_pslr_accepts_token(p, tCONSTANT)) return FALSE;
     if (!parser_pslr_accepts_token(p, tCOLON3)) return FALSE;
     if (parser_pslr_accepts_token(p, keyword_if)) return FALSE;
-    return !parser_pslr_accepts_token(p, tCMP);
+    if (parser_pslr_accepts_token(p, tCMP)) return FALSE;
+    if (parser_pslr_accepts_token(p, tINTEGER)) return FALSE;
+    return !parser_pslr_accepts_token(p, tSTRING_BEG);
 }
 
 static inline int
@@ -720,8 +734,22 @@ parser_pslr_after_operator_p(struct parser_params *p)
 }
 
 static inline int
+parser_pslr_pattern_const_kwargs_context_p(struct parser_params *p)
+{
+    if (!p->ctxt.in_kwarg) return FALSE;
+    if (!parser_pslr_accepts_token(p, '(')) return FALSE;
+    if (!parser_pslr_accepts_token(p, '[')) return FALSE;
+    if (!parser_pslr_accepts_token(p, tCOLON2)) return FALSE;
+    if (parser_pslr_accepts_token(p, tINTEGER)) return FALSE;
+    return !parser_pslr_accepts_token(p, tSTRING_BEG);
+}
+
+static inline int
 parser_pslr_label_possible_p(struct parser_params *p, int cmd_state)
 {
+    if (IS_lex_state(EXPR_ARG_ANY)) return TRUE;
+    if (IS_lex_state(EXPR_LABEL | EXPR_ENDFN) && !cmd_state) return TRUE;
+    if (p->ctxt.in_kwarg && !cmd_state && IS_lex_state(EXPR_LABEL)) return TRUE;
     if (cmd_state) return FALSE;
     return parser_pslr_accepts_token(p, tLABEL);
 }
@@ -729,22 +757,10 @@ parser_pslr_label_possible_p(struct parser_params *p, int cmd_state)
 static inline int
 parser_pslr_after_labeled_p(struct parser_params *p)
 {
+    if (!IS_lex_state(EXPR_LABELED)) return FALSE;
     if (!parser_pslr_accepts_token(p, tLBRACE)) return FALSE;
     if (parser_pslr_accepts_token(p, '{')) return FALSE;
     return TRUE;
-}
-
-static inline enum yytokentype
-parser_pslr_lparen_token(struct parser_params *p)
-{
-    int accepts_group = parser_pslr_accepts_token(p, tLPAREN);
-    int accepts_arg = parser_pslr_accepts_token(p, tLPAREN_ARG);
-    int accepts_call = parser_pslr_accepts_token(p, '(');
-
-    if (accepts_group && !accepts_arg && !accepts_call) return tLPAREN;
-    if (accepts_arg && !accepts_group && !accepts_call) return tLPAREN_ARG;
-    if (accepts_call && !accepts_group && !accepts_arg) return '(';
-    return 0;
 }
 
 static inline int
@@ -761,20 +777,30 @@ parser_pslr_prefers_heredoc_p(struct parser_params *p)
                           parser_pslr_accepts_token(p, tXSTRING_BEG);
 
     if (!accepts_heredoc) return FALSE;
+    if (IS_lex_state(EXPR_CLASS)) return FALSE;
+    if (parser_pslr_class_context_p(p)) return FALSE;
     return !parser_pslr_accepts_token(p, tLSHFT);
 }
 
 static inline int
 parser_pslr_begin_like_p(struct parser_params *p)
 {
-    return parser_pslr_after_labeled_p(p) ||
-           parser_pslr_class_context_p(p) ||
-           parser_pslr_accepts_expr_beg_token_p(p);
+    return IS_lex_state(EXPR_BEG_ANY) ||
+           parser_pslr_after_labeled_p(p) ||
+           parser_pslr_class_context_p(p);
+}
+
+static inline int
+parser_pslr_reserved_word_begin_p(struct parser_params *p, enum lex_state_e state)
+{
+    return IS_lex_state_for(state, EXPR_BEG | EXPR_LABELED) ||
+           parser_pslr_class_context_p(p);
 }
 
 static inline int
 parser_pslr_ident_leaves_arg_state_p(struct parser_params *p)
 {
+    if (IS_lex_state(EXPR_BEG_ANY | EXPR_ARG_ANY | EXPR_DOT)) return TRUE;
     if (parser_pslr_begin_like_p(p)) return TRUE;
     if (parser_pslr_after_dot_p(p)) return TRUE;
     if (parser_pslr_accepts_token(p, tLPAREN_ARG)) return TRUE;
@@ -827,16 +853,17 @@ parser_pslr_qmark_warn_space_char_p(struct parser_params *p)
 static inline int
 parser_pslr_heredoc_fallback_p(struct parser_params *p, int space_seen)
 {
-    return !parser_pslr_after_dot_p(p) &&
+    return !IS_lex_state(EXPR_CLASS) &&
+           !parser_pslr_after_dot_p(p) &&
            !parser_pslr_class_context_p(p) &&
            !parser_pslr_end_state_fallback_p(p) &&
            (!parser_pslr_arg_state_fallback_p(p) || parser_pslr_after_labeled_p(p) || space_seen);
 }
 
 static inline int
-parser_pslr_colon3_prefix_p(struct parser_params *p)
+parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
 {
-    return parser_pslr_begin_like_p(p) || parser_pslr_space_arg_fallback_p(p, -1, TRUE);
+    return parser_pslr_begin_like_p(p) || parser_pslr_space_arg_fallback_p(p, -1, space_seen);
 }
 
 static inline int
@@ -850,6 +877,19 @@ parser_pslr_lparen_arg_fallback_p(struct parser_params *p, int space_seen)
 {
     return space_seen &&
            (parser_pslr_arg_state_fallback_p(p) || parser_pslr_accepts_token(p, tLPAREN_ARG));
+}
+
+static inline int
+parser_pslr_lparen_token(struct parser_params *p)
+{
+    int accepts_plain = parser_pslr_accepts_token(p, '(');
+    int accepts_paren = parser_pslr_accepts_token(p, tLPAREN);
+    int accepts_arg = parser_pslr_accepts_token(p, tLPAREN_ARG);
+
+    if (accepts_plain + accepts_paren + accepts_arg != 1) return 0;
+    if (accepts_plain) return '(';
+    if (accepts_paren) return tLPAREN;
+    return tLPAREN_ARG;
 }
 
 static inline int
@@ -5631,8 +5671,8 @@ p_pktbl 	: {$$ = p->pktbl; p->pktbl = 0;};
 
 p_in_kwarg	:   {
                         $$ = p->ctxt;
-                        /* pattern body 開始は既存 lexer 遷移で読めるかを確認する */
-                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
+                        /* Error-tolerant `in {a: ...}` still depends on this label context. */
+                        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
                         p->command_start = FALSE;
                         p->ctxt.in_kwarg = 1;
                         p->ctxt.in_alt_pattern = 0;
@@ -5736,17 +5776,27 @@ p_alt		: p_alt[left] '|'[alt]
                 | p_expr_basic
                 ;
 
-p_lparen	: '(' p_pktbl
+p_lparen	: '('
                     {
-                        $$ = $2;
-                    /*% ripper: $:2 %*/
+                        /* AST.parse_file では class pattern kwargs がまだこれに依存する */
+                        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+                    }
+                  p_pktbl
+                    {
+                        $$ = $3;
+                    /*% ripper: $:3 %*/
                     }
                 ;
 
-p_lbracket	: '[' p_pktbl
+p_lbracket	: '['
                     {
-                        $$ = $2;
-                    /*% ripper: $:2 %*/
+                        /* AST.parse_file では class pattern kwargs がまだこれに依存する */
+                        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+                    }
+                  p_pktbl
+                    {
+                        $$ = $3;
+                    /*% ripper: $:3 %*/
                     }
                 ;
 
@@ -6483,8 +6533,8 @@ backref		: tNTH_REF
 
 superclass	: '<'
                     {
-                        /* PSLR により lex_state 不要: '<' を lex した時点で EXPR_BEG は確定している */
-                        /* SET_LEX_STATE(EXPR_BEG); */
+                        /* parser-state bridge だけでは `class X < ::Y` を安定化できない */
+                        SET_LEX_STATE(EXPR_BEG);
                         p->command_start = TRUE;
                     }
                   expr_value term
@@ -6514,8 +6564,8 @@ f_paren_args	: '(' f_args rparen
                     {
                         $$ = $2;
                     /*% ripper: paren!($:2) %*/
-                        /* PSLR bridge により ENDFN -> BEG を lexer 入口で補正する */
-                        /* SET_LEX_STATE(EXPR_BEG); */
+                        /* AST.parse_file では body-start 判定がまだこれに依存する */
+                        SET_LEX_STATE(EXPR_BEG);
                         p->command_start = TRUE;
                         p->ctxt.in_argdef = 0;
                     }
@@ -6534,8 +6584,8 @@ f_arglist	: f_paren_args
                         p->ctxt.in_kwarg = $1.in_kwarg;
                         p->ctxt.in_argdef = 0;
                         $$ = $2;
-                        /* term を lex した時点で EXPR_BEG は設定済み */
-                        /* SET_LEX_STATE(EXPR_BEG); */
+                        /* AST.parse_file では body-start 判定がまだこれに依存する */
+                        SET_LEX_STATE(EXPR_BEG);
                         p->command_start = TRUE;
                     /*% ripper: $:2 %*/
                     }
@@ -6875,8 +6925,8 @@ singleton	: value_expr(singleton_expr)
 singleton_expr	: var_ref
                 | '('
                     {
-                        /* PSLR bridge により ENDFN -> BEG を lexer 入口で補正する */
-                        /* SET_LEX_STATE(EXPR_BEG); */
+                        /* singleton literal diagnostics still depend on explicit begin context here */
+                        SET_LEX_STATE(EXPR_BEG);
                         p->ctxt.in_argdef = 0;
                     }
                   expr rparen
@@ -8957,6 +9007,7 @@ parse_string(struct parser_params *p, rb_strterm_literal_t *quote)
     }
 
     tokfix(p);
+
     lit = STR_NEW3(tok(p), toklen(p), enc, func);
     set_yylval_str(lit);
     flush_string_content(p, enc, 0);
@@ -10606,6 +10657,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 {
     enum yytokentype result;
     bool is_ascii = true;
+    const int lex_after_dot = IS_lex_state(EXPR_DOT);
     const int after_dot = parser_pslr_after_dot_p(p);
     const int expects_fname = parser_pslr_expects_fname_p(p);
     ID ident;
@@ -10630,10 +10682,9 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         pushback(p, c);
     }
     tokfix(p);
-
     if (IS_LABEL_POSSIBLE()) {
         if (IS_LABEL_SUFFIX(0)) {
-            SET_LEX_STATE(EXPR_ARG);
+            SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
             nextc(p);
             tokenize_ident(p);
             return tLABEL;
@@ -10658,7 +10709,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         if ((p->ruby_sourceline > lineno) && (beg_pos <= column)) {
             const struct kwtable *kw;
 
-            if (after_dot && (kw = rb_reserved_word(tok(p), toklen(p))) && (kw && kw->id[0] == keyword_end)) {
+            if (lex_after_dot && (kw = rb_reserved_word(tok(p), toklen(p))) && (kw && kw->id[0] == keyword_end)) {
                 if (p->debug) rb_parser_printf(p, "enforce_keyword_end is enabled\n");
                 enforce_keyword_end = 1;
             }
@@ -10666,12 +10717,13 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     }
 #endif
 
-    if (is_ascii && (!after_dot || enforce_keyword_end)) {
+    if (is_ascii && (!lex_after_dot || enforce_keyword_end)) {
         const struct kwtable *kw;
 
         /* See if it is a reserved word.  */
         kw = rb_reserved_word(tok(p), toklen(p));
         if (kw) {
+            enum lex_state_e state = p->lex.state;
             enum yytokentype do_token = 0;
             if (expects_fname) {
                 SET_LEX_STATE(EXPR_ENDFN);
@@ -10683,23 +10735,27 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 p->command_start = TRUE;
             }
             if (kw->id[0] == keyword_do) {
-                do_token = parser_pslr_do_token(p);
-                if (do_token == keyword_do_LAMBDA || (lambda_beginning_p() && parser_pslr_accepts_token(p, keyword_do_LAMBDA))) {
+                if (lambda_beginning_p()) {
                     p->lex.lpar_beg = -1; /* make lambda_beginning_p() == FALSE in the body of "-> do ... end" */
+                    return keyword_do_LAMBDA;
+                }
+                do_token = parser_pslr_do_token(p);
+                if (do_token == keyword_do_LAMBDA) {
+                    p->lex.lpar_beg = -1;
                     return keyword_do_LAMBDA;
                 }
                 if (do_token == keyword_do_cond || (COND_P() && parser_pslr_accepts_token(p, keyword_do_cond))) {
                     return keyword_do_cond;
                 }
+                if (CMDARG_P() && !IS_lex_state_for(state, EXPR_CMDARG))
+                    return keyword_do_block;
                 if (do_token == keyword_do) return keyword_do;
                 if (do_token == keyword_do_block) {
                     return keyword_do_block;
                 }
-                if (CMDARG_P() && parser_pslr_accepts_token(p, keyword_do_block))
-                    return keyword_do_block;
                 return keyword_do;
             }
-            if (parser_pslr_begin_like_p(p))
+            if (parser_pslr_reserved_word_begin_p(p, state))
                 return kw->id[0];
             else {
                 if (kw->id[0] != kw->id[1])
@@ -10857,7 +10913,7 @@ parser_yylex(struct parser_params *p)
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
         int after_labeled = parser_pslr_after_labeled_p(p);
-        c = ((IS_BEG() ||
+        c = ((IS_lex_state(EXPR_BEG | EXPR_CLASS) ||
               parser_pslr_after_dot_p(p) ||
               parser_pslr_expects_fname_p(p)) &&
              !after_labeled);
@@ -11326,7 +11382,7 @@ parser_yylex(struct parser_params *p)
       case ':':
         c = nextc(p);
         if (c == ':') {
-            if (parser_pslr_colon3_prefix_p(p)) {
+            if (parser_pslr_colon3_prefix_p(p, space_seen)) {
                 SET_LEX_STATE(EXPR_BEG);
                 return tCOLON3;
             }
@@ -11351,7 +11407,8 @@ parser_yylex(struct parser_params *p)
             pushback(p, c);
             break;
         }
-        /* PSLR fname bridge により lexer 入口で EXPR_FNAME を補正する */
+        /* AST.parse_file では operator symbol literal がまだこれに依存する */
+        SET_LEX_STATE(EXPR_FNAME);
         return tSYMBEG;
 
       case '/':
@@ -11408,9 +11465,14 @@ parser_yylex(struct parser_params *p)
         }
         return '~';
 
-      case '(':
-        if ((c = parser_pslr_lparen_token(p)) != 0) {
-            /* Prefer parser-state disambiguation when one paren token is exclusive. */
+      case '(': {
+        int pattern_const_kwargs = FALSE;
+        if (lambda_beginning_p()) {
+            /* lambda parameter list always starts with the plain '(' token */
+        }
+        else if (space_seen && parser_pslr_endfn_like_p(p) &&
+                 (c = parser_pslr_lparen_token(p)) == '(') {
+            /* singleton literal diagnostics still need plain '(' after ENDFN */
         }
         else if (IS_BEG()) {
             c = tLPAREN;
@@ -11425,13 +11487,18 @@ parser_yylex(struct parser_params *p)
             rb_warning0("parentheses after method name is interpreted as "
                         "an argument list, not a decomposed argument");
         }
+        if (c == '(') {
+            pattern_const_kwargs = parser_pslr_pattern_const_kwargs_context_p(p);
+        }
         p->lex.paren_nest++;
         COND_PUSH(0);
         CMDARG_PUSH(0);
-        SET_LEX_STATE(EXPR_BEG);
+        SET_LEX_STATE(pattern_const_kwargs ? (EXPR_BEG|EXPR_LABEL) : EXPR_BEG);
         return c;
+      }
 
-      case '[':
+      case '[': {
+        int pattern_const_kwargs = FALSE;
         p->lex.paren_nest++;
         if (IS_AFTER_OPERATOR()) {
             if ((c = nextc(p)) == ']') {
@@ -11453,20 +11520,26 @@ parser_yylex(struct parser_params *p)
         else if (parser_pslr_lbrack_arg_fallback_p(p, space_seen)) {
             c = tLBRACK;
         }
-        SET_LEX_STATE(EXPR_BEG);
+        if (c == '[') {
+            pattern_const_kwargs = parser_pslr_pattern_const_kwargs_context_p(p);
+        }
+        SET_LEX_STATE(pattern_const_kwargs ? (EXPR_BEG|EXPR_LABEL) : EXPR_BEG);
         COND_PUSH(0);
         CMDARG_PUSH(0);
         return c;
+      }
 
       case '{':
         ++p->lex.brace_nest;
         if (lambda_beginning_p())
             c = tLAMBEG;
+        else if (IS_lex_state(EXPR_LABELED))
+            c = tLBRACE;      /* hash */
+        else if (parser_pslr_brace_primary_block_fallback_p(p))
+            c = '{';          /* block (primary) */
         else if ((c = parser_pslr_lbrace_token(p)) != 0) {
             /* Prefer parser-state disambiguation when it selects one brace token. */
         }
-        else if (parser_pslr_brace_primary_block_fallback_p(p))
-            c = '{';          /* block (primary) */
         else
             c = tLBRACE;      /* hash */
         if (c != tLBRACE) {
@@ -11474,7 +11547,7 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_BEG);
         }
         else {
-            SET_LEX_STATE(EXPR_BEG);
+            SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
         }
         ++p->lex.paren_nest;  /* after lambda_beginning_p() */
         COND_PUSH(0);
