@@ -667,6 +667,14 @@ parser_pslr_accepts_call_name_p(struct parser_params *p)
 }
 
 static inline int
+parser_pslr_accepts_identifier_family_p(struct parser_params *p)
+{
+    return parser_pslr_accepts_token(p, tIDENTIFIER) ||
+           parser_pslr_accepts_token(p, tFID) ||
+           parser_pslr_accepts_token(p, tCONSTANT);
+}
+
+static inline int
 parser_pslr_force_expr_beg_p(struct parser_params *p)
 {
     if (p->lex.state != EXPR_ENDFN) return FALSE;
@@ -739,8 +747,8 @@ parser_pslr_pattern_const_kwargs_context_p(struct parser_params *p)
 static inline int
 parser_pslr_label_possible_p(struct parser_params *p, int cmd_state)
 {
-    if (IS_lex_state(EXPR_ENDFN) && !cmd_state) return TRUE;
     /* PSLRによりlex_state不要:
+     * if (IS_lex_state(EXPR_ENDFN) && !cmd_state) return TRUE;
      * if (IS_lex_state(EXPR_ARG_ANY)) return TRUE;
      * if (IS_lex_state(EXPR_LABEL | EXPR_ENDFN) && !cmd_state) return TRUE;
      * if (p->ctxt.in_kwarg && !cmd_state && IS_lex_state(EXPR_LABEL)) return TRUE;
@@ -787,7 +795,7 @@ parser_pslr_prefers_heredoc_p(struct parser_params *p)
 static inline int
 parser_pslr_begin_like_p(struct parser_params *p)
 {
-    return IS_lex_state(EXPR_BEG_ANY) ||
+    return parser_pslr_accepts_expr_beg_token_p(p) ||
            parser_pslr_after_labeled_p(p) ||
            parser_pslr_class_context_p(p);
 }
@@ -803,7 +811,7 @@ parser_pslr_reserved_word_begin_p(struct parser_params *p, enum lex_state_e stat
 static inline int
 parser_pslr_ident_leaves_arg_state_p(struct parser_params *p)
 {
-    if (IS_lex_state(EXPR_BEG_ANY | EXPR_ARG_ANY)) return TRUE;
+    if (!parser_pslr_expects_fname_p(p) && parser_pslr_accepts_identifier_family_p(p)) return TRUE;
     if (parser_pslr_begin_like_p(p)) return TRUE;
     if (parser_pslr_after_dot_p(p)) return TRUE;
     if (parser_pslr_accepts_token(p, tLPAREN_ARG)) return TRUE;
@@ -844,6 +852,10 @@ parser_pslr_space_arg_fallback_p(struct parser_params *p, int c, int space_seen)
 static inline int
 parser_pslr_qmark_is_ternary_p(struct parser_params *p)
 {
+    int accepts_ternary = parser_pslr_accepts_token(p, '?');
+    int accepts_char = parser_pslr_accepts_token(p, tCHAR);
+
+    if (accepts_ternary + accepts_char == 1) return accepts_ternary;
     return parser_pslr_end_state_fallback_p(p);
 }
 
@@ -865,18 +877,28 @@ parser_pslr_heredoc_fallback_p(struct parser_params *p, int space_seen)
 static inline int
 parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
 {
+    if (parser_pslr_prefers_token_p(p, tCOLON3, tCOLON2)) return TRUE;
+    if (parser_pslr_prefers_token_p(p, tCOLON2, tCOLON3)) return FALSE;
     return parser_pslr_begin_like_p(p) || parser_pslr_space_arg_fallback_p(p, -1, space_seen);
 }
 
 static inline int
 parser_pslr_colon_symbol_literal_p(struct parser_params *p, int c)
 {
+    if (parser_pslr_prefers_token_p(p, tSYMBEG, ':')) return TRUE;
+    if (parser_pslr_prefers_token_p(p, ':', tSYMBEG)) return FALSE;
     return parser_pslr_end_state_fallback_p(p) || ISSPACE(c) || c == '#';
 }
 
 static inline int
 parser_pslr_lparen_arg_fallback_p(struct parser_params *p, int space_seen)
 {
+    int accepts_plain = parser_pslr_accepts_token(p, '(');
+    int accepts_paren = parser_pslr_accepts_token(p, tLPAREN);
+    int accepts_arg = parser_pslr_accepts_token(p, tLPAREN_ARG);
+
+    if (!space_seen) return FALSE;
+    if (accepts_plain + accepts_paren + accepts_arg == 1) return accepts_arg;
     return space_seen &&
            (parser_pslr_arg_state_fallback_p(p) || parser_pslr_accepts_token(p, tLPAREN_ARG));
 }
@@ -897,12 +919,24 @@ parser_pslr_lparen_token(struct parser_params *p)
 static inline int
 parser_pslr_lbrack_arg_fallback_p(struct parser_params *p, int space_seen)
 {
+    int accepts_plain = parser_pslr_accepts_token(p, '[');
+    int accepts_lbrack = parser_pslr_accepts_token(p, tLBRACK);
+
+    if (!space_seen) return FALSE;
+    if (accepts_plain + accepts_lbrack == 1) return accepts_lbrack;
     return parser_pslr_arg_state_fallback_p(p) && space_seen;
 }
 
 static inline int
 parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
 {
+    int accepts_hash = parser_pslr_accepts_token(p, tLBRACE);
+    int accepts_primary_block = parser_pslr_accepts_token(p, '{');
+    int accepts_expr_block = parser_pslr_accepts_token(p, tLBRACE_ARG);
+
+    if (accepts_hash + accepts_primary_block + accepts_expr_block == 1) {
+        return accepts_primary_block;
+    }
     return IS_lex_state_for(p->lex.state, EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN);
 }
 
@@ -2928,6 +2962,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %define lr.type pslr
 %define api.pslr.state-member pslr_current_state
 %define parse.error verbose
+%token-pattern tIDENTIFIER /[a-z_][a-zA-Z0-9_]*/
 %token-pattern tLABEL /[a-z_][a-zA-Z0-9_]*:/
 %printer {
     if ((NODE *)$$ == (NODE *)-1) {
@@ -10915,7 +10950,7 @@ parser_yylex(struct parser_params *p)
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
         int after_labeled = parser_pslr_after_labeled_p(p);
-        c = (((IS_lex_state(EXPR_BEG) || parser_pslr_class_context_p(p)) ||
+        c = (((parser_pslr_begin_like_p(p)) ||
               parser_pslr_after_dot_p(p) ||
               parser_pslr_expects_fname_p(p)) &&
              !after_labeled);
