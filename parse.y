@@ -767,11 +767,18 @@ parser_pslr_prefers_label_token_p(struct parser_params *p, int current_token_len
 }
 
 static inline int
-parser_pslr_after_labeled_p(struct parser_params *p)
+parser_pslr_after_labeled_state_p(struct parser_params *p, enum lex_state_e state)
 {
+    if (!IS_lex_state_for(state, EXPR_ARG_ANY)) return FALSE;
     if (!parser_pslr_accepts_token(p, tLBRACE)) return FALSE;
     if (parser_pslr_accepts_token(p, '{')) return FALSE;
     return TRUE;
+}
+
+static inline int
+parser_pslr_after_labeled_p(struct parser_params *p)
+{
+    return parser_pslr_after_labeled_state_p(p, p->lex.state);
 }
 
 static inline int
@@ -801,11 +808,28 @@ parser_pslr_begin_like_p(struct parser_params *p)
 }
 
 static inline int
-parser_pslr_reserved_word_begin_p(struct parser_params *p, enum lex_state_e state)
+parser_pslr_lex_beg_like_p(struct parser_params *p)
 {
-    return IS_lex_state_for(state, EXPR_BEG) ||
+    return IS_lex_state_for(p->lex.state, EXPR_BEG_ANY) ||
            parser_pslr_after_labeled_p(p) ||
            parser_pslr_class_context_p(p);
+}
+
+static inline int
+parser_pslr_ignores_newline_p(struct parser_params *p)
+{
+    return IS_lex_state_for(p->lex.state, EXPR_BEG) ||
+           parser_pslr_after_dot_p(p) ||
+           parser_pslr_expects_fname_p(p);
+}
+
+static inline int
+parser_pslr_reserved_word_begin_p(struct parser_params *p, enum lex_state_e state)
+{
+    if (parser_pslr_after_labeled_state_p(p, state)) return TRUE;
+    if (IS_lex_state_for(state, EXPR_BEG)) return TRUE;
+    if (IS_lex_state_for(state, EXPR_MID | EXPR_ARG_ANY | EXPR_END_ANY)) return FALSE;
+    return parser_pslr_class_context_p(p);
 }
 
 static inline int
@@ -871,23 +895,27 @@ parser_pslr_heredoc_fallback_p(struct parser_params *p, int space_seen)
     return !parser_pslr_after_dot_p(p) &&
            !parser_pslr_class_context_p(p) &&
            !parser_pslr_end_state_fallback_p(p) &&
+           (!parser_pslr_accepts_token(p, tLSHFT) || parser_pslr_arg_state_fallback_p(p)) &&
            (!parser_pslr_arg_state_fallback_p(p) || parser_pslr_after_labeled_p(p) || space_seen);
 }
 
 static inline int
 parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
 {
+    if (parser_pslr_space_arg_fallback_p(p, -1, space_seen)) return TRUE;
     if (parser_pslr_prefers_token_p(p, tCOLON3, tCOLON2)) return TRUE;
     if (parser_pslr_prefers_token_p(p, tCOLON2, tCOLON3)) return FALSE;
-    return parser_pslr_begin_like_p(p) || parser_pslr_space_arg_fallback_p(p, -1, space_seen);
+    return IS_lex_state_for(p->lex.state, EXPR_BEG_ANY) ||
+           parser_pslr_begin_like_p(p) ||
+           FALSE;
 }
 
 static inline int
 parser_pslr_colon_symbol_literal_p(struct parser_params *p, int c)
 {
-    if (parser_pslr_prefers_token_p(p, tSYMBEG, ':')) return TRUE;
-    if (parser_pslr_prefers_token_p(p, ':', tSYMBEG)) return FALSE;
-    return parser_pslr_end_state_fallback_p(p) || ISSPACE(c) || c == '#';
+    if (parser_pslr_prefers_token_p(p, ':', tSYMBEG)) return TRUE;
+    if (parser_pslr_prefers_token_p(p, tSYMBEG, ':')) return FALSE;
+    return ISSPACE(c) || c == '#';
 }
 
 static inline int
@@ -923,8 +951,9 @@ parser_pslr_lbrack_arg_fallback_p(struct parser_params *p, int space_seen)
     int accepts_lbrack = parser_pslr_accepts_token(p, tLBRACK);
 
     if (!space_seen) return FALSE;
+    if (parser_pslr_arg_state_fallback_p(p)) return TRUE;
     if (accepts_plain + accepts_lbrack == 1) return accepts_lbrack;
-    return parser_pslr_arg_state_fallback_p(p) && space_seen;
+    return FALSE;
 }
 
 static inline int
@@ -934,10 +963,13 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
     int accepts_primary_block = parser_pslr_accepts_token(p, '{');
     int accepts_expr_block = parser_pslr_accepts_token(p, tLBRACE_ARG);
 
+    if (IS_lex_state_for(p->lex.state, EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN)) {
+        return TRUE;
+    }
     if (accepts_hash + accepts_primary_block + accepts_expr_block == 1) {
         return accepts_primary_block;
     }
-    return IS_lex_state_for(p->lex.state, EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN);
+    return FALSE;
 }
 
 static inline enum yytokentype
@@ -955,6 +987,16 @@ parser_pslr_do_token(struct parser_params *p)
     if (accepts_block) return keyword_do_block;
     if (accepts_plain) return keyword_do;
     return 0;
+}
+
+static inline enum yytokentype
+parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_token, enum yytokentype modifier_token)
+{
+    int accepts_keyword = parser_pslr_accepts_token(p, keyword_token);
+    int accepts_modifier = parser_pslr_accepts_token(p, modifier_token);
+
+    if (accepts_keyword + accepts_modifier != 1) return 0;
+    return accepts_keyword ? keyword_token : modifier_token;
 }
 
 #define NUMPARAM_ID_P(id) numparam_id_p(p, id)
@@ -8942,7 +8984,7 @@ parser_peek_variable_name(struct parser_params *p)
     return 0;
 }
 
-#define IS_BEG() parser_pslr_begin_like_p(p)
+#define IS_BEG() parser_pslr_lex_beg_like_p(p)
 #define IS_SPCARG(c) parser_pslr_space_arg_fallback_p(p, c, space_seen)
 #define IS_LABEL_POSSIBLE() parser_pslr_label_possible_p(p, cmd_state)
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
@@ -10762,6 +10804,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         if (kw) {
             enum lex_state_e state = p->lex.state;
             enum yytokentype do_token = 0;
+            enum yytokentype keyword_variant = 0;
             if (expects_fname) {
                 SET_LEX_STATE(EXPR_ENDFN);
                 set_yylval_name(rb_intern2(tok(p), toklen(p)));
@@ -10770,6 +10813,16 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
             SET_LEX_STATE(kw->state);
             if (IS_lex_state_for(kw->state, EXPR_BEG)) {
                 p->command_start = TRUE;
+            }
+            if (kw->id[0] == keyword_rescue) {
+                keyword_variant = parser_pslr_keyword_variant(p, keyword_rescue, modifier_rescue);
+                if (keyword_variant == modifier_rescue) {
+                    SET_LEX_STATE(EXPR_BEG);
+                    return modifier_rescue;
+                }
+                if (keyword_variant == keyword_rescue) {
+                    return keyword_rescue;
+                }
             }
             if (kw->id[0] == keyword_do) {
                 if (lambda_beginning_p()) {
@@ -10781,7 +10834,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                     p->lex.lpar_beg = -1;
                     return keyword_do_LAMBDA;
                 }
-                if (do_token == keyword_do_cond || (COND_P() && parser_pslr_accepts_token(p, keyword_do_cond))) {
+                if (COND_P() || do_token == keyword_do_cond) {
                     return keyword_do_cond;
                 }
                 if (CMDARG_P() && !IS_lex_state_for(state, EXPR_CMDARG))
@@ -10792,8 +10845,9 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 }
                 return keyword_do;
             }
-            if (parser_pslr_reserved_word_begin_p(p, state))
+            if (parser_pslr_reserved_word_begin_p(p, state)) {
                 return kw->id[0];
+            }
             else {
                 if (kw->id[0] != kw->id[1])
                     SET_LEX_STATE(EXPR_BEG);
@@ -10802,7 +10856,10 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         }
     }
 
-    if (parser_pslr_ident_leaves_arg_state_p(p)) {
+    if (cmd_state && !after_dot && !expects_fname) {
+        SET_LEX_STATE(EXPR_CMDARG);
+    }
+    else if (parser_pslr_ident_leaves_arg_state_p(p)) {
         if (cmd_state) {
             SET_LEX_STATE(EXPR_CMDARG);
         }
@@ -10950,10 +11007,7 @@ parser_yylex(struct parser_params *p)
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
         int after_labeled = parser_pslr_after_labeled_p(p);
-        c = (((parser_pslr_begin_like_p(p)) ||
-              parser_pslr_after_dot_p(p) ||
-              parser_pslr_expects_fname_p(p)) &&
-             !after_labeled);
+        c = (parser_pslr_ignores_newline_p(p) && !after_labeled);
         if (c || after_labeled) {
             if (!fallthru) {
                 dispatch_scan_event(p, tIGNORED_NL);
