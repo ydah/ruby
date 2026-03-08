@@ -810,7 +810,7 @@ parser_pslr_prefers_label_token_p(struct parser_params *p, int current_token_len
 static inline int
 parser_pslr_after_labeled_state_p(struct parser_params *p, enum lex_state_e state)
 {
-    if (!IS_lex_state_for(state, EXPR_ARG_ANY)) return FALSE;
+    if (!IS_lex_state_for(state, EXPR_ARG)) return FALSE;
     if (!parser_pslr_accepts_token(p, tLBRACE)) return FALSE;
     if (parser_pslr_accepts_token(p, '{')) return FALSE;
     return TRUE;
