@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "forwardable"
+require "set"
 require_relative "tracer/duration"
 require_relative "state/item"
 
@@ -37,7 +38,7 @@ module Lrama
 
     def_delegators "@grammar", :symbols, :terms, :nterms, :rules, :precedences,
       :accept_symbol, :eof_symbol, :undef_symbol, :find_symbol_by_s_value!, :ielr_defined?, :pslr_defined?,
-      :token_patterns, :lex_prec
+      :token_patterns, :lex_prec, :pslr_max_states, :pslr_max_state_ratio
 
     attr_reader :states #: Array[State]
     attr_reader :reads_relation #: Hash[State::Action::Goto, Array[State::Action::Goto]]
@@ -46,6 +47,8 @@ module Lrama
     attr_reader :scanner_fsa #: ScannerFSA?
     attr_reader :length_precedences #: LengthPrecedences?
     attr_reader :scanner_accepts_table #: State::ScannerAccepts?
+    attr_reader :pslr_inadequacies #: Array[State::PslrInadequacy]
+    attr_reader :pslr_metrics #: Hash[Symbol, Integer | Float | nil]
 
     # @rbs (Grammar grammar, Tracer tracer) -> void
     def initialize(grammar, tracer)
@@ -109,6 +112,17 @@ module Lrama
       # second key is rule_id,
       # value is bitmap of term.
       @la = {}
+      @pslr_inadequacies = []
+      @pslr_metrics = {
+        base_states_count: nil,
+        total_states_count: nil,
+        split_state_count: 0,
+        growth_count: 0,
+        growth_ratio: nil,
+        token_pattern_count: 0,
+        scanner_fsa_state_count: 0,
+        inadequacies_count: 0
+      }
     end
 
     # @rbs () -> void
@@ -149,20 +163,31 @@ module Lrama
     # Based on Section 3.4 of the PSLR dissertation
     # @rbs () -> void
     def compute_pslr
-      # Phase 1: Run IELR(1) as the base
-      compute_ielr
-
-      # Phase 2: Build Scanner FSA from token patterns
+      capture_pslr_metrics_before_split
+      # Preparation
+      report_duration(:clear_conflicts) { clear_conflicts }
+      # Phase 1
+      report_duration(:compute_predecessors) { compute_predecessors }
+      report_duration(:compute_follow_kernel_items) { compute_follow_kernel_items }
+      report_duration(:compute_always_follows) { compute_always_follows }
+      report_duration(:compute_goto_follows) { compute_goto_follows }
+      # Phase 2
       report_duration(:build_scanner_fsa) { build_scanner_fsa }
-
-      # Phase 3: Build lexical precedence tables
       report_duration(:build_length_precedences) { build_length_precedences }
-
-      # Phase 4: Build scanner_accepts table
+      report_duration(:compute_inadequacy_annotations) { compute_inadequacy_annotations }
+      # Phase 3
+      @pslr_split_enabled = true
+      report_duration(:split_states) { split_states }
+      @pslr_split_enabled = false
+      # Phase 4
+      report_duration(:clear_look_ahead_sets) { clear_look_ahead_sets }
+      report_duration(:compute_look_ahead_sets) { compute_look_ahead_sets }
+      # Phase 5
+      report_duration(:compute_conflicts) { compute_conflicts(:ielr) }
+      report_duration(:compute_default_reduction) { compute_default_reduction }
       report_duration(:build_scanner_accepts) { build_scanner_accepts }
-
-      # Phase 5: Detect and handle PSLR inadequacies
       report_duration(:handle_pslr_inadequacies) { handle_pslr_inadequacies }
+      finalize_pslr_metrics
     end
 
     # @rbs () -> Integer
@@ -213,6 +238,8 @@ module Lrama
     # @rbs (Logger logger) -> void
     def validate!(logger)
       validate_conflicts_within_threshold!(logger)
+      validate_pslr_state_growth!(logger)
+      validate_pslr_inadequacies!(logger)
     end
 
     def compute_la_sources_for_conflicted_states
@@ -779,10 +806,24 @@ module Lrama
     # @rbs () -> void
     def split_states
       @states.each do |state|
-        state.transitions.each do |transition|
+        state.transitions.dup.each do |transition|
           compute_state(state, transition, transition.to_state)
         end
       end
+    end
+
+    # @rbs () -> void
+    def capture_pslr_metrics_before_split
+      @pslr_metrics = {
+        base_states_count: @states.count,
+        total_states_count: @states.count,
+        split_state_count: 0,
+        growth_count: 0,
+        growth_ratio: 1.0,
+        token_pattern_count: token_patterns.size,
+        scanner_fsa_state_count: 0,
+        inadequacies_count: 0
+      }
     end
 
     # @rbs () -> void
@@ -806,7 +847,7 @@ module Lrama
     def merge_lookaheads(state, filtered_lookaheads)
       return if state.kernels.all? {|item| (filtered_lookaheads[item] - state.item_lookahead_set[item]).empty? }
 
-      state.item_lookahead_set = state.item_lookahead_set.merge {|_, v1, v2| v1 | v2 }
+      state.item_lookahead_set = state.item_lookahead_set.merge(filtered_lookaheads) {|_, v1, v2| v1 | v2 }
       state.transitions.each do |transition|
         next if transition.to_state.lookaheads_recomputed
         compute_state(state, transition, transition.to_state)
@@ -816,7 +857,14 @@ module Lrama
     # @rbs (State state, State::Action::Shift | State::Action::Goto transition, State next_state) -> void
     def compute_state(state, transition, next_state)
       propagating_lookaheads = state.propagate_lookaheads(next_state)
-      s = next_state.ielr_isocores.find {|st| st.is_compatible?(propagating_lookaheads) }
+      pslr_lookaheads =
+        if @pslr_split_enabled
+          state.propagate_lookaheads_without_filter(next_state)
+        else
+          propagating_lookaheads
+        end
+
+      s = next_state.ielr_isocores.find {|st| compatible_split_state?(st, propagating_lookaheads, pslr_lookaheads) }
 
       if s.nil?
         s = next_state.lalr_isocore
@@ -833,14 +881,81 @@ module Lrama
           st.ielr_isocores = s.ielr_isocores
         end
         new_state.lookaheads_recomputed = true
-        new_state.item_lookahead_set = propagating_lookaheads
+        new_state.item_lookahead_set = pslr_lookaheads
         state.update_transition(transition, new_state)
       elsif(!s.lookaheads_recomputed)
         s.lookaheads_recomputed = true
-        s.item_lookahead_set = propagating_lookaheads
+        s.item_lookahead_set = pslr_lookaheads
       else
         merge_lookaheads(s, propagating_lookaheads)
         state.update_transition(transition, s) if state.items_to_state[transition.to_items].id != s.id
+      end
+    end
+
+    # @rbs (State state, State::lookahead_set filtered_lookaheads, ?State::lookahead_set pslr_lookaheads) -> bool
+    def compatible_split_state?(state, filtered_lookaheads, pslr_lookaheads = nil)
+      return false unless state.is_compatible?(filtered_lookaheads)
+      return true unless @pslr_split_enabled && @scanner_fsa
+
+      pslr_lookaheads ||= filtered_lookaheads
+
+      pslr_state_signature(state) == pslr_state_signature(state, pslr_lookaheads)
+    end
+
+    # @rbs (State state, ?State::lookahead_set filtered_lookaheads) -> Array[[Integer, String?]]
+    def pslr_state_signature(state, filtered_lookaheads = nil)
+      return [] unless @scanner_fsa
+
+      acc_sp = acceptable_tokens_for_pslr(state, filtered_lookaheads)
+
+      @scanner_fsa.states.each_with_object([]) do |fsa_state, signature|
+        next unless fsa_state.accepting?
+
+        candidates = fsa_state.accepting_tokens.select do |token_pattern|
+          acc_sp.include?(token_pattern.name)
+        end
+        signature << [fsa_state.id, select_best_pslr_token(candidates)&.name]
+      end
+    end
+
+    # @rbs (State state, ?State::lookahead_set filtered_lookaheads) -> Set[String]
+    def acceptable_tokens_for_pslr(state, filtered_lookaheads = nil)
+      tokens = Set.new
+      kernel_reduce_items = state.kernels.select(&:end_of_rule?).to_set
+
+      state.term_transitions.each do |shift|
+        next_sym = shift.next_sym
+        tokens << next_sym.id.s_value if next_sym.term?
+      end
+
+      state.reduces.each do |reduce|
+        look_ahead =
+          if filtered_lookaheads && kernel_reduce_items.include?(reduce.item)
+            filtered_lookaheads[reduce.item] || []
+          else
+            state.acceptable_reduce_lookahead(reduce)
+          end
+
+        look_ahead.each do |la|
+          tokens << la.id.s_value
+        end
+      end
+
+      tokens
+    end
+
+    # @rbs (Array[Grammar::TokenPattern] candidates) -> Grammar::TokenPattern?
+    def select_best_pslr_token(candidates)
+      return nil if candidates.empty?
+      return candidates.first if candidates.size == 1
+
+      candidates.min_by do |token|
+        higher_count = candidates.count do |other|
+          next false if other == token
+          lex_prec.higher_priority?(token.name, other.name)
+        end
+
+        [-higher_count, token.definition_order]
       end
     end
 
@@ -922,40 +1037,107 @@ module Lrama
     def handle_pslr_inadequacies
       return unless @scanner_fsa && @scanner_accepts_table
 
-      inadequacies = detect_pslr_inadequacies
-      return if inadequacies.empty?
+      @pslr_inadequacies = detect_pslr_inadequacies
+      return if @pslr_inadequacies.empty?
 
-      # For now, just report inadequacies
-      # Full state splitting would require additional implementation
-      @tracer.warn("Detected #{inadequacies.size} PSLR inadequacies") if @tracer.respond_to?(:warn)
+      @tracer.warn("Detected #{@pslr_inadequacies.size} unresolved PSLR inadequacies") if @tracer.respond_to?(:warn)
+    end
+
+    # @rbs () -> void
+    def finalize_pslr_metrics
+      return unless pslr_defined?
+
+      base_states_count = @pslr_metrics[:base_states_count] || @states.count
+      total_states_count = @states.count
+
+      @pslr_metrics = {
+        base_states_count: base_states_count,
+        total_states_count: total_states_count,
+        split_state_count: @states.count(&:split_state?),
+        growth_count: total_states_count - base_states_count,
+        growth_ratio: base_states_count.zero? ? nil : total_states_count.to_f / base_states_count,
+        token_pattern_count: token_patterns.size,
+        scanner_fsa_state_count: @scanner_fsa ? @scanner_fsa.states.size : 0,
+        inadequacies_count: @pslr_inadequacies.size
+      }
     end
 
     # Detect PSLR inadequacies in isocore groups
     # @rbs () -> Array[State::PslrInadequacy]
     def detect_pslr_inadequacies
       inadequacies = []
-      checker = State::PslrCompatibilityChecker.new(@scanner_accepts_table, @length_precedences)
 
-      # Group states by their kernel items (isocore groups)
-      isocore_groups = @states.group_by { |s| s.kernels.map { |k| [k.rule.id, k.position] }.sort }
+      @states.each do |state|
+        state.transitions.each do |transition|
+          next_state = transition.to_state
+          next unless next_state
 
-      isocore_groups.each_value do |group_states|
-        next if group_states.size <= 1
+          propagating_lookaheads = state.propagate_lookaheads_without_filter(next_state.lalr_isocore)
+          expected_profile = pslr_state_signature(next_state, propagating_lookaheads)
+          actual_profile = pslr_state_signature(next_state)
 
-        # Check pairwise compatibility
-        group_states.combination(2).each do |s1, s2|
-          unless checker.compatible?(s1, s2, @scanner_fsa)
-            inadequacies << State::PslrInadequacy.new(
-              type: State::PslrInadequacy::PSLR_RELATIVE,
-              state: s1,
-              conflicting_states: [s1, s2],
-              details: { reason: "Scanner behavior differs between isocore states" }
-            )
+          next if expected_profile == actual_profile
+
+          matching_state = next_state.ielr_isocores.find do |candidate|
+            pslr_state_signature(candidate) == expected_profile
           end
+
+          inadequacies << State::PslrInadequacy.new(
+            type: State::PslrInadequacy::PSLR_RELATIVE,
+            state: next_state,
+            conflicting_states: [matching_state, next_state].compact.uniq,
+            details: {
+              reason: "Transition reaches a state with an incompatible PSLR scanner profile",
+              from_state_id: state.id,
+              transition_symbol: transition.next_sym.id.s_value,
+              expected_profile: expected_profile,
+              actual_profile: actual_profile,
+              matching_state_id: matching_state&.id
+            }
+          )
         end
       end
 
       inadequacies
+    end
+
+    # @rbs (Logger logger) -> void
+    def validate_pslr_inadequacies!(logger)
+      return unless pslr_defined?
+      return if @pslr_inadequacies.empty?
+
+      @pslr_inadequacies.each do |inadequacy|
+        logger.error(inadequacy.to_s)
+      end
+
+      exit false
+    end
+
+    # @rbs (Logger logger) -> void
+    def validate_pslr_state_growth!(logger)
+      return unless pslr_defined?
+
+      errors = []
+      base_states_count = @pslr_metrics[:base_states_count] || @states.count
+      total_states_count = @pslr_metrics[:total_states_count] || @states.count
+      split_state_count = @pslr_metrics[:split_state_count] || @states.count(&:split_state?)
+      growth_ratio = @pslr_metrics[:growth_ratio] || 1.0
+
+      if (limit = pslr_max_states) && limit < total_states_count
+        errors << "PSLR state growth exceeded pslr.max-states=#{limit} (total=#{total_states_count}, base=#{base_states_count}, split=#{split_state_count})"
+      end
+
+      if (limit = pslr_max_state_ratio) && limit < growth_ratio
+        errors << "PSLR state growth exceeded pslr.max-state-ratio=#{limit} (ratio=#{format('%.2f', growth_ratio)}x, total=#{total_states_count}, base=#{base_states_count})"
+      end
+
+      return if errors.empty?
+
+      errors.each do |message|
+        logger.error(message)
+      end
+
+      exit false
     end
   end
 end
