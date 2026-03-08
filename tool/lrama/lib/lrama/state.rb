@@ -465,11 +465,14 @@ module Lrama
             []
           elsif kernel.position > 1
             prev_items = predecessors_with_item(kernel)
-            prev_items.map {|st, i| st.item_lookahead_set[i] }.reduce([]) {|acc, syms| acc |= syms }
+            prev_items
+              .map {|st, i| st.item_lookahead_set[i] }
+              .compact
+              .reduce([]) {|acc, syms| acc | syms }
           elsif kernel.position == 1
             prev_state = @predecessors.find {|p| p.transitions.any? {|transition| transition.next_sym == kernel.lhs } }
-            goto = prev_state.nterm_transitions.find {|goto| goto.next_sym == kernel.lhs }
-            prev_state.goto_follows[goto]
+            goto = prev_state&.nterm_transitions&.find {|goto| goto.next_sym == kernel.lhs }
+            prev_state&.goto_follows&.fetch(goto, []) || []
           end
         [kernel, value]
       }.to_h
@@ -503,11 +506,15 @@ module Lrama
     def goto_follow_set(nterm_token)
       return [] if nterm_token.accept_symbol?
       goto = @lalr_isocore.nterm_transitions.find {|g| g.next_sym == nterm_token }
+      return [] unless goto
+
+      base_terms = Array(@lalr_isocore.always_follows[goto])
 
       @kernels
         .select {|kernel| @lalr_isocore.follow_kernel_items[goto][kernel] }
         .map {|kernel| item_lookahead_set[kernel] }
-        .reduce(@lalr_isocore.always_follows[goto]) {|result, terms| result |= terms }
+        .compact
+        .reduce(base_terms) {|result, terms| result | terms }
     end
 
     # Definition 3.8 (Goto Follows Internal Relation)
