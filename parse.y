@@ -10865,15 +10865,15 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                     p->lex.lpar_beg = -1;
                     return keyword_do_LAMBDA;
                 }
-                if (do_token == keyword_do_cond || (COND_P() && parser_pslr_accepts_token(p, keyword_do_cond))) {
+                if (COND_P() || do_token == keyword_do_cond) {
                     return keyword_do_cond;
                 }
+                if (CMDARG_P() && !IS_lex_state_for(state, EXPR_CMDARG))
+                    return keyword_do_block;
                 if (do_token == keyword_do) return keyword_do;
                 if (do_token == keyword_do_block) {
                     return keyword_do_block;
                 }
-                if (CMDARG_P() && parser_pslr_accepts_token(p, keyword_do_block))
-                    return keyword_do_block;
                 return keyword_do;
             }
             if (parser_pslr_reserved_word_begin_p(p, state)) {
