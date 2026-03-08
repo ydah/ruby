@@ -867,10 +867,9 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
 static inline int
 parser_pslr_reserved_word_begin_p(struct parser_params *p, enum lex_state_e state)
 {
+    /* Only used as a fallback for modifier-style reserved words. */
     if (parser_pslr_after_labeled_state_p(p, state)) return TRUE;
-    if (IS_lex_state_for(state, EXPR_BEG)) return TRUE;
-    if (IS_lex_state_for(state, EXPR_MID | EXPR_ARG_ANY | EXPR_END_ANY)) return FALSE;
-    return parser_pslr_class_context_p(p);
+    return IS_lex_state_for(state, EXPR_BEG);
 }
 
 static inline int
@@ -10876,12 +10875,14 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 }
                 return keyword_do;
             }
+            if (kw->id[0] == kw->id[1]) {
+                return kw->id[0];
+            }
             if (parser_pslr_reserved_word_begin_p(p, state)) {
                 return kw->id[0];
             }
             else {
-                if (kw->id[0] != kw->id[1])
-                    SET_LEX_STATE(EXPR_BEG);
+                SET_LEX_STATE(EXPR_BEG);
                 return kw->id[1];
             }
         }
