@@ -761,7 +761,6 @@ parser_pslr_prefers_label_token_p(struct parser_params *p, int current_token_len
 static inline int
 parser_pslr_after_labeled_p(struct parser_params *p)
 {
-    if (!IS_lex_state(EXPR_LABELED)) return FALSE;
     if (!parser_pslr_accepts_token(p, tLBRACE)) return FALSE;
     if (parser_pslr_accepts_token(p, '{')) return FALSE;
     return TRUE;
@@ -797,7 +796,8 @@ parser_pslr_begin_like_p(struct parser_params *p)
 static inline int
 parser_pslr_reserved_word_begin_p(struct parser_params *p, enum lex_state_e state)
 {
-    return IS_lex_state_for(state, EXPR_BEG | EXPR_LABELED) ||
+    return IS_lex_state_for(state, EXPR_BEG) ||
+           parser_pslr_after_labeled_p(p) ||
            parser_pslr_class_context_p(p);
 }
 
@@ -10688,7 +10688,8 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     tokfix(p);
     if (IS_LABEL_SUFFIX(0)) {
         if (parser_pslr_prefers_label_token_p(p, toklen(p)) || IS_LABEL_POSSIBLE()) {
-            SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ARG|EXPR_LABELED); */
+            SET_LEX_STATE(EXPR_ARG);
             nextc(p);
             tokenize_ident(p);
             return tLABEL;
@@ -11549,7 +11550,7 @@ parser_yylex(struct parser_params *p)
         ++p->lex.brace_nest;
         if (lambda_beginning_p())
             c = tLAMBEG;
-        else if (IS_lex_state(EXPR_LABELED))
+        else if (parser_pslr_after_labeled_p(p))
             c = tLBRACE;      /* hash */
         else if (parser_pslr_brace_primary_block_fallback_p(p))
             c = '{';          /* block (primary) */
