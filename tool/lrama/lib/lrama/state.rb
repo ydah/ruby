@@ -57,6 +57,7 @@ module Lrama
     attr_accessor :follow_kernel_items #: Hash[Action::Goto, Hash[Item, bool]]
     attr_accessor :always_follows #: Hash[Action::Goto, Array[Grammar::Symbol]]
     attr_accessor :goto_follows #: Hash[Action::Goto, Array[Grammar::Symbol]]
+    attr_accessor :pslr_item_lookahead_set #: lookahead_set?
 
     # @rbs (Integer id, Grammar::Symbol accessing_symbol, Array[Item] kernels) -> void
     def initialize(id, accessing_symbol, kernels)
@@ -80,6 +81,7 @@ module Lrama
       @follow_kernel_items = {}
       @always_follows = {}
       @goto_follows = {}
+      @pslr_item_lookahead_set = nil
       @lhs_contributions = {}
       @lane_items = {}
     end
@@ -152,6 +154,13 @@ module Lrama
     # @rbs (Action::Reduce reduce) -> Array[Grammar::Symbol]
     def acceptable_reduce_lookahead(reduce)
       reduce.look_ahead || item_lookahead_set[reduce.item] || []
+    end
+
+    # @rbs (Action::Reduce reduce) -> Array[Grammar::Symbol]
+    def acceptable_pslr_reduce_lookahead(reduce)
+      return acceptable_reduce_lookahead(reduce) unless @pslr_item_lookahead_set
+
+      @pslr_item_lookahead_set[reduce.item] || acceptable_reduce_lookahead(reduce)
     end
 
     # @rbs (Grammar::Rule rule, Hash[Grammar::Symbol, Array[Action::Goto]] sources) -> void
