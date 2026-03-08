@@ -899,7 +899,7 @@ parser_pslr_arg_state_fallback_p(struct parser_params *p)
 static inline int
 parser_pslr_end_state_fallback_p(struct parser_params *p)
 {
-    return IS_lex_state_for(p->lex.state, EXPR_END_ANY);
+    return IS_lex_state_for(p->lex.state, EXPR_END);
 }
 
 static inline int
@@ -940,7 +940,7 @@ parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
     if (parser_pslr_space_arg_fallback_p(p, -1, space_seen)) return TRUE;
     if (parser_pslr_prefers_token_p(p, tCOLON3, tCOLON2)) return TRUE;
     if (parser_pslr_prefers_token_p(p, tCOLON2, tCOLON3)) return FALSE;
-    return IS_lex_state_for(p->lex.state, EXPR_BEG_ANY) ||
+    return IS_lex_state_for(p->lex.state, EXPR_BEG | EXPR_MID) ||
            parser_pslr_begin_like_p(p) ||
            FALSE;
 }
