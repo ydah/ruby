@@ -851,7 +851,7 @@ parser_pslr_begin_like_p(struct parser_params *p)
 static inline int
 parser_pslr_lex_beg_like_p(struct parser_params *p)
 {
-    return IS_lex_state_for(p->lex.state, EXPR_BEG_ANY) ||
+    return IS_lex_state_for(p->lex.state, EXPR_BEG | EXPR_MID) ||
            parser_pslr_after_labeled_p(p) ||
            parser_pslr_class_context_p(p);
 }
@@ -1031,6 +1031,21 @@ parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_to
 
     if (accepts_keyword + accepts_modifier != 1) return 0;
     return accepts_keyword ? keyword_token : modifier_token;
+}
+
+static inline int
+parser_pslr_keyword_sets_command_start_p(enum yytokentype keyword_token)
+{
+    switch (keyword_token) {
+      case keyword_begin:
+      case keyword_do:
+      case keyword_else:
+      case keyword_ensure:
+      case keyword_then:
+        return TRUE;
+      default:
+        return FALSE;
+    }
 }
 
 #define NUMPARAM_ID_P(id) numparam_id_p(p, id)
@@ -10841,7 +10856,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 return kw->id[0];
             }
             SET_LEX_STATE(kw->state);
-            if (IS_lex_state_for(kw->state, EXPR_BEG)) {
+            if (parser_pslr_keyword_sets_command_start_p(kw->id[0])) {
                 p->command_start = TRUE;
             }
             if (kw->id[0] == keyword_rescue) {
