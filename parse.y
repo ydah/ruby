@@ -651,6 +651,7 @@ parser_pslr_accepts_expr_beg_token_p(struct parser_params *p)
     if (parser_pslr_accepts_token(p, tSYMBOLS_BEG)) return TRUE;
     if (parser_pslr_accepts_token(p, tQSYMBOLS_BEG)) return TRUE;
     if (parser_pslr_accepts_token(p, tSYMBEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tCOLON3)) return TRUE;
     if (parser_pslr_accepts_token(p, tLPAREN)) return TRUE;
     if (parser_pslr_accepts_token(p, tLBRACK)) return TRUE;
     if (parser_pslr_accepts_token(p, tLBRACE)) return TRUE;
@@ -675,11 +676,51 @@ parser_pslr_accepts_identifier_family_p(struct parser_params *p)
 }
 
 static inline int
+parser_pslr_next_nonspace_char(struct parser_params *p)
+{
+    const char *ptr = p->lex.pcur;
+
+    while (ptr < p->lex.pend) {
+        int c = (unsigned char)*ptr;
+        switch (c) {
+          case ' ':
+          case '\t':
+          case '\f':
+          case '\r':
+          case '\13':
+            ptr++;
+            continue;
+          default:
+            return c;
+        }
+    }
+
+    return -1;
+}
+
+static inline int
+parser_pslr_pending_def_body_p(struct parser_params *p)
+{
+    if (p->lex.state != EXPR_ENDFN) return FALSE;
+    if (!parser_pslr_accepts_token(p, '=')) return FALSE;
+    return !parser_pslr_accepts_expr_beg_token_p(p);
+}
+
+static inline int
 parser_pslr_force_expr_beg_p(struct parser_params *p)
 {
     if (p->lex.state != EXPR_ENDFN) return FALSE;
-    if (p->lex.lpar_beg == p->lex.paren_nest) return FALSE;
-    return parser_pslr_accepts_expr_beg_token_p(p);
+    if (parser_pslr_accepts_expr_beg_token_p(p)) return TRUE;
+    if (parser_pslr_pending_def_body_p(p)) {
+        int c = parser_pslr_next_nonspace_char(p);
+
+        if (c == '=') return FALSE;
+        if (c == '\n' || c == '#') {
+            return !parser_pslr_accepts_token(p, '(');
+        }
+        return c != -1;
+    }
+    return FALSE;
 }
 
 static inline int
@@ -6612,8 +6653,7 @@ backref		: tNTH_REF
 
 superclass	: '<'
                     {
-                        /* parser-state bridge だけでは `class X < ::Y` を安定化できない */
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* parser-state bridge によりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                         p->command_start = TRUE;
                     }
                   expr_value term
@@ -6643,8 +6683,7 @@ f_paren_args	: '(' f_args rparen
                     {
                         $$ = $2;
                     /*% ripper: paren!($:2) %*/
-                        /* AST.parse_file では body-start 判定がまだこれに依存する */
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* parser-state bridge によりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                         p->command_start = TRUE;
                         p->ctxt.in_argdef = 0;
                     }
@@ -6663,8 +6702,7 @@ f_arglist	: f_paren_args
                         p->ctxt.in_kwarg = $1.in_kwarg;
                         p->ctxt.in_argdef = 0;
                         $$ = $2;
-                        /* AST.parse_file では body-start 判定がまだこれに依存する */
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* parser-state bridge によりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                         p->command_start = TRUE;
                     /*% ripper: $:2 %*/
                     }
@@ -7004,8 +7042,7 @@ singleton	: value_expr(singleton_expr)
 singleton_expr	: var_ref
                 | '('
                     {
-                        /* singleton literal diagnostics still depend on explicit begin context here */
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* parser-state bridge によりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                         p->ctxt.in_argdef = 0;
                     }
                   expr rparen
