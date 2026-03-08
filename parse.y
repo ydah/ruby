@@ -780,7 +780,6 @@ parser_pslr_prefers_heredoc_p(struct parser_params *p)
                           parser_pslr_accepts_token(p, tXSTRING_BEG);
 
     if (!accepts_heredoc) return FALSE;
-    if (IS_lex_state(EXPR_CLASS)) return FALSE;
     if (parser_pslr_class_context_p(p)) return FALSE;
     return !parser_pslr_accepts_token(p, tLSHFT);
 }
@@ -804,7 +803,7 @@ parser_pslr_reserved_word_begin_p(struct parser_params *p, enum lex_state_e stat
 static inline int
 parser_pslr_ident_leaves_arg_state_p(struct parser_params *p)
 {
-    if (IS_lex_state(EXPR_BEG_ANY | EXPR_ARG_ANY | EXPR_DOT)) return TRUE;
+    if (IS_lex_state(EXPR_BEG_ANY | EXPR_ARG_ANY)) return TRUE;
     if (parser_pslr_begin_like_p(p)) return TRUE;
     if (parser_pslr_after_dot_p(p)) return TRUE;
     if (parser_pslr_accepts_token(p, tLPAREN_ARG)) return TRUE;
@@ -857,8 +856,7 @@ parser_pslr_qmark_warn_space_char_p(struct parser_params *p)
 static inline int
 parser_pslr_heredoc_fallback_p(struct parser_params *p, int space_seen)
 {
-    return !IS_lex_state(EXPR_CLASS) &&
-           !parser_pslr_after_dot_p(p) &&
+    return !parser_pslr_after_dot_p(p) &&
            !parser_pslr_class_context_p(p) &&
            !parser_pslr_end_state_fallback_p(p) &&
            (!parser_pslr_arg_state_fallback_p(p) || parser_pslr_after_labeled_p(p) || space_seen);
@@ -10918,7 +10916,7 @@ parser_yylex(struct parser_params *p)
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
         int after_labeled = parser_pslr_after_labeled_p(p);
-        c = ((IS_lex_state(EXPR_BEG | EXPR_CLASS) ||
+        c = (((IS_lex_state(EXPR_BEG) || parser_pslr_class_context_p(p)) ||
               parser_pslr_after_dot_p(p) ||
               parser_pslr_expects_fname_p(p)) &&
              !after_labeled);
