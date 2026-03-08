@@ -10659,7 +10659,6 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 {
     enum yytokentype result;
     bool is_ascii = true;
-    const int lex_after_dot = IS_lex_state(EXPR_DOT);
     const int after_dot = parser_pslr_after_dot_p(p);
     const int expects_fname = parser_pslr_expects_fname_p(p);
     ID ident;
@@ -10712,7 +10711,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         if ((p->ruby_sourceline > lineno) && (beg_pos <= column)) {
             const struct kwtable *kw;
 
-            if (lex_after_dot && (kw = rb_reserved_word(tok(p), toklen(p))) && (kw && kw->id[0] == keyword_end)) {
+            if (after_dot && (kw = rb_reserved_word(tok(p), toklen(p))) && (kw && kw->id[0] == keyword_end)) {
                 if (p->debug) rb_parser_printf(p, "enforce_keyword_end is enabled\n");
                 enforce_keyword_end = 1;
             }
@@ -10720,7 +10719,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     }
 #endif
 
-    if (is_ascii && (!lex_after_dot || enforce_keyword_end)) {
+    if (is_ascii && (!after_dot || enforce_keyword_end)) {
         const struct kwtable *kw;
 
         /* See if it is a reserved word.  */
