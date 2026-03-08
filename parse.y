@@ -555,9 +555,7 @@ struct parser_params {
     ID it_id;
 
     struct lex_context ctxt;
-    struct {
-        int parser_state;
-    } pslr;
+    int pslr_current_state;
 
     NODE *eval_tree_begin;
     NODE *eval_tree;
@@ -615,18 +613,12 @@ struct parser_params {
 #endif
 };
 
-static inline void
-parser_pslr_sync_current_state(struct parser_params *p, int parser_state)
-{
-    p->pslr.parser_state = parser_state;
-}
-
-static int yy_state_accepts_token(int yystate, int token);
+int yy_state_accepts_token(int yystate, int token);
 
 static inline int
 parser_pslr_accepts_token(struct parser_params *p, int token)
 {
-    return p->pslr.parser_state >= 0 && yy_state_accepts_token(p->pslr.parser_state, token);
+    return p->pslr_current_state >= 0 && yy_state_accepts_token(p->pslr_current_state, token);
 }
 
 static inline int
@@ -920,9 +912,6 @@ parser_pslr_do_token(struct parser_params *p)
     if (accepts_plain) return keyword_do;
     return 0;
 }
-
-#define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
-    parser_pslr_sync_current_state((ParseParam), (CurrentState))
 
 #define NUMPARAM_ID_P(id) numparam_id_p(p, id)
 #define NUMPARAM_ID_TO_IDX(id) (unsigned int)(((id) >> ID_SCOPE_SHIFT) - (tNUMPARAM_1 - 1))
@@ -2926,6 +2915,8 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 
 %expect 0
 %define api.pure
+%define lr.type pslr
+%define api.pslr.state-member pslr_current_state
 %define parse.error verbose
 %printer {
     if ((NODE *)$$ == (NODE *)-1) {
@@ -15917,7 +15908,7 @@ parser_initialize(struct parser_params *p)
 {
     /* note: we rely on TypedData_Make_Struct to set most fields to 0 */
     p->command_start = TRUE;
-    p->pslr.parser_state = -1;
+    p->pslr_current_state = -1;
     p->ruby_sourcefile_string = Qnil;
     p->lex.lpar_beg = -1; /* make lambda_beginning_p() == FALSE at first */
     string_buffer_init(p);
