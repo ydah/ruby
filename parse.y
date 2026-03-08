@@ -864,6 +864,23 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
     return IS_lex_state_for(p->lex.state, EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN);
 }
 
+static inline enum yytokentype
+parser_pslr_do_token(struct parser_params *p)
+{
+    int accepts_lambda = parser_pslr_accepts_token(p, keyword_do_LAMBDA);
+    int accepts_cond = parser_pslr_accepts_token(p, keyword_do_cond);
+    int accepts_block = parser_pslr_accepts_token(p, keyword_do_block);
+    int accepts_plain = parser_pslr_accepts_token(p, keyword_do);
+
+    if (accepts_lambda + accepts_cond + accepts_block + accepts_plain != 1) return 0;
+
+    if (accepts_lambda) return keyword_do_LAMBDA;
+    if (accepts_cond) return keyword_do_cond;
+    if (accepts_block) return keyword_do_block;
+    if (accepts_plain) return keyword_do;
+    return 0;
+}
+
 #define YYSETSTATE_CONTEXT(CurrentState, ParseParam) \
     parser_pslr_sync_current_state((ParseParam), (CurrentState))
 
@@ -10655,7 +10672,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         /* See if it is a reserved word.  */
         kw = rb_reserved_word(tok(p), toklen(p));
         if (kw) {
-            enum lex_state_e state = p->lex.state;
+            enum yytokentype do_token = 0;
             if (expects_fname) {
                 SET_LEX_STATE(EXPR_ENDFN);
                 set_yylval_name(rb_intern2(tok(p), toklen(p)));
@@ -10666,12 +10683,19 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 p->command_start = TRUE;
             }
             if (kw->id[0] == keyword_do) {
-                if (lambda_beginning_p()) {
+                do_token = parser_pslr_do_token(p);
+                if (do_token == keyword_do_LAMBDA || (lambda_beginning_p() && parser_pslr_accepts_token(p, keyword_do_LAMBDA))) {
                     p->lex.lpar_beg = -1; /* make lambda_beginning_p() == FALSE in the body of "-> do ... end" */
                     return keyword_do_LAMBDA;
                 }
-                if (COND_P()) return keyword_do_cond;
-                if (CMDARG_P() && !IS_lex_state_for(state, EXPR_CMDARG))
+                if (do_token == keyword_do_cond || (COND_P() && parser_pslr_accepts_token(p, keyword_do_cond))) {
+                    return keyword_do_cond;
+                }
+                if (do_token == keyword_do) return keyword_do;
+                if (do_token == keyword_do_block) {
+                    return keyword_do_block;
+                }
+                if (CMDARG_P() && parser_pslr_accepts_token(p, keyword_do_block))
                     return keyword_do_block;
                 return keyword_do;
             }
