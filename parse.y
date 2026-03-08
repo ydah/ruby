@@ -739,9 +739,12 @@ parser_pslr_pattern_const_kwargs_context_p(struct parser_params *p)
 static inline int
 parser_pslr_label_possible_p(struct parser_params *p, int cmd_state)
 {
-    if (IS_lex_state(EXPR_ARG_ANY)) return TRUE;
-    if (IS_lex_state(EXPR_LABEL | EXPR_ENDFN) && !cmd_state) return TRUE;
-    if (p->ctxt.in_kwarg && !cmd_state && IS_lex_state(EXPR_LABEL)) return TRUE;
+    if (IS_lex_state(EXPR_ENDFN) && !cmd_state) return TRUE;
+    /* PSLRによりlex_state不要:
+     * if (IS_lex_state(EXPR_ARG_ANY)) return TRUE;
+     * if (IS_lex_state(EXPR_LABEL | EXPR_ENDFN) && !cmd_state) return TRUE;
+     * if (p->ctxt.in_kwarg && !cmd_state && IS_lex_state(EXPR_LABEL)) return TRUE;
+     */
     if (cmd_state) return FALSE;
     return parser_pslr_accepts_token(p, tLABEL);
 }
@@ -11494,7 +11497,13 @@ parser_yylex(struct parser_params *p)
         p->lex.paren_nest++;
         COND_PUSH(0);
         CMDARG_PUSH(0);
-        SET_LEX_STATE(pattern_const_kwargs ? (EXPR_BEG|EXPR_LABEL) : EXPR_BEG);
+        if (pattern_const_kwargs) {
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
+            SET_LEX_STATE(EXPR_BEG);
+        }
+        else {
+            SET_LEX_STATE(EXPR_BEG);
+        }
         return c;
       }
 
@@ -11524,7 +11533,13 @@ parser_yylex(struct parser_params *p)
         if (c == '[') {
             pattern_const_kwargs = parser_pslr_pattern_const_kwargs_context_p(p);
         }
-        SET_LEX_STATE(pattern_const_kwargs ? (EXPR_BEG|EXPR_LABEL) : EXPR_BEG);
+        if (pattern_const_kwargs) {
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
+            SET_LEX_STATE(EXPR_BEG);
+        }
+        else {
+            SET_LEX_STATE(EXPR_BEG);
+        }
         COND_PUSH(0);
         CMDARG_PUSH(0);
         return c;
@@ -11548,7 +11563,8 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_BEG);
         }
         else {
-            SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
+            SET_LEX_STATE(EXPR_BEG);
         }
         ++p->lex.paren_nest;  /* after lambda_beginning_p() */
         COND_PUSH(0);
