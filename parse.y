@@ -747,6 +747,15 @@ parser_pslr_label_possible_p(struct parser_params *p, int cmd_state)
 }
 
 static inline int
+parser_pslr_prefers_label_token_p(struct parser_params *p, int current_token_length)
+{
+    int match_length = 0;
+    int token = YYPSLR_PSEUDO_SCAN(p, p->lex.ptok, &match_length);
+
+    return token == tLABEL && match_length == current_token_length + 1;
+}
+
+static inline int
 parser_pslr_after_labeled_p(struct parser_params *p)
 {
     if (!IS_lex_state(EXPR_LABELED)) return FALSE;
@@ -2918,6 +2927,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %define lr.type pslr
 %define api.pslr.state-member pslr_current_state
 %define parse.error verbose
+%token-pattern tLABEL /[a-z_][a-zA-Z0-9_]*:/
 %printer {
     if ((NODE *)$$ == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -5663,7 +5673,7 @@ p_pktbl 	: {$$ = p->pktbl; p->pktbl = 0;};
 p_in_kwarg	:   {
                         $$ = p->ctxt;
                         /* Error-tolerant `in {a: ...}` still depends on this label context. */
-                        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
                         p->command_start = FALSE;
                         p->ctxt.in_kwarg = 1;
                         p->ctxt.in_alt_pattern = 0;
@@ -5770,7 +5780,7 @@ p_alt		: p_alt[left] '|'[alt]
 p_lparen	: '('
                     {
                         /* AST.parse_file では class pattern kwargs がまだこれに依存する */
-                        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
                     }
                   p_pktbl
                     {
@@ -5782,7 +5792,7 @@ p_lparen	: '('
 p_lbracket	: '['
                     {
                         /* AST.parse_file では class pattern kwargs がまだこれに依存する */
-                        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
                     }
                   p_pktbl
                     {
@@ -10673,8 +10683,8 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         pushback(p, c);
     }
     tokfix(p);
-    if (IS_LABEL_POSSIBLE()) {
-        if (IS_LABEL_SUFFIX(0)) {
+    if (IS_LABEL_SUFFIX(0)) {
+        if (parser_pslr_prefers_label_token_p(p, toklen(p)) || IS_LABEL_POSSIBLE()) {
             SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
             nextc(p);
             tokenize_ident(p);
