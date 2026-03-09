@@ -11168,6 +11168,17 @@ parser_yylex(struct parser_params *p)
             if (parser_pslr_prefers_token_p(p, tDSTAR, tPOW)) {
                 c = tDSTAR;
             }
+            else if (parser_pslr_prefers_token_p(p, tPOW, tDSTAR)) {
+                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
+            else if (parser_pslr_eventually_accepts_token(p, tDSTAR) &&
+                     !parser_pslr_eventually_accepts_token(p, tPOW)) {
+                c = tDSTAR;
+            }
+            else if (parser_pslr_eventually_accepts_token(p, tPOW) &&
+                     !parser_pslr_eventually_accepts_token(p, tDSTAR)) {
+                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
             else if (IS_SPCARG(c)) {
                 rb_warning0("'**' interpreted as argument prefix");
                 c = tDSTAR;
@@ -11188,6 +11199,17 @@ parser_yylex(struct parser_params *p)
             pushback(p, c);
             if (parser_pslr_prefers_token_p(p, tSTAR, '*')) {
                 c = tSTAR;
+            }
+            else if (parser_pslr_prefers_token_p(p, '*', tSTAR)) {
+                c = warn_balanced('*', "*", "argument prefix");
+            }
+            else if (parser_pslr_eventually_accepts_token(p, tSTAR) &&
+                     !parser_pslr_eventually_accepts_token(p, '*')) {
+                c = tSTAR;
+            }
+            else if (parser_pslr_eventually_accepts_token(p, '*') &&
+                     !parser_pslr_eventually_accepts_token(p, tSTAR)) {
+                c = warn_balanced('*', "*", "argument prefix");
             }
             else if (IS_SPCARG(c)) {
                 rb_warning0("'*' interpreted as argument prefix");
@@ -11378,6 +11400,17 @@ parser_yylex(struct parser_params *p)
         pushback(p, c);
         if (parser_pslr_prefers_token_p(p, tAMPER, '&')) {
             c = tAMPER;
+        }
+        else if (parser_pslr_prefers_token_p(p, '&', tAMPER)) {
+            c = '&';
+        }
+        else if (parser_pslr_eventually_accepts_token(p, tAMPER) &&
+                 !parser_pslr_eventually_accepts_token(p, '&')) {
+            c = tAMPER;
+        }
+        else if (parser_pslr_eventually_accepts_token(p, '&') &&
+                 !parser_pslr_eventually_accepts_token(p, tAMPER)) {
+            c = '&';
         }
         else if (IS_SPCARG(c)) {
             if ((c != ':') ||
@@ -11582,6 +11615,11 @@ parser_yylex(struct parser_params *p)
 
       case '/':
         if (parser_pslr_prefers_token_p(p, tREGEXP_BEG, '/')) {
+            p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
+            return tREGEXP_BEG;
+        }
+        if (parser_pslr_eventually_accepts_token(p, tREGEXP_BEG) &&
+            !parser_pslr_eventually_accepts_token(p, '/')) {
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
             return tREGEXP_BEG;
         }
