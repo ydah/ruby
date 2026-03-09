@@ -11003,6 +11003,17 @@ parser_pslr_lbrace_token(struct parser_params *p)
     if (accepts_hash && !accepts_primary_block && !accepts_expr_block) {
         return tLBRACE;
     }
+    /* Deep PSLR: trace empty reductions for unique brace determination */
+    {
+        int deep_hash = parser_pslr_eventually_accepts_token(p, tLBRACE);
+        int deep_primary = parser_pslr_eventually_accepts_token(p, '{');
+        int deep_expr = parser_pslr_eventually_accepts_token(p, tLBRACE_ARG);
+        if (deep_hash + deep_primary + deep_expr == 1) {
+            if (deep_expr) return tLBRACE_ARG;
+            if (deep_primary) return '{';
+            return tLBRACE;
+        }
+    }
     return 0;
 }
 
