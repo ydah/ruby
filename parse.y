@@ -1088,8 +1088,18 @@ parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_to
     int accepts_keyword = parser_pslr_accepts_token(p, keyword_token);
     int accepts_modifier = parser_pslr_accepts_token(p, modifier_token);
 
-    if (accepts_keyword + accepts_modifier != 1) return 0;
-    return accepts_keyword ? keyword_token : modifier_token;
+    if (accepts_keyword + accepts_modifier == 1) {
+        return accepts_keyword ? keyword_token : modifier_token;
+    }
+    /* Deep PSLR */
+    {
+        int deep_keyword = parser_pslr_eventually_accepts_token(p, keyword_token);
+        int deep_modifier = parser_pslr_eventually_accepts_token(p, modifier_token);
+        if (deep_keyword + deep_modifier == 1) {
+            return deep_keyword ? keyword_token : modifier_token;
+        }
+    }
+    return 0;
 }
 
 static inline int
