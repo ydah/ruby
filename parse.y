@@ -11298,6 +11298,13 @@ parser_yylex(struct parser_params *p)
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
         }
+        if (c == '<' &&
+            (parser_pslr_eventually_accepts_token(p, tSTRING_BEG) ||
+             parser_pslr_eventually_accepts_token(p, tXSTRING_BEG)) &&
+            !parser_pslr_eventually_accepts_token(p, tLSHFT)) {
+            enum  yytokentype token = heredoc_identifier(p);
+            if (token) return token < 0 ? 0 : token;
+        }
         if (c == '<' && parser_pslr_heredoc_fallback_p(p, space_seen)) {
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
