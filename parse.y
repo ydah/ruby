@@ -614,11 +614,18 @@ struct parser_params {
 };
 
 int yy_state_accepts_token(int yystate, int token);
+int yy_state_eventually_accepts_token(int yystate, int token);
 
 static inline int
 parser_pslr_accepts_token(struct parser_params *p, int token)
 {
     return p->pslr_current_state >= 0 && yy_state_accepts_token(p->pslr_current_state, token);
+}
+
+static inline int
+parser_pslr_eventually_accepts_token(struct parser_params *p, int token)
+{
+    return p->pslr_current_state >= 0 && yy_state_eventually_accepts_token(p->pslr_current_state, token);
 }
 
 static inline int
@@ -914,6 +921,12 @@ parser_pslr_qmark_is_ternary_p(struct parser_params *p)
     int accepts_char = parser_pslr_accepts_token(p, tCHAR);
 
     if (accepts_ternary + accepts_char == 1) return accepts_ternary;
+    /* Deep PSLR */
+    {
+        int deep_ternary = parser_pslr_eventually_accepts_token(p, '?');
+        int deep_char = parser_pslr_eventually_accepts_token(p, tCHAR);
+        if (deep_ternary + deep_char == 1) return deep_ternary;
+    }
     return parser_pslr_end_state_fallback_p(p);
 }
 
@@ -939,9 +952,16 @@ parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
     if (parser_pslr_space_arg_fallback_p(p, -1, space_seen)) return TRUE;
     if (parser_pslr_prefers_token_p(p, tCOLON3, tCOLON2)) return TRUE;
     if (parser_pslr_prefers_token_p(p, tCOLON2, tCOLON3)) return FALSE;
+    /* Deep PSLR: trace empty reductions to check tCOLON3 reachability */
+    if (parser_pslr_eventually_accepts_token(p, tCOLON3)) {
+        if (!parser_pslr_eventually_accepts_token(p, tCOLON2)) return TRUE;
+    }
+    else if (parser_pslr_eventually_accepts_token(p, tCOLON2)) {
+        return FALSE;
+    }
+    /* Fallback: both eventually accepted or neither */
     return IS_lex_state_for(p->lex.state, EXPR_BEG | EXPR_MID) ||
-           parser_pslr_begin_like_p(p) ||
-           FALSE;
+           parser_pslr_begin_like_p(p);
 }
 
 static inline int
@@ -949,6 +969,13 @@ parser_pslr_colon_symbol_literal_p(struct parser_params *p, int c)
 {
     if (parser_pslr_prefers_token_p(p, ':', tSYMBEG)) return TRUE;
     if (parser_pslr_prefers_token_p(p, tSYMBEG, ':')) return FALSE;
+    /* Deep PSLR */
+    {
+        int deep_colon = parser_pslr_eventually_accepts_token(p, ':');
+        int deep_sym = parser_pslr_eventually_accepts_token(p, tSYMBEG);
+        if (deep_colon && !deep_sym) return TRUE;
+        if (deep_sym && !deep_colon) return FALSE;
+    }
     return ISSPACE(c) || c == '#';
 }
 
@@ -987,6 +1014,12 @@ parser_pslr_lbrack_arg_fallback_p(struct parser_params *p, int space_seen)
     if (!space_seen) return FALSE;
     if (parser_pslr_arg_state_fallback_p(p)) return TRUE;
     if (accepts_plain + accepts_lbrack == 1) return accepts_lbrack;
+    /* Deep PSLR: check after lex_state fallback to avoid overriding it */
+    {
+        int deep_plain = parser_pslr_eventually_accepts_token(p, '[');
+        int deep_lbrack = parser_pslr_eventually_accepts_token(p, tLBRACK);
+        if (deep_plain + deep_lbrack == 1) return deep_lbrack;
+    }
     return FALSE;
 }
 

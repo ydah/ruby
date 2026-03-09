@@ -616,6 +616,70 @@ yy_state_accepts_token (int yystate, int yychar)
   return 1;
 }
 
+/*
+ * Like yy_state_accepts_token, but also follows chains of default reductions
+ * where the rule has zero symbols on the right-hand side (yyr2 == 0).
+ * This allows the lexer to see tokens that become visible only after
+ * empty productions are reduced (e.g., opt_terms -> epsilon).
+ *
+ * Returns 1 if the token would be accepted in the current state or in a
+ * state reachable via a chain of empty default reductions; 0 otherwise.
+ */
+int
+yy_state_eventually_accepts_token (int yystate, int yychar)
+{
+  yysymbol_kind_t yytoken = YYTRANSLATE (yychar);
+  /* Limit iteration to prevent infinite loops from cyclic empty reductions. */
+  int visited[64];
+  int visited_count = 0;
+
+  for (;;)
+    {
+      int yyn;
+
+      /* 1. Check the current state's action table for the token. */
+      yyn = yypact[yystate];
+      if (!yypact_value_is_default (yyn))
+        {
+          yyn += yytoken;
+          if (0 <= yyn && yyn <= YYLAST && yycheck[yyn] == yytoken)
+            {
+              yyn = yytable[yyn];
+              if (yyn > 0 || !yytable_value_is_error (yyn))
+                return 1;
+            }
+        }
+
+      /* 2. Try to follow the default reduction if it's an empty rule. */
+      {
+        int rule = yydefact[yystate];
+        int lhs, goto_state;
+        int i;
+
+        if (rule == 0 || yyr2[rule] != 0)
+          return 0;  /* No default or non-empty rule: can't proceed. */
+
+        /* Cycle detection. */
+        for (i = 0; i < visited_count; i++)
+          if (visited[i] == yystate)
+            return 0;
+        if (visited_count < 64)
+          visited[visited_count++] = yystate;
+        else
+          return 0;
+
+        /* Compute GOTO state after reducing by the empty rule. */
+        lhs = yyr1[rule] - YYNTOKENS;
+        goto_state = yypgoto[lhs] + yystate;
+        if (0 <= goto_state && goto_state <= YYLAST
+            && yycheck[goto_state] == yystate)
+          yystate = yytable[goto_state];
+        else
+          yystate = yydefgoto[lhs];
+      }
+    }
+}
+
 enum { YYENOMEM = -2 };
 
 #define yyerrok         (yyerrstatus = 0)
