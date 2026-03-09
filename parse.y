@@ -1060,12 +1060,25 @@ parser_pslr_do_token(struct parser_params *p)
     int accepts_block = parser_pslr_accepts_token(p, keyword_do_block);
     int accepts_plain = parser_pslr_accepts_token(p, keyword_do);
 
-    if (accepts_lambda + accepts_cond + accepts_block + accepts_plain != 1) return 0;
-
-    if (accepts_lambda) return keyword_do_LAMBDA;
-    if (accepts_cond) return keyword_do_cond;
-    if (accepts_block) return keyword_do_block;
-    if (accepts_plain) return keyword_do;
+    if (accepts_lambda + accepts_cond + accepts_block + accepts_plain == 1) {
+        if (accepts_lambda) return keyword_do_LAMBDA;
+        if (accepts_cond) return keyword_do_cond;
+        if (accepts_block) return keyword_do_block;
+        return keyword_do;
+    }
+    /* Deep PSLR */
+    {
+        int deep_lambda = parser_pslr_eventually_accepts_token(p, keyword_do_LAMBDA);
+        int deep_cond = parser_pslr_eventually_accepts_token(p, keyword_do_cond);
+        int deep_block = parser_pslr_eventually_accepts_token(p, keyword_do_block);
+        int deep_plain = parser_pslr_eventually_accepts_token(p, keyword_do);
+        if (deep_lambda + deep_cond + deep_block + deep_plain == 1) {
+            if (deep_lambda) return keyword_do_LAMBDA;
+            if (deep_cond) return keyword_do_cond;
+            if (deep_block) return keyword_do_block;
+            return keyword_do;
+        }
+    }
     return 0;
 }
 
