@@ -988,8 +988,16 @@ parser_pslr_lparen_arg_fallback_p(struct parser_params *p, int space_seen)
 
     if (!space_seen) return FALSE;
     if (accepts_plain + accepts_paren + accepts_arg == 1) return accepts_arg;
-    return space_seen &&
-           (parser_pslr_arg_state_fallback_p(p) || parser_pslr_accepts_token(p, tLPAREN_ARG));
+    if (parser_pslr_arg_state_fallback_p(p)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLPAREN_ARG)) return TRUE;
+    /* Deep PSLR: after lex_state fallback, check if tLPAREN_ARG uniquely reachable */
+    {
+        int deep_plain = parser_pslr_eventually_accepts_token(p, '(');
+        int deep_paren = parser_pslr_eventually_accepts_token(p, tLPAREN);
+        int deep_arg = parser_pslr_eventually_accepts_token(p, tLPAREN_ARG);
+        if (deep_plain + deep_paren + deep_arg == 1) return deep_arg;
+    }
+    return FALSE;
 }
 
 static inline int
