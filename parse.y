@@ -999,10 +999,23 @@ parser_pslr_lparen_token(struct parser_params *p)
     int accepts_paren = parser_pslr_accepts_token(p, tLPAREN);
     int accepts_arg = parser_pslr_accepts_token(p, tLPAREN_ARG);
 
-    if (accepts_plain + accepts_paren + accepts_arg != 1) return 0;
-    if (accepts_plain) return '(';
-    if (accepts_paren) return tLPAREN;
-    return tLPAREN_ARG;
+    if (accepts_plain + accepts_paren + accepts_arg == 1) {
+        if (accepts_plain) return '(';
+        if (accepts_paren) return tLPAREN;
+        return tLPAREN_ARG;
+    }
+    /* Deep PSLR */
+    {
+        int deep_plain = parser_pslr_eventually_accepts_token(p, '(');
+        int deep_paren = parser_pslr_eventually_accepts_token(p, tLPAREN);
+        int deep_arg = parser_pslr_eventually_accepts_token(p, tLPAREN_ARG);
+        if (deep_plain + deep_paren + deep_arg == 1) {
+            if (deep_plain) return '(';
+            if (deep_paren) return tLPAREN;
+            return tLPAREN_ARG;
+        }
+    }
+    return 0;
 }
 
 static inline int
