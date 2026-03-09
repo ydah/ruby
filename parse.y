@@ -1049,6 +1049,15 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
     if (accepts_hash + accepts_primary_block + accepts_expr_block == 1) {
         return accepts_primary_block;
     }
+    /* Deep PSLR: check if primary block uniquely reachable via empty reductions */
+    {
+        int deep_hash = parser_pslr_eventually_accepts_token(p, tLBRACE);
+        int deep_primary = parser_pslr_eventually_accepts_token(p, '{');
+        int deep_expr = parser_pslr_eventually_accepts_token(p, tLBRACE_ARG);
+        if (deep_hash + deep_primary + deep_expr == 1) {
+            return deep_primary;
+        }
+    }
     return FALSE;
 }
 
