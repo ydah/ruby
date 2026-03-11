@@ -11589,7 +11589,32 @@ parser_yylex(struct parser_params *p)
         return warn_balanced('-', "-", "unary operator");
 
       case '.': {
-        int is_beg = IS_BEG();
+        int is_beg;
+        /* Try PSLR first for tBDOT vs tDOT disambiguation */
+        if (parser_pslr_prefers_token_p(p, tBDOT2, tDOT2) ||
+            parser_pslr_prefers_token_p(p, tBDOT3, tDOT3)) {
+            is_beg = TRUE;
+        }
+        else if (parser_pslr_prefers_token_p(p, tDOT2, tBDOT2) ||
+                 parser_pslr_prefers_token_p(p, tDOT3, tBDOT3)) {
+            is_beg = FALSE;
+        }
+        /* Deep PSLR: trace empty reductions for dot disambiguation */
+        else if ((parser_pslr_eventually_accepts_token(p, tBDOT2) &&
+                  !parser_pslr_eventually_accepts_token(p, tDOT2)) ||
+                 (parser_pslr_eventually_accepts_token(p, tBDOT3) &&
+                  !parser_pslr_eventually_accepts_token(p, tDOT3))) {
+            is_beg = TRUE;
+        }
+        else if ((parser_pslr_eventually_accepts_token(p, tDOT2) &&
+                  !parser_pslr_eventually_accepts_token(p, tBDOT2)) ||
+                 (parser_pslr_eventually_accepts_token(p, tDOT3) &&
+                  !parser_pslr_eventually_accepts_token(p, tBDOT3))) {
+            is_beg = FALSE;
+        }
+        else {
+            is_beg = IS_BEG();
+        }
         SET_LEX_STATE(EXPR_BEG);
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
