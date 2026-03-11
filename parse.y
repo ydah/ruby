@@ -11542,6 +11542,8 @@ parser_yylex(struct parser_params *p)
             return tOP_ASGN;
         }
         if (parser_pslr_prefers_token_p(p, tUPLUS, '+') ||
+            (parser_pslr_eventually_accepts_token(p, tUPLUS) &&
+             !parser_pslr_eventually_accepts_token(p, '+')) ||
             IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
             SET_LEX_STATE(EXPR_BEG);
             pushback(p, c);
@@ -11576,6 +11578,8 @@ parser_yylex(struct parser_params *p)
             return tLAMBDA;
         }
         if (parser_pslr_prefers_token_p(p, tUMINUS, '-') ||
+            (parser_pslr_eventually_accepts_token(p, tUMINUS) &&
+             !parser_pslr_eventually_accepts_token(p, '-')) ||
             IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
             SET_LEX_STATE(EXPR_BEG);
             pushback(p, c);
