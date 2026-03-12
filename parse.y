@@ -18,6 +18,16 @@
 #define YYERROR_VERBOSE 1
 #define YYSTACK_USE_ALLOCA 0
 
+/* Override YYSETSTATE_CONTEXT to also expose parser stack for deep PSLR analysis */
+#define YYSETSTATE_CONTEXT(CurrentState) \
+  do { \
+    if (p != 0) { \
+      p->pslr_current_state = (CurrentState); \
+      p->pslr_stack_base = (const void *)yyss; \
+      p->pslr_stack_top = (const void *)yyssp; \
+    } \
+  } while (0)
+
 /* For Ripper */
 #ifdef RUBY_EXTCONF_H
 # include RUBY_EXTCONF_H
@@ -556,6 +566,8 @@ struct parser_params {
 
     struct lex_context ctxt;
     int pslr_current_state;
+    const void *pslr_stack_base;   /* yy_state_t *yyss */
+    const void *pslr_stack_top;    /* yy_state_t *yyssp */
 
     NODE *eval_tree_begin;
     NODE *eval_tree;
@@ -615,6 +627,20 @@ struct parser_params {
 
 int yy_state_accepts_token(int yystate, int token);
 int yy_state_eventually_accepts_token(int yystate, int token);
+int yy_state_deep_accepts_token(int yystate, int yychar,
+                                const void *stack_base, const void *stack_top);
+
+/* Stack-aware deep token acceptance: traces through BOTH empty and non-empty
+ * default reductions using the actual parser stack. This can see tokens that
+ * become visible after reductions like stmt -> expr (yyr2 > 0). */
+static inline int
+parser_pslr_deep_accepts_token(struct parser_params *p, int token)
+{
+    return p->pslr_current_state >= 0 &&
+           p->pslr_stack_base && p->pslr_stack_top &&
+           yy_state_deep_accepts_token(p->pslr_current_state, token,
+                                       p->pslr_stack_base, p->pslr_stack_top);
+}
 
 static inline int
 parser_pslr_accepts_token(struct parser_params *p, int token)
@@ -1108,12 +1134,20 @@ parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_to
     if (accepts_keyword + accepts_modifier == 1) {
         return accepts_keyword ? keyword_token : modifier_token;
     }
-    /* Deep PSLR */
+    /* Deep PSLR (empty reductions only) */
     {
         int deep_keyword = parser_pslr_eventually_accepts_token(p, keyword_token);
         int deep_modifier = parser_pslr_eventually_accepts_token(p, modifier_token);
         if (deep_keyword + deep_modifier == 1) {
             return deep_keyword ? keyword_token : modifier_token;
+        }
+    }
+    /* Stack-aware deep PSLR (follows non-empty reductions using actual stack) */
+    {
+        int stack_keyword = parser_pslr_deep_accepts_token(p, keyword_token);
+        int stack_modifier = parser_pslr_deep_accepts_token(p, modifier_token);
+        if (stack_keyword + stack_modifier == 1) {
+            return stack_keyword ? keyword_token : modifier_token;
         }
     }
     return 0;
