@@ -1130,25 +1130,22 @@ parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_to
 {
     int accepts_keyword = parser_pslr_accepts_token(p, keyword_token);
     int accepts_modifier = parser_pslr_accepts_token(p, modifier_token);
+    int deep_keyword, deep_modifier, stack_keyword, stack_modifier;
 
     if (accepts_keyword + accepts_modifier == 1) {
         return accepts_keyword ? keyword_token : modifier_token;
     }
     /* Deep PSLR (empty reductions only) */
-    {
-        int deep_keyword = parser_pslr_eventually_accepts_token(p, keyword_token);
-        int deep_modifier = parser_pslr_eventually_accepts_token(p, modifier_token);
-        if (deep_keyword + deep_modifier == 1) {
-            return deep_keyword ? keyword_token : modifier_token;
-        }
+    deep_keyword = parser_pslr_eventually_accepts_token(p, keyword_token);
+    deep_modifier = parser_pslr_eventually_accepts_token(p, modifier_token);
+    if (deep_keyword + deep_modifier == 1) {
+        return deep_keyword ? keyword_token : modifier_token;
     }
     /* Stack-aware deep PSLR (follows non-empty reductions using actual stack) */
-    {
-        int stack_keyword = parser_pslr_deep_accepts_token(p, keyword_token);
-        int stack_modifier = parser_pslr_deep_accepts_token(p, modifier_token);
-        if (stack_keyword + stack_modifier == 1) {
-            return stack_keyword ? keyword_token : modifier_token;
-        }
+    stack_keyword = parser_pslr_deep_accepts_token(p, keyword_token);
+    stack_modifier = parser_pslr_deep_accepts_token(p, modifier_token);
+    if (stack_keyword + stack_modifier == 1) {
+        return stack_keyword ? keyword_token : modifier_token;
     }
     return 0;
 }
@@ -11013,6 +11010,9 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
             if (kw->id[0] == kw->id[1]) {
                 return kw->id[0];
             }
+            /* keyword_variant cannot disambiguate modifier keywords here:
+             * in CMDARG context, deep check finds keyword form via new-statement
+             * path but misses modifier form (shift action, not on default path) */
             if (parser_pslr_reserved_word_begin_p(p, state)) {
                 return kw->id[0];
             }
@@ -11277,6 +11277,14 @@ parser_yylex(struct parser_params *p)
                      !parser_pslr_eventually_accepts_token(p, tDSTAR)) {
                 c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
             }
+            else if (parser_pslr_deep_accepts_token(p, tDSTAR) &&
+                     !parser_pslr_deep_accepts_token(p, tPOW)) {
+                c = tDSTAR;
+            }
+            else if (parser_pslr_deep_accepts_token(p, tPOW) &&
+                     !parser_pslr_deep_accepts_token(p, tDSTAR)) {
+                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
             else if (IS_SPCARG(c)) {
                 rb_warning0("'**' interpreted as argument prefix");
                 c = tDSTAR;
@@ -11307,6 +11315,14 @@ parser_yylex(struct parser_params *p)
             }
             else if (parser_pslr_eventually_accepts_token(p, '*') &&
                      !parser_pslr_eventually_accepts_token(p, tSTAR)) {
+                c = warn_balanced('*', "*", "argument prefix");
+            }
+            else if (parser_pslr_deep_accepts_token(p, tSTAR) &&
+                     !parser_pslr_deep_accepts_token(p, '*')) {
+                c = tSTAR;
+            }
+            else if (parser_pslr_deep_accepts_token(p, '*') &&
+                     !parser_pslr_deep_accepts_token(p, tSTAR)) {
                 c = warn_balanced('*', "*", "argument prefix");
             }
             else if (IS_SPCARG(c)) {
@@ -11515,6 +11531,14 @@ parser_yylex(struct parser_params *p)
         }
         else if (parser_pslr_eventually_accepts_token(p, '&') &&
                  !parser_pslr_eventually_accepts_token(p, tAMPER)) {
+            c = '&';
+        }
+        else if (parser_pslr_deep_accepts_token(p, tAMPER) &&
+                 !parser_pslr_deep_accepts_token(p, '&')) {
+            c = tAMPER;
+        }
+        else if (parser_pslr_deep_accepts_token(p, '&') &&
+                 !parser_pslr_deep_accepts_token(p, tAMPER)) {
             c = '&';
         }
         else if (IS_SPCARG(c)) {
