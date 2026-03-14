@@ -991,6 +991,15 @@ parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
     else if (parser_pslr_eventually_accepts_token(p, tCOLON2)) {
         return FALSE;
     }
+    /* Stack-aware deep PSLR */
+    if (parser_pslr_deep_accepts_token(p, tCOLON3) &&
+        !parser_pslr_deep_accepts_token(p, tCOLON2)) {
+        return TRUE;
+    }
+    if (parser_pslr_deep_accepts_token(p, tCOLON2) &&
+        !parser_pslr_deep_accepts_token(p, tCOLON3)) {
+        return FALSE;
+    }
     /* Fallback: both eventually accepted or neither */
     return IS_lex_state_for(p->lex.state, EXPR_BEG | EXPR_MID) ||
            parser_pslr_begin_like_p(p);
