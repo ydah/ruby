@@ -947,11 +947,17 @@ parser_pslr_qmark_is_ternary_p(struct parser_params *p)
     int accepts_char = parser_pslr_accepts_token(p, tCHAR);
 
     if (accepts_ternary + accepts_char == 1) return accepts_ternary;
-    /* Deep PSLR */
+    /* Deep PSLR (empty reductions) */
     {
         int deep_ternary = parser_pslr_eventually_accepts_token(p, '?');
         int deep_char = parser_pslr_eventually_accepts_token(p, tCHAR);
         if (deep_ternary + deep_char == 1) return deep_ternary;
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_ternary = parser_pslr_deep_accepts_token(p, '?');
+        int stack_char = parser_pslr_deep_accepts_token(p, tCHAR);
+        if (stack_ternary + stack_char == 1) return stack_ternary;
     }
     return parser_pslr_end_state_fallback_p(p);
 }
@@ -11416,6 +11422,13 @@ parser_yylex(struct parser_params *p)
             (parser_pslr_eventually_accepts_token(p, tSTRING_BEG) ||
              parser_pslr_eventually_accepts_token(p, tXSTRING_BEG)) &&
             !parser_pslr_eventually_accepts_token(p, tLSHFT)) {
+            enum  yytokentype token = heredoc_identifier(p);
+            if (token) return token < 0 ? 0 : token;
+        }
+        if (c == '<' &&
+            (parser_pslr_deep_accepts_token(p, tSTRING_BEG) ||
+             parser_pslr_deep_accepts_token(p, tXSTRING_BEG)) &&
+            !parser_pslr_deep_accepts_token(p, tLSHFT)) {
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
         }
