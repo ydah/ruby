@@ -1053,7 +1053,7 @@ parser_pslr_lparen_token(struct parser_params *p)
         if (accepts_paren) return tLPAREN;
         return tLPAREN_ARG;
     }
-    /* Deep PSLR */
+    /* Deep PSLR (empty reductions) */
     {
         int deep_plain = parser_pslr_eventually_accepts_token(p, '(');
         int deep_paren = parser_pslr_eventually_accepts_token(p, tLPAREN);
@@ -1061,6 +1061,17 @@ parser_pslr_lparen_token(struct parser_params *p)
         if (deep_plain + deep_paren + deep_arg == 1) {
             if (deep_plain) return '(';
             if (deep_paren) return tLPAREN;
+            return tLPAREN_ARG;
+        }
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_plain = parser_pslr_deep_accepts_token(p, '(');
+        int stack_paren = parser_pslr_deep_accepts_token(p, tLPAREN);
+        int stack_arg = parser_pslr_deep_accepts_token(p, tLPAREN_ARG);
+        if (stack_plain + stack_paren + stack_arg == 1) {
+            if (stack_plain) return '(';
+            if (stack_paren) return tLPAREN;
             return tLPAREN_ARG;
         }
     }
@@ -1081,6 +1092,12 @@ parser_pslr_lbrack_arg_fallback_p(struct parser_params *p, int space_seen)
         int deep_plain = parser_pslr_eventually_accepts_token(p, '[');
         int deep_lbrack = parser_pslr_eventually_accepts_token(p, tLBRACK);
         if (deep_plain + deep_lbrack == 1) return deep_lbrack;
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_plain = parser_pslr_deep_accepts_token(p, '[');
+        int stack_lbrack = parser_pslr_deep_accepts_token(p, tLBRACK);
+        if (stack_plain + stack_lbrack == 1) return stack_lbrack;
     }
     return FALSE;
 }
@@ -1105,6 +1122,15 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
         int deep_expr = parser_pslr_eventually_accepts_token(p, tLBRACE_ARG);
         if (deep_hash + deep_primary + deep_expr == 1) {
             return deep_primary;
+        }
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_hash = parser_pslr_deep_accepts_token(p, tLBRACE);
+        int stack_primary = parser_pslr_deep_accepts_token(p, '{');
+        int stack_expr = parser_pslr_deep_accepts_token(p, tLBRACE_ARG);
+        if (stack_hash + stack_primary + stack_expr == 1) {
+            return stack_primary;
         }
     }
     return FALSE;
@@ -1134,6 +1160,19 @@ parser_pslr_do_token(struct parser_params *p)
             if (deep_lambda) return keyword_do_LAMBDA;
             if (deep_cond) return keyword_do_cond;
             if (deep_block) return keyword_do_block;
+            return keyword_do;
+        }
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_lambda = parser_pslr_deep_accepts_token(p, keyword_do_LAMBDA);
+        int stack_cond = parser_pslr_deep_accepts_token(p, keyword_do_cond);
+        int stack_block = parser_pslr_deep_accepts_token(p, keyword_do_block);
+        int stack_plain = parser_pslr_deep_accepts_token(p, keyword_do);
+        if (stack_lambda + stack_cond + stack_block + stack_plain == 1) {
+            if (stack_lambda) return keyword_do_LAMBDA;
+            if (stack_cond) return keyword_do_cond;
+            if (stack_block) return keyword_do_block;
             return keyword_do;
         }
     }
@@ -11100,6 +11139,17 @@ parser_pslr_lbrace_token(struct parser_params *p)
         if (deep_hash + deep_primary + deep_expr == 1) {
             if (deep_expr) return tLBRACE_ARG;
             if (deep_primary) return '{';
+            return tLBRACE;
+        }
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_hash = parser_pslr_deep_accepts_token(p, tLBRACE);
+        int stack_primary = parser_pslr_deep_accepts_token(p, '{');
+        int stack_expr = parser_pslr_deep_accepts_token(p, tLBRACE_ARG);
+        if (stack_hash + stack_primary + stack_expr == 1) {
+            if (stack_expr) return tLBRACE_ARG;
+            if (stack_primary) return '{';
             return tLBRACE;
         }
     }
