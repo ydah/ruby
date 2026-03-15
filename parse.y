@@ -711,37 +711,6 @@ parser_pslr_accepts_call_name_p(struct parser_params *p)
 }
 
 static inline int
-parser_pslr_accepts_identifier_family_p(struct parser_params *p)
-{
-    return parser_pslr_accepts_token(p, tIDENTIFIER) ||
-           parser_pslr_accepts_token(p, tFID) ||
-           parser_pslr_accepts_token(p, tCONSTANT);
-}
-
-static inline int
-parser_pslr_next_nonspace_char(struct parser_params *p)
-{
-    const char *ptr = p->lex.pcur;
-
-    while (ptr < p->lex.pend) {
-        int c = (unsigned char)*ptr;
-        switch (c) {
-          case ' ':
-          case '\t':
-          case '\f':
-          case '\r':
-          case '\13':
-            ptr++;
-            continue;
-          default:
-            return c;
-        }
-    }
-
-    return -1;
-}
-
-static inline int
 parser_pslr_pending_def_body_p(struct parser_params *p)
 {
     if (!parser_pslr_context_is(p, YY_CTX_ENDFN)) return FALSE;
@@ -749,22 +718,6 @@ parser_pslr_pending_def_body_p(struct parser_params *p)
     return !parser_pslr_accepts_expr_beg_token_p(p);
 }
 
-static inline int
-parser_pslr_force_expr_beg_p(struct parser_params *p)
-{
-    if (!parser_pslr_context_is(p, YY_CTX_ENDFN)) return FALSE;
-    if (parser_pslr_accepts_expr_beg_token_p(p)) return TRUE;
-    if (parser_pslr_pending_def_body_p(p)) {
-        int c = parser_pslr_next_nonspace_char(p);
-
-        if (c == '=') return FALSE;
-        if (c == '\n' || c == '#') {
-            return !parser_pslr_accepts_token(p, '(');
-        }
-        return c != -1;
-    }
-    return FALSE;
-}
 
 static inline int
 parser_pslr_expects_fname_p(struct parser_params *p)
@@ -815,17 +768,6 @@ static inline int
 parser_pslr_after_operator_p(struct parser_params *p)
 {
     return parser_pslr_after_dot_p(p) || parser_pslr_expects_fname_p(p);
-}
-
-static inline int
-parser_pslr_pattern_const_kwargs_context_p(struct parser_params *p)
-{
-    if (!p->ctxt.in_kwarg) return FALSE;
-    if (!parser_pslr_accepts_token(p, '(')) return FALSE;
-    if (!parser_pslr_accepts_token(p, '[')) return FALSE;
-    if (!parser_pslr_accepts_token(p, tCOLON2)) return FALSE;
-    if (parser_pslr_accepts_token(p, tINTEGER)) return FALSE;
-    return !parser_pslr_accepts_token(p, tSTRING_BEG);
 }
 
 static inline int
@@ -912,17 +854,6 @@ parser_pslr_reserved_word_begin_p(struct parser_params *p)
 {
     if (parser_pslr_after_labeled_state_p(p)) return TRUE;
     return parser_pslr_context_is(p, YY_CTX_BEG);
-}
-
-static inline int
-parser_pslr_ident_leaves_arg_state_p(struct parser_params *p)
-{
-    if (!parser_pslr_expects_fname_p(p) && parser_pslr_accepts_identifier_family_p(p)) return TRUE;
-    if (parser_pslr_begin_like_p(p)) return TRUE;
-    if (parser_pslr_after_dot_p(p)) return TRUE;
-    if (parser_pslr_accepts_token(p, tLPAREN_ARG)) return TRUE;
-    if (parser_pslr_accepts_token(p, tLBRACE_ARG)) return TRUE;
-    return parser_pslr_accepts_token(p, tLABEL);
 }
 
 static inline int
@@ -6703,7 +6634,7 @@ string_content	: tSTRING_CONTENT[content]
                         /* need to backup p->lex.strterm so that a string literal `%&foo,#$&,bar&` can be parsed */
                         $$ = p->lex.strterm;
                         p->lex.strterm = 0;
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                     }[strterm]<strterm>
                   string_dvar[dvar]
                     {
@@ -6719,7 +6650,7 @@ string_content	: tSTRING_CONTENT[content]
                         /* need to backup p->lex.strterm so that a string literal `%!foo,#{ !0 },bar!` can be parsed */
                         $$ = p->lex.strterm;
                         p->lex.strterm = 0;
-                        SET_LEX_STATE(EXPR_BEG);
+                        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                     }[term]<strterm>
                     {
                         $$ = p->lex.brace_nest;
@@ -9236,15 +9167,15 @@ parser_string_term(struct parser_params *p, int func)
     if (func & STR_FUNC_REGEXP) {
         set_yylval_num(regx_options(p));
         dispatch_scan_event(p, tREGEXP_END);
-        SET_LEX_STATE(EXPR_END);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
         return tREGEXP_END;
     }
     if ((func & STR_FUNC_LABEL) && IS_LABEL_SUFFIX(0)) {
         nextc(p);
-        SET_LEX_STATE(EXPR_ARG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ARG); */
         return tLABEL_END;
     }
-    SET_LEX_STATE(EXPR_END);
+    /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
     return tSTRING_END;
 }
 
@@ -9261,7 +9192,7 @@ parse_string(struct parser_params *p, rb_strterm_literal_t *quote)
 
     if (func & STR_FUNC_TERM) {
         if (func & STR_FUNC_QWORDS) nextc(p); /* delayed term */
-        SET_LEX_STATE(EXPR_END);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
         xfree(p->lex.strterm);
         p->lex.strterm = 0;
         return func & STR_FUNC_REGEXP ? tREGEXP_END : tSTRING_END;
@@ -9629,7 +9560,7 @@ set_number_literal(struct parser_params *p, enum yytokentype type, int suffix, i
       default:
         rb_bug("unexpected token: %d", type);
     }
-    SET_LEX_STATE(EXPR_END);
+    /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
     return type;
 }
 
@@ -9705,7 +9636,7 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
         compile_error(p, "can't find string \"%.*s\" anywhere before EOF",
                       (int)len, eos);
         token_flush(p);
-        SET_LEX_STATE(EXPR_END);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
         return tSTRING_END;
     }
     bol = was_bol(p);
@@ -9724,7 +9655,7 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
       restore:
         heredoc_restore(p, &p->lex.strterm->u.heredoc);
         token_flush(p);
-        SET_LEX_STATE(EXPR_END);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
         return tSTRING_END;
     }
 
@@ -10337,7 +10268,7 @@ parse_numeric(struct parser_params *p, int c)
     int suffix;
 
     is_float = seen_point = seen_e = nondigit = 0;
-    SET_LEX_STATE(EXPR_END);
+    /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
     newtok(p);
     if (c == '-' || c == '+') {
         tokadd(p, c);
@@ -10574,7 +10505,7 @@ parse_qmark(struct parser_params *p, int space_seen)
     const char *start = p->lex.pcur;
 
     if (parser_pslr_qmark_is_ternary_p(p)) {
-        SET_LEX_STATE(EXPR_VALUE);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_VALUE); */
         return '?';
     }
     c = nextc(p);
@@ -10591,7 +10522,7 @@ parse_qmark(struct parser_params *p, int space_seen)
         }
       ternary:
         pushback(p, c);
-        SET_LEX_STATE(EXPR_VALUE);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_VALUE); */
         return '?';
     }
     newtok(p);
@@ -10633,7 +10564,7 @@ parse_qmark(struct parser_params *p, int space_seen)
     tokfix(p);
     lit = STR_NEW3(tok(p), toklen(p), enc, 0);
     set_yylval_str(lit);
-    SET_LEX_STATE(EXPR_END);
+    /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
     return tCHAR;
 }
 
@@ -10726,13 +10657,13 @@ parse_percent(struct parser_params *p, const int space_seen)
     }
     if ((c = nextc(p)) == '=') {
         set_yylval_id('%');
-        SET_LEX_STATE(EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
         return tOP_ASGN;
     }
     if (IS_SPCARG(c)) {
         goto quotation;
     }
-    SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+    /* PSLRによりlex_state不要: SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG); */
     pushback(p, c);
     return warn_balanced('%', "%%", "string literal");
 }
@@ -10786,7 +10717,7 @@ parse_gvar(struct parser_params *p)
     const int expects_fname = parser_pslr_expects_fname_p(p);
     register int c;
 
-    SET_LEX_STATE(EXPR_END);
+    /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
     p->lex.ptok = ptr - 1; /* from '$' */
     newtok(p);
     c = nextc(p);
@@ -10884,7 +10815,7 @@ parse_gvar(struct parser_params *p)
     }
 
     if (tokadd_ident(p, c)) return 0;
-    SET_LEX_STATE(EXPR_END);
+    /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
     if (VALID_SYMNAME_P(tok(p), toklen(p), p->enc, ID_GLOBAL)) {
         tokenize_ident(p);
     }
@@ -10921,7 +10852,6 @@ static enum yytokentype
 parse_atmark(struct parser_params *p)
 {
     const char *ptr = p->lex.pcur;
-    const int expects_fname = parser_pslr_expects_fname_p(p);
     enum yytokentype result = tIVAR;
     register int c = nextc(p);
     YYLTYPE loc;
@@ -10934,7 +10864,7 @@ parse_atmark(struct parser_params *p)
         tokadd(p, '@');
         c = nextc(p);
     }
-    SET_LEX_STATE(expects_fname ? EXPR_ENDFN : EXPR_END);
+    /* PSLRによりlex_state不要: SET_LEX_STATE(expects_fname ? EXPR_ENDFN : EXPR_END); */
     if (c == -1 || !parser_is_identchar(p)) {
         pushback(p, c);
         RUBY_SET_YYLLOC(loc);
@@ -10946,7 +10876,7 @@ parse_atmark(struct parser_params *p)
         }
         parser_show_error_line(p, &loc);
         set_yylval_noname();
-        SET_LEX_STATE(EXPR_END);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
         return result;
     }
     else if (ISDIGIT(c)) {
@@ -10960,7 +10890,7 @@ parse_atmark(struct parser_params *p)
         }
         parser_show_error_line(p, &loc);
         set_yylval_noname();
-        SET_LEX_STATE(EXPR_END);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
         return result;
     }
 
@@ -11001,7 +10931,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     if (IS_LABEL_SUFFIX(0)) {
         if (parser_pslr_prefers_label_token_p(p, toklen(p)) || IS_LABEL_POSSIBLE()) {
             /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ARG|EXPR_LABELED); */
-            SET_LEX_STATE(EXPR_ARG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ARG); */
             nextc(p);
             tokenize_ident(p);
             return tLABEL;
@@ -11043,18 +10973,18 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
             enum yytokentype do_token = 0;
             enum yytokentype keyword_variant = 0;
             if (expects_fname) {
-                SET_LEX_STATE(EXPR_ENDFN);
+                /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ENDFN); */
                 set_yylval_name(rb_intern2(tok(p), toklen(p)));
                 return kw->id[0];
             }
-            SET_LEX_STATE(kw->state);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(kw->state); */
             if (parser_pslr_keyword_sets_command_start_p(kw->id[0])) {
                 p->command_start = TRUE;
             }
             if (kw->id[0] == keyword_rescue) {
                 keyword_variant = parser_pslr_keyword_variant(p, keyword_rescue, modifier_rescue);
                 if (keyword_variant == modifier_rescue) {
-                    SET_LEX_STATE(EXPR_BEG);
+                    /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                     return modifier_rescue;
                 }
                 if (keyword_variant == keyword_rescue) {
@@ -11092,37 +11022,14 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 return kw->id[0];
             }
             else {
-                SET_LEX_STATE(EXPR_BEG);
+                /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                 return kw->id[1];
             }
         }
     }
 
-    if (cmd_state && !after_dot && !expects_fname) {
-        SET_LEX_STATE(EXPR_CMDARG);
-    }
-    else if (parser_pslr_ident_leaves_arg_state_p(p)) {
-        if (cmd_state) {
-            SET_LEX_STATE(EXPR_CMDARG);
-        }
-        else {
-            SET_LEX_STATE(EXPR_ARG);
-        }
-    }
-    else if (expects_fname) {
-        SET_LEX_STATE(EXPR_ENDFN);
-    }
-    else {
-        SET_LEX_STATE(EXPR_END);
-    }
-
     ident = tokenize_ident(p);
     if (result == tCONSTANT && is_local_id(ident)) result = tIDENTIFIER;
-    if (!after_dot && !expects_fname &&
-        (result == tIDENTIFIER) && /* not EXPR_FNAME, not attrasgn */
-        (lvar_defined(p, ident) || NUMPARAM_ID_P(ident))) {
-        SET_LEX_STATE(EXPR_END);
-    }
     return result;
 }
 
@@ -11196,9 +11103,6 @@ parser_yylex(struct parser_params *p)
             token_flush(p);
             return parse_string(p, &p->lex.strterm->u.literal);
         }
-    }
-    if (parser_pslr_force_expr_beg_p(p)) {
-        SET_LEX_STATE(EXPR_BEG);
     }
     cmd_state = p->command_start;
     p->command_start = FALSE;
@@ -11338,14 +11242,14 @@ parser_yylex(struct parser_params *p)
         }
       normal_newline:
         p->command_start = TRUE;
-        SET_LEX_STATE(EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
         return '\n';
 
       case '*':
         if ((c = nextc(p)) == '*') {
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idPow);
-                SET_LEX_STATE(EXPR_BEG);
+                /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -11385,7 +11289,7 @@ parser_yylex(struct parser_params *p)
         else {
             if (c == '=') {
                 set_yylval_id('*');
-                SET_LEX_STATE(EXPR_BEG);
+                /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -11422,19 +11326,15 @@ parser_yylex(struct parser_params *p)
                 c = warn_balanced('*', "*", "argument prefix");
             }
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG); */
         return c;
 
       case '!':
         c = nextc(p);
         if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
             if (c == '@') {
                 return '!';
             }
-        }
-        else {
-            SET_LEX_STATE(EXPR_BEG);
         }
         if (c == '=') {
             return tNEQ;
@@ -11475,7 +11375,7 @@ parser_yylex(struct parser_params *p)
             }
         }
 
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG); */
         if ((c = nextc(p)) == '=') {
             if ((c = nextc(p)) == '=') {
                 return tEQQ;
@@ -11516,13 +11416,9 @@ parser_yylex(struct parser_params *p)
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
         }
-        if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
-        }
-        else {
+        if (!IS_AFTER_OPERATOR()) {
             if (parser_pslr_class_context_p(p))
                 p->command_start = TRUE;
-            SET_LEX_STATE(EXPR_BEG);
         }
         if (c == '=') {
             if ((c = nextc(p)) == '>') {
@@ -11534,7 +11430,7 @@ parser_yylex(struct parser_params *p)
         if (c == '<') {
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idLTLT);
-                SET_LEX_STATE(EXPR_BEG);
+                /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -11544,14 +11440,14 @@ parser_yylex(struct parser_params *p)
         return '<';
 
       case '>':
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG); */
         if ((c = nextc(p)) == '=') {
             return tGEQ;
         }
         if (c == '>') {
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idGTGT);
-                SET_LEX_STATE(EXPR_BEG);
+                /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -11568,14 +11464,10 @@ parser_yylex(struct parser_params *p)
 
       case '`':
         if (parser_pslr_expects_fname_p(p)) {
-            SET_LEX_STATE(EXPR_ENDFN);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ENDFN); */
             return c;
         }
         if (parser_pslr_after_dot_p(p)) {
-            if (cmd_state)
-                SET_LEX_STATE(EXPR_CMDARG);
-            else
-                SET_LEX_STATE(EXPR_ARG);
             return c;
         }
         p->lex.strterm = NEW_STRTERM(str_xquote, '`', 0);
@@ -11592,10 +11484,10 @@ parser_yylex(struct parser_params *p)
 
       case '&':
         if ((c = nextc(p)) == '&') {
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idANDOP);
-                SET_LEX_STATE(EXPR_BEG);
+                /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -11603,12 +11495,12 @@ parser_yylex(struct parser_params *p)
         }
         else if (c == '=') {
             set_yylval_id('&');
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             return tOP_ASGN;
         }
         else if (c == '.') {
             set_yylval_id(idANDDOT);
-            SET_LEX_STATE(EXPR_DOT);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_DOT); */
             return tANDDOT;
         }
         pushback(p, c);
@@ -11649,15 +11541,15 @@ parser_yylex(struct parser_params *p)
         else {
             c = warn_balanced('&', "&", "argument prefix");
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG); */
         return c;
 
       case '|':
         if ((c = nextc(p)) == '|') {
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
         if ((c = nextc(p)) == '=') {
             set_yylval_id(idOROP);
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             return tOP_ASGN;
         }
         pushback(p, c);
@@ -11670,17 +11562,17 @@ parser_yylex(struct parser_params *p)
         }
         if (c == '=') {
             set_yylval_id('|');
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             return tOP_ASGN;
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG); */
         pushback(p, c);
         return '|';
 
       case '+':
         c = nextc(p);
         if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ARG); */
             if (c == '@') {
                 return tUPLUS;
             }
@@ -11689,28 +11581,28 @@ parser_yylex(struct parser_params *p)
         }
         if (c == '=') {
             set_yylval_id('+');
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             return tOP_ASGN;
         }
         if (parser_pslr_prefers_token_p(p, tUPLUS, '+') ||
             (parser_pslr_eventually_accepts_token(p, tUPLUS) &&
              !parser_pslr_eventually_accepts_token(p, '+')) ||
             IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
                 return parse_numeric(p, '+');
             }
             return tUPLUS;
         }
-        SET_LEX_STATE(EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
         pushback(p, c);
         return warn_balanced('+', "+", "unary operator");
 
       case '-':
         c = nextc(p);
         if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ARG); */
             if (c == '@') {
                 return tUMINUS;
             }
@@ -11719,11 +11611,11 @@ parser_yylex(struct parser_params *p)
         }
         if (c == '=') {
             set_yylval_id('-');
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             return tOP_ASGN;
         }
         if (c == '>') {
-            SET_LEX_STATE(EXPR_ENDFN);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ENDFN); */
             yylval.num = p->lex.lpar_beg;
             p->lex.lpar_beg = p->lex.paren_nest;
             return tLAMBDA;
@@ -11732,14 +11624,14 @@ parser_yylex(struct parser_params *p)
             (parser_pslr_eventually_accepts_token(p, tUMINUS) &&
              !parser_pslr_eventually_accepts_token(p, '-')) ||
             IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
                 return tUMINUS_NUM;
             }
             return tUMINUS;
         }
-        SET_LEX_STATE(EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
         pushback(p, c);
         return warn_balanced('-', "-", "unary operator");
 
@@ -11770,7 +11662,7 @@ parser_yylex(struct parser_params *p)
         else {
             is_beg = IS_BEG();
         }
-        SET_LEX_STATE(EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
                 if (p->ctxt.in_argdef || IS_LABEL_POSSIBLE()) {
@@ -11796,12 +11688,12 @@ parser_yylex(struct parser_params *p)
             else {
                 yyerror0("no .<digit> floating literal anymore; put 0 before dot");
             }
-            SET_LEX_STATE(EXPR_END);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
             p->lex.ptok = p->lex.pcur;
             goto retry;
         }
         set_yylval_id('.');
-        SET_LEX_STATE(EXPR_DOT);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_DOT); */
         return '.';
       }
 
@@ -11812,14 +11704,14 @@ parser_yylex(struct parser_params *p)
       case ')':
         COND_POP();
         CMDARG_POP();
-        SET_LEX_STATE(EXPR_ENDFN);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ENDFN); */
         p->lex.paren_nest--;
         return c;
 
       case ']':
         COND_POP();
         CMDARG_POP();
-        SET_LEX_STATE(EXPR_END);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
         p->lex.paren_nest--;
         return c;
 
@@ -11828,7 +11720,7 @@ parser_yylex(struct parser_params *p)
         if (!p->lex.brace_nest--) return tSTRING_DEND;
         COND_POP();
         CMDARG_POP();
-        SET_LEX_STATE(EXPR_END);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_END); */
         p->lex.paren_nest--;
         return c;
 
@@ -11836,17 +11728,17 @@ parser_yylex(struct parser_params *p)
         c = nextc(p);
         if (c == ':') {
             if (parser_pslr_colon3_prefix_p(p, space_seen)) {
-                SET_LEX_STATE(EXPR_BEG);
+                /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
                 return tCOLON3;
             }
             set_yylval_id(idCOLON2);
-            SET_LEX_STATE(EXPR_DOT);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_DOT); */
             return tCOLON2;
         }
         if (parser_pslr_colon_symbol_literal_p(p, c)) {
             pushback(p, c);
             c = warn_balanced(':', ":", "symbol literal");
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             return c;
         }
         switch (c) {
@@ -11861,7 +11753,7 @@ parser_yylex(struct parser_params *p)
             break;
         }
         /* AST.parse_file では operator symbol literal がまだこれに依存する */
-        SET_LEX_STATE(EXPR_FNAME);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_FNAME); */
         return tSYMBEG;
 
       case '/':
@@ -11880,7 +11772,7 @@ parser_yylex(struct parser_params *p)
         }
         if ((c = nextc(p)) == '=') {
             set_yylval_id('/');
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             return tOP_ASGN;
         }
         pushback(p, c);
@@ -11889,26 +11781,26 @@ parser_yylex(struct parser_params *p)
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
             return tREGEXP_BEG;
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG); */
         return warn_balanced('/', "/", "regexp literal");
 
       case '^':
         if ((c = nextc(p)) == '=') {
             set_yylval_id('^');
-            SET_LEX_STATE(EXPR_BEG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
             return tOP_ASGN;
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG); */
         pushback(p, c);
         return '^';
 
       case ';':
-        SET_LEX_STATE(EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
         p->command_start = TRUE;
         return ';';
 
       case ',':
-        SET_LEX_STATE(EXPR_BEG);
+        /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG); */
         return ',';
 
       case '~':
@@ -11916,15 +11808,10 @@ parser_yylex(struct parser_params *p)
             if ((c = nextc(p)) != '@') {
                 pushback(p, c);
             }
-            SET_LEX_STATE(EXPR_ARG);
-        }
-        else {
-            SET_LEX_STATE(EXPR_BEG);
         }
         return '~';
 
       case '(': {
-        int pattern_const_kwargs = FALSE;
         if (lambda_beginning_p()) {
             /* lambda parameter list always starts with the plain '(' token */
         }
@@ -11945,29 +11832,18 @@ parser_yylex(struct parser_params *p)
             rb_warning0("parentheses after method name is interpreted as "
                         "an argument list, not a decomposed argument");
         }
-        if (c == '(') {
-            pattern_const_kwargs = parser_pslr_pattern_const_kwargs_context_p(p);
-        }
         p->lex.paren_nest++;
         COND_PUSH(0);
         CMDARG_PUSH(0);
-        if (pattern_const_kwargs) {
-            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
-            SET_LEX_STATE(EXPR_BEG);
-        }
-        else {
-            SET_LEX_STATE(EXPR_BEG);
-        }
         return c;
       }
 
-      case '[': {
-        int pattern_const_kwargs = FALSE;
+      case '[':
         p->lex.paren_nest++;
         if (IS_AFTER_OPERATOR()) {
             if ((c = nextc(p)) == ']') {
                 p->lex.paren_nest--;
-                SET_LEX_STATE(EXPR_ARG);
+                /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ARG); */
                 if ((c = nextc(p)) == '=') {
                     return tASET;
                 }
@@ -11975,7 +11851,7 @@ parser_yylex(struct parser_params *p)
                 return tAREF;
             }
             pushback(p, c);
-            SET_LEX_STATE(EXPR_ARG);
+            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_ARG); */
             return '[';
         }
         else if (IS_BEG()) {
@@ -11984,20 +11860,9 @@ parser_yylex(struct parser_params *p)
         else if (parser_pslr_lbrack_arg_fallback_p(p, space_seen)) {
             c = tLBRACK;
         }
-        if (c == '[') {
-            pattern_const_kwargs = parser_pslr_pattern_const_kwargs_context_p(p);
-        }
-        if (pattern_const_kwargs) {
-            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
-            SET_LEX_STATE(EXPR_BEG);
-        }
-        else {
-            SET_LEX_STATE(EXPR_BEG);
-        }
         COND_PUSH(0);
         CMDARG_PUSH(0);
         return c;
-      }
 
       case '{':
         ++p->lex.brace_nest;
@@ -12014,11 +11879,6 @@ parser_yylex(struct parser_params *p)
             c = tLBRACE;      /* hash */
         if (c != tLBRACE) {
             p->command_start = TRUE;
-            SET_LEX_STATE(EXPR_BEG);
-        }
-        else {
-            /* PSLRによりlex_state不要: SET_LEX_STATE(EXPR_BEG|EXPR_LABEL); */
-            SET_LEX_STATE(EXPR_BEG);
         }
         ++p->lex.paren_nest;  /* after lambda_beginning_p() */
         COND_PUSH(0);
