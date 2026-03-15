@@ -629,16 +629,17 @@ int yy_state_accepts_token(int yystate, int token);
 int yy_state_eventually_accepts_token(int yystate, int token);
 int yy_state_deep_accepts_token(int yystate, int yychar,
                                 const void *stack_base, const void *stack_top);
-/* Lexer context constants — must match generated table */
+int yy_lexer_context_is(int yystate, int ctx_mask);
+
+/* Lexer context constants — values are 1 << index of each %lexer-context
+ * directive (BEG=0, CMDARG=1, END=2, ...).  The generated table emits the
+ * same defines inside #ifndef guards. */
 #define YY_CTX_BEG    0x01
 #define YY_CTX_CMDARG 0x02
-#define YY_CTX_ARG    0x04
-#define YY_CTX_END    0x08
-#define YY_CTX_ENDFN  0x10
-#define YY_CTX_MID    0x20
-#define YY_CTX_DOT    0x40
-
-int yy_lexer_context_is(int yystate, int ctx_mask);
+#define YY_CTX_END    0x04
+#define YY_CTX_ENDFN  0x08
+#define YY_CTX_MID    0x10
+#define YY_CTX_DOT    0x20
 
 /* Check if the current PSLR parser state has the given lexer context flag(s).
  * Returns 0 if the state has no context classification (UNKNOWN). */
@@ -656,7 +657,7 @@ parser_pslr_context_known_p(struct parser_params *p)
     if (p->pslr_current_state < 0) return FALSE;
     /* Any non-zero context means the state has been classified */
     return yy_lexer_context_is(p->pslr_current_state,
-        YY_CTX_BEG | YY_CTX_CMDARG | YY_CTX_ARG | YY_CTX_END |
+        YY_CTX_BEG | YY_CTX_CMDARG | YY_CTX_END |
         YY_CTX_ENDFN | YY_CTX_MID | YY_CTX_DOT);
 }
 
@@ -884,7 +885,7 @@ static inline int
 parser_pslr_after_labeled_state_p(struct parser_params *p, enum lex_state_e state)
 {
     if (parser_pslr_context_known_p(p)) {
-        if (!parser_pslr_context_is(p, YY_CTX_ARG | YY_CTX_CMDARG)) return FALSE;
+        if (!parser_pslr_context_is(p, YY_CTX_CMDARG)) return FALSE;
     }
     else {
         if (!IS_lex_state_for(state, EXPR_ARG)) return FALSE;
@@ -988,7 +989,7 @@ static inline int
 parser_pslr_arg_state_fallback_p(struct parser_params *p)
 {
     if (parser_pslr_context_known_p(p)) {
-        return parser_pslr_context_is(p, YY_CTX_ARG | YY_CTX_CMDARG);
+        return parser_pslr_context_is(p, YY_CTX_CMDARG);
     }
     return IS_lex_state_for(p->lex.state, EXPR_ARG_ANY);
 }
@@ -3294,6 +3295,14 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %define parse.error verbose
 %token-pattern tIDENTIFIER /[a-z_][a-zA-Z0-9_]*/
 %token-pattern tLABEL /[a-z_][a-zA-Z0-9_]*:/
+
+%lexer-context BEG keyword_if keyword_unless keyword_while keyword_until keyword_case keyword_for keyword_begin keyword_do keyword_return keyword_break keyword_next keyword_yield keyword_super keyword_defined keyword_class keyword_module keyword_not keyword_and keyword_or keyword_in keyword_then keyword_else keyword_elsif keyword_when keyword_ensure keyword_rescue tLPAREN tLBRACK tLBRACE tLPAREN_ARG tLBRACE_ARG '(' '[' '{' tOP_ASGN '=' tPLUS tMINUS tSTAR tDSTAR tAMPER tPIPE tCARET tTILDE tBANG tPERCENT tLSHFT tRSHFT tCMP tEQ tEQQ tNEQ tMATCH tNMATCH tGEQ tLEQ tGT tLT tANDOP tOROP '+' '-' '*' '/' '%' '^' '|' '&' '<' '>' '!' '~' '?' tDOT2 tDOT3 tBDOT2 tBDOT3 ',' ';' tCOLON tSYMBEG tCOLON3 ':' tASSOC tLAMBDA tLAMBEG tSTRING_BEG tXSTRING_BEG tREGEXP_BEG tBACK_REF2 tUPLUS tUMINUS tUMINUS_NUM tNL tLABEL keyword_do_cond keyword_do_block keyword_do_LAMBDA
+%lexer-context CMDARG tIDENTIFIER tFID tCONSTANT
+%lexer-context END tINTEGER tFLOAT tRATIONAL tIMAGINARY tCHAR tSTRING_END tREGEXP_END tLABEL_END tSYMBOL tSTRING keyword_self keyword_nil keyword_true keyword_false keyword___FILE__ keyword___LINE__ keyword___ENCODING__ keyword_end ')' ']' '}' modifier_if modifier_unless modifier_while modifier_until modifier_rescue
+%lexer-context ENDFN keyword_def
+%lexer-context MID keyword_return keyword_break keyword_next
+%lexer-context DOT tDOT tCOLON2 tANDDOT
+
 %printer {
     if ((NODE *)$$ == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
