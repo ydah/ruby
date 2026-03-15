@@ -617,10 +617,18 @@ struct parser_params {
 #endif
 };
 
+/* Rename lrama-generated PSLR symbols to avoid leaked global symbols */
+#define yy_state_accepts_token rb_yy_state_accepts_token
+#define yy_state_eventually_accepts_token rb_yy_state_eventually_accepts_token
+#define yy_state_deep_accepts_token rb_yy_state_deep_accepts_token
+#define yy_pseudo_scan rb_yy_pseudo_scan
+#define yy_lexer_context_is rb_yy_lexer_context_is
+
 int yy_state_accepts_token(int yystate, int token);
 int yy_state_eventually_accepts_token(int yystate, int token);
 int yy_state_deep_accepts_token(int yystate, int yychar,
                                 const void *stack_base, const void *stack_top);
+int yy_pseudo_scan(int parser_state, const char *input, int *match_length);
 int yy_lexer_context_is(int yystate, int ctx_mask);
 
 /* Check if the current PSLR parser state has the given lexer context flag(s).
