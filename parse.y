@@ -640,17 +640,6 @@ parser_pslr_context_is(struct parser_params *p, int ctx_mask)
            yy_lexer_context_is(p->pslr_current_state, ctx_mask);
 }
 
-/* Check if the current PSLR parser state has a known (non-zero) context. */
-static inline int
-parser_pslr_context_known_p(struct parser_params *p)
-{
-    if (p->pslr_current_state < 0) return FALSE;
-    /* Any non-zero context means the state has been classified */
-    return yy_lexer_context_is(p->pslr_current_state,
-        YY_CTX_BEG | YY_CTX_CMDARG | YY_CTX_END |
-        YY_CTX_ENDFN | YY_CTX_MID | YY_CTX_DOT);
-}
-
 /* Stack-aware deep token acceptance: traces through BOTH empty and non-empty
  * default reductions using the actual parser stack. This can see tokens that
  * become visible after reductions like stmt -> expr (yyr2 > 0). */
@@ -755,12 +744,7 @@ parser_pslr_next_nonspace_char(struct parser_params *p)
 static inline int
 parser_pslr_pending_def_body_p(struct parser_params *p)
 {
-    if (parser_pslr_context_known_p(p)) {
-        if (!parser_pslr_context_is(p, YY_CTX_ENDFN)) return FALSE;
-    }
-    else {
-        if (p->lex.state != EXPR_ENDFN) return FALSE;
-    }
+    if (!parser_pslr_context_is(p, YY_CTX_ENDFN)) return FALSE;
     if (!parser_pslr_accepts_token(p, '=')) return FALSE;
     return !parser_pslr_accepts_expr_beg_token_p(p);
 }
@@ -768,12 +752,7 @@ parser_pslr_pending_def_body_p(struct parser_params *p)
 static inline int
 parser_pslr_force_expr_beg_p(struct parser_params *p)
 {
-    if (parser_pslr_context_known_p(p)) {
-        if (!parser_pslr_context_is(p, YY_CTX_ENDFN)) return FALSE;
-    }
-    else {
-        if (p->lex.state != EXPR_ENDFN) return FALSE;
-    }
+    if (!parser_pslr_context_is(p, YY_CTX_ENDFN)) return FALSE;
     if (parser_pslr_accepts_expr_beg_token_p(p)) return TRUE;
     if (parser_pslr_pending_def_body_p(p)) {
         int c = parser_pslr_next_nonspace_char(p);
@@ -872,14 +851,9 @@ parser_pslr_prefers_label_token_p(struct parser_params *p, int current_token_len
 }
 
 static inline int
-parser_pslr_after_labeled_state_p(struct parser_params *p, enum lex_state_e state)
+parser_pslr_after_labeled_state_p(struct parser_params *p)
 {
-    if (parser_pslr_context_known_p(p)) {
-        if (!parser_pslr_context_is(p, YY_CTX_CMDARG)) return FALSE;
-    }
-    else {
-        if (!IS_lex_state_for(state, EXPR_ARG)) return FALSE;
-    }
+    if (!parser_pslr_context_is(p, YY_CTX_CMDARG)) return FALSE;
     if (!parser_pslr_accepts_token(p, tLBRACE)) return FALSE;
     if (parser_pslr_accepts_token(p, '{')) return FALSE;
     return TRUE;
@@ -888,7 +862,7 @@ parser_pslr_after_labeled_state_p(struct parser_params *p, enum lex_state_e stat
 static inline int
 parser_pslr_after_labeled_p(struct parser_params *p)
 {
-    return parser_pslr_after_labeled_state_p(p, p->lex.state);
+    return parser_pslr_after_labeled_state_p(p);
 }
 
 static inline int
@@ -920,14 +894,7 @@ parser_pslr_begin_like_p(struct parser_params *p)
 static inline int
 parser_pslr_lex_beg_like_p(struct parser_params *p)
 {
-    int is_beg_mid;
-    if (parser_pslr_context_known_p(p)) {
-        is_beg_mid = parser_pslr_context_is(p, YY_CTX_BEG | YY_CTX_MID);
-    }
-    else {
-        is_beg_mid = IS_lex_state_for(p->lex.state, EXPR_BEG | EXPR_MID);
-    }
-    return is_beg_mid ||
+    return parser_pslr_context_is(p, YY_CTX_BEG | YY_CTX_MID) ||
            parser_pslr_after_labeled_p(p) ||
            parser_pslr_class_context_p(p);
 }
@@ -935,27 +902,16 @@ parser_pslr_lex_beg_like_p(struct parser_params *p)
 static inline int
 parser_pslr_ignores_newline_p(struct parser_params *p)
 {
-    int is_beg;
-    if (parser_pslr_context_known_p(p)) {
-        is_beg = parser_pslr_context_is(p, YY_CTX_BEG);
-    }
-    else {
-        is_beg = IS_lex_state_for(p->lex.state, EXPR_BEG);
-    }
-    return is_beg ||
+    return parser_pslr_context_is(p, YY_CTX_BEG) ||
            parser_pslr_after_dot_p(p) ||
            parser_pslr_expects_fname_p(p);
 }
 
 static inline int
-parser_pslr_reserved_word_begin_p(struct parser_params *p, enum lex_state_e state)
+parser_pslr_reserved_word_begin_p(struct parser_params *p)
 {
-    /* Only used as a fallback for modifier-style reserved words. */
-    if (parser_pslr_after_labeled_state_p(p, state)) return TRUE;
-    if (parser_pslr_context_known_p(p)) {
-        return parser_pslr_context_is(p, YY_CTX_BEG);
-    }
-    return IS_lex_state_for(state, EXPR_BEG);
+    if (parser_pslr_after_labeled_state_p(p)) return TRUE;
+    return parser_pslr_context_is(p, YY_CTX_BEG);
 }
 
 static inline int
@@ -978,19 +934,13 @@ parser_pslr_endfn_like_p(struct parser_params *p)
 static inline int
 parser_pslr_arg_state_fallback_p(struct parser_params *p)
 {
-    if (parser_pslr_context_known_p(p)) {
-        return parser_pslr_context_is(p, YY_CTX_CMDARG);
-    }
-    return IS_lex_state_for(p->lex.state, EXPR_ARG_ANY);
+    return parser_pslr_context_is(p, YY_CTX_CMDARG);
 }
 
 static inline int
 parser_pslr_end_state_fallback_p(struct parser_params *p)
 {
-    if (parser_pslr_context_known_p(p)) {
-        return parser_pslr_context_is(p, YY_CTX_END);
-    }
-    return IS_lex_state_for(p->lex.state, EXPR_END);
+    return parser_pslr_context_is(p, YY_CTX_END);
 }
 
 static inline int
@@ -1059,8 +1009,8 @@ parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
         !parser_pslr_deep_accepts_token(p, tCOLON3)) {
         return FALSE;
     }
-    /* Fallback: both eventually accepted or neither */
-    return IS_lex_state_for(p->lex.state, EXPR_BEG | EXPR_MID) ||
+    /* Fallback: both eventually accepted or neither — use context table */
+    return parser_pslr_context_is(p, YY_CTX_BEG | YY_CTX_MID) ||
            parser_pslr_begin_like_p(p);
 }
 
@@ -1168,7 +1118,7 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
     int accepts_primary_block = parser_pslr_accepts_token(p, '{');
     int accepts_expr_block = parser_pslr_accepts_token(p, tLBRACE_ARG);
 
-    if (IS_lex_state_for(p->lex.state, EXPR_ARG_ANY | EXPR_END)) {
+    if (parser_pslr_context_is(p, YY_CTX_CMDARG | YY_CTX_END)) {
         return TRUE;
     }
     if (accepts_hash + accepts_primary_block + accepts_expr_block == 1) {
@@ -3287,10 +3237,15 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token-pattern tLABEL /[a-z_][a-zA-Z0-9_]*:/
 
 %lexer-context BEG keyword_if keyword_unless keyword_while keyword_until keyword_case keyword_for keyword_begin keyword_do keyword_return keyword_break keyword_next keyword_yield keyword_super keyword_defined keyword_class keyword_module keyword_not keyword_and keyword_or keyword_in keyword_then keyword_else keyword_elsif keyword_when keyword_ensure keyword_rescue tLPAREN tLBRACK tLBRACE tLPAREN_ARG tLBRACE_ARG '(' '[' '{' tOP_ASGN '=' tPLUS tMINUS tSTAR tDSTAR tAMPER tPIPE tCARET tTILDE tBANG tPERCENT tLSHFT tRSHFT tCMP tEQ tEQQ tNEQ tMATCH tNMATCH tGEQ tLEQ tGT tLT tANDOP tOROP '+' '-' '*' '/' '%' '^' '|' '&' '<' '>' '!' '~' '?' tDOT2 tDOT3 tBDOT2 tBDOT3 ',' ';' tCOLON tSYMBEG tCOLON3 ':' tASSOC tLAMBDA tLAMBEG tSTRING_BEG tXSTRING_BEG tREGEXP_BEG tBACK_REF2 tUPLUS tUMINUS tUMINUS_NUM tNL tLABEL keyword_do_cond keyword_do_block keyword_do_LAMBDA
+%lexer-context BEG stmts stmt top_stmts top_stmt bodystmt then do opt_else if_tail case_body cases p_case_body brace_body do_body lambda_body opt_rescue opt_ensure
 %lexer-context CMDARG tIDENTIFIER tFID tCONSTANT
+%lexer-context CMDARG command_args opt_block_arg aref_args opt_call_args
 %lexer-context END tINTEGER tFLOAT tRATIONAL tIMAGINARY tCHAR tSTRING_END tREGEXP_END tLABEL_END tSYMBOL tSTRING keyword_self keyword_nil keyword_true keyword_false keyword___FILE__ keyword___LINE__ keyword___ENCODING__ keyword_end ')' ']' '}' modifier_if modifier_unless modifier_while modifier_until modifier_rescue
+%lexer-context END expr arg arg_value arg_rhs primary primary_value literal numeric simple_numeric strings xstring regexp symbol ssym dsym var_ref method_call command_call command block_call block_command mrhs_arg rel_expr ternary command_rhs command_call_value args mrhs exc_list
 %lexer-context ENDFN keyword_def
+%lexer-context ENDFN fname def_name defn_head defs_head
 %lexer-context MID keyword_return keyword_break keyword_next
+%lexer-context MID expr_value expr_value_do
 %lexer-context DOT tDOT tCOLON2 tANDDOT
 
 %printer {
@@ -11085,7 +11040,6 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         /* See if it is a reserved word.  */
         kw = rb_reserved_word(tok(p), toklen(p));
         if (kw) {
-            enum lex_state_e state = p->lex.state;
             enum yytokentype do_token = 0;
             enum yytokentype keyword_variant = 0;
             if (expects_fname) {
@@ -11120,7 +11074,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 if (COND_P() || do_token == keyword_do_cond) {
                     return keyword_do_cond;
                 }
-                if (CMDARG_P() && !IS_lex_state_for(state, EXPR_CMDARG))
+                if (CMDARG_P() && !parser_pslr_context_is(p, YY_CTX_CMDARG))
                     return keyword_do_block;
                 if (do_token == keyword_do) return keyword_do;
                 if (do_token == keyword_do_block) {
@@ -11134,7 +11088,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
             /* keyword_variant cannot disambiguate modifier keywords here:
              * in CMDARG context, deep check finds keyword form via new-statement
              * path but misses modifier form (shift action, not on default path) */
-            if (parser_pslr_reserved_word_begin_p(p, state)) {
+            if (parser_pslr_reserved_word_begin_p(p)) {
                 return kw->id[0];
             }
             else {
