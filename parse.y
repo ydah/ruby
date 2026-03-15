@@ -629,6 +629,36 @@ int yy_state_accepts_token(int yystate, int token);
 int yy_state_eventually_accepts_token(int yystate, int token);
 int yy_state_deep_accepts_token(int yystate, int yychar,
                                 const void *stack_base, const void *stack_top);
+/* Lexer context constants — must match generated table */
+#define YY_CTX_BEG    0x01
+#define YY_CTX_CMDARG 0x02
+#define YY_CTX_ARG    0x04
+#define YY_CTX_END    0x08
+#define YY_CTX_ENDFN  0x10
+#define YY_CTX_MID    0x20
+#define YY_CTX_DOT    0x40
+
+int yy_lexer_context_is(int yystate, int ctx_mask);
+
+/* Check if the current PSLR parser state has the given lexer context flag(s).
+ * Returns 0 if the state has no context classification (UNKNOWN). */
+static inline int
+parser_pslr_context_is(struct parser_params *p, int ctx_mask)
+{
+    return p->pslr_current_state >= 0 &&
+           yy_lexer_context_is(p->pslr_current_state, ctx_mask);
+}
+
+/* Check if the current PSLR parser state has a known (non-zero) context. */
+static inline int
+parser_pslr_context_known_p(struct parser_params *p)
+{
+    if (p->pslr_current_state < 0) return FALSE;
+    /* Any non-zero context means the state has been classified */
+    return yy_lexer_context_is(p->pslr_current_state,
+        YY_CTX_BEG | YY_CTX_CMDARG | YY_CTX_ARG | YY_CTX_END |
+        YY_CTX_ENDFN | YY_CTX_MID | YY_CTX_DOT);
+}
 
 /* Stack-aware deep token acceptance: traces through BOTH empty and non-empty
  * default reductions using the actual parser stack. This can see tokens that
@@ -734,7 +764,12 @@ parser_pslr_next_nonspace_char(struct parser_params *p)
 static inline int
 parser_pslr_pending_def_body_p(struct parser_params *p)
 {
-    if (p->lex.state != EXPR_ENDFN) return FALSE;
+    if (parser_pslr_context_known_p(p)) {
+        if (!parser_pslr_context_is(p, YY_CTX_ENDFN)) return FALSE;
+    }
+    else {
+        if (p->lex.state != EXPR_ENDFN) return FALSE;
+    }
     if (!parser_pslr_accepts_token(p, '=')) return FALSE;
     return !parser_pslr_accepts_expr_beg_token_p(p);
 }
@@ -742,7 +777,12 @@ parser_pslr_pending_def_body_p(struct parser_params *p)
 static inline int
 parser_pslr_force_expr_beg_p(struct parser_params *p)
 {
-    if (p->lex.state != EXPR_ENDFN) return FALSE;
+    if (parser_pslr_context_known_p(p)) {
+        if (!parser_pslr_context_is(p, YY_CTX_ENDFN)) return FALSE;
+    }
+    else {
+        if (p->lex.state != EXPR_ENDFN) return FALSE;
+    }
     if (parser_pslr_accepts_expr_beg_token_p(p)) return TRUE;
     if (parser_pslr_pending_def_body_p(p)) {
         int c = parser_pslr_next_nonspace_char(p);
@@ -843,7 +883,12 @@ parser_pslr_prefers_label_token_p(struct parser_params *p, int current_token_len
 static inline int
 parser_pslr_after_labeled_state_p(struct parser_params *p, enum lex_state_e state)
 {
-    if (!IS_lex_state_for(state, EXPR_ARG)) return FALSE;
+    if (parser_pslr_context_known_p(p)) {
+        if (!parser_pslr_context_is(p, YY_CTX_ARG | YY_CTX_CMDARG)) return FALSE;
+    }
+    else {
+        if (!IS_lex_state_for(state, EXPR_ARG)) return FALSE;
+    }
     if (!parser_pslr_accepts_token(p, tLBRACE)) return FALSE;
     if (parser_pslr_accepts_token(p, '{')) return FALSE;
     return TRUE;
@@ -884,7 +929,14 @@ parser_pslr_begin_like_p(struct parser_params *p)
 static inline int
 parser_pslr_lex_beg_like_p(struct parser_params *p)
 {
-    return IS_lex_state_for(p->lex.state, EXPR_BEG | EXPR_MID) ||
+    int is_beg_mid;
+    if (parser_pslr_context_known_p(p)) {
+        is_beg_mid = parser_pslr_context_is(p, YY_CTX_BEG | YY_CTX_MID);
+    }
+    else {
+        is_beg_mid = IS_lex_state_for(p->lex.state, EXPR_BEG | EXPR_MID);
+    }
+    return is_beg_mid ||
            parser_pslr_after_labeled_p(p) ||
            parser_pslr_class_context_p(p);
 }
@@ -892,7 +944,14 @@ parser_pslr_lex_beg_like_p(struct parser_params *p)
 static inline int
 parser_pslr_ignores_newline_p(struct parser_params *p)
 {
-    return IS_lex_state_for(p->lex.state, EXPR_BEG) ||
+    int is_beg;
+    if (parser_pslr_context_known_p(p)) {
+        is_beg = parser_pslr_context_is(p, YY_CTX_BEG);
+    }
+    else {
+        is_beg = IS_lex_state_for(p->lex.state, EXPR_BEG);
+    }
+    return is_beg ||
            parser_pslr_after_dot_p(p) ||
            parser_pslr_expects_fname_p(p);
 }
@@ -902,6 +961,9 @@ parser_pslr_reserved_word_begin_p(struct parser_params *p, enum lex_state_e stat
 {
     /* Only used as a fallback for modifier-style reserved words. */
     if (parser_pslr_after_labeled_state_p(p, state)) return TRUE;
+    if (parser_pslr_context_known_p(p)) {
+        return parser_pslr_context_is(p, YY_CTX_BEG);
+    }
     return IS_lex_state_for(state, EXPR_BEG);
 }
 
@@ -925,12 +987,18 @@ parser_pslr_endfn_like_p(struct parser_params *p)
 static inline int
 parser_pslr_arg_state_fallback_p(struct parser_params *p)
 {
+    if (parser_pslr_context_known_p(p)) {
+        return parser_pslr_context_is(p, YY_CTX_ARG | YY_CTX_CMDARG);
+    }
     return IS_lex_state_for(p->lex.state, EXPR_ARG_ANY);
 }
 
 static inline int
 parser_pslr_end_state_fallback_p(struct parser_params *p)
 {
+    if (parser_pslr_context_known_p(p)) {
+        return parser_pslr_context_is(p, YY_CTX_END);
+    }
     return IS_lex_state_for(p->lex.state, EXPR_END);
 }
 
