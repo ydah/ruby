@@ -2038,7 +2038,6 @@ static int id_is_var(struct parser_params *p, ID id);
 RUBY_SYMBOL_EXPORT_BEGIN
 VALUE rb_parser_reg_compile(struct parser_params* p, VALUE str, int options);
 int rb_reg_fragment_setenc(struct parser_params*, rb_parser_string_t *, int);
-enum lex_state_e rb_parser_trace_lex_state(struct parser_params *, enum lex_state_e, enum lex_state_e, int);
 VALUE rb_parser_lex_state_name(struct parser_params *p, enum lex_state_e state);
 void rb_parser_show_bitstack(struct parser_params *, stack_type, const char *, int);
 PRINTF_ARGS(void rb_parser_fatal(struct parser_params *p, const char *fmt, ...), 2, 3);
@@ -3718,8 +3717,6 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 
 %%
 program		:  {
-                        /* parser entry で EXPR_BEG を設定済み */
-                        /* SET_LEX_STATE(EXPR_BEG); */
                         local_push(p, ifndef_ripper(1)+0);
                         /* jumps are possible in the top-level loop. */
                         if (!ifndef_ripper(p->do_loop) + 0) init_block_exit(p);
@@ -4951,7 +4948,6 @@ primary		: inline_primary
                 }
             | tLPAREN_ARG compstmt(stmts)[body]
                 {
-                    /* SET_LEX_STATE(EXPR_ENDARG); */
                 }
               ')'
                 {
@@ -6677,7 +6673,6 @@ ssym		: tSYMBEG sym
                          */
                         if (!str) str = STR_NEW0();
                         $$ = NEW_SYM(str, &@$);
-                        /* `sym` lexing may leave EXPR_ENDFN, but `ssym` itself is a primary. */
                     /*% ripper: symbol_literal!(symbol!($:2)) %*/
                     }
                 ;
@@ -6689,8 +6684,6 @@ sym		: fname
 dsym		: tSYMBEG string_contents tSTRING_END
                     {
                         $$ = dsym_node(p, $2, &@$);
-                        /* tSTRING_END を lex した時点で EXPR_END は設定済み */
-                        /* SET_LEX_STATE(EXPR_END); */
                     /*% ripper: dyna_symbol!($:2) %*/
                     }
                 ;
@@ -6797,7 +6790,6 @@ f_arglist	: f_paren_args
                         $$ = p->ctxt;
                         p->ctxt.in_kwarg = 1;
                         p->ctxt.in_argdef = 1;
-                        /* EXPR_ENDFN の時点で label 判定は可能 */
                     }<ctxt>
                   f_args term
                     {
@@ -9111,7 +9103,7 @@ parser_peek_variable_name(struct parser_params *p)
       case '{':
         p->lex.pcur = ptr;
         p->command_start = TRUE;
-        yylval.state = p->lex.state;
+        yylval.state = 0; /* formerly saved lex_state for restore; PSLR makes this unnecessary */
         return tSTRING_DBEG;
       default:
         return 0;
@@ -10169,7 +10161,6 @@ static void
 parser_prepare(struct parser_params *p)
 {
     int c = nextc0(p, FALSE);
-    p->lex.state = EXPR_BEG;
     p->token_info_enabled = !compile_for_eval && RTEST(ruby_verbose);
     switch (c) {
       case '#':
@@ -11582,7 +11573,6 @@ parser_yylex(struct parser_params *p)
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
                 if (p->ctxt.in_argdef || IS_LABEL_POSSIBLE()) {
-                    /* SET_LEX_STATE(EXPR_ENDARG); */
                     return tBDOT3;
                 }
                 if (p->lex.paren_nest == 0 && looking_at_eol_p(p)) {
@@ -13941,19 +13931,6 @@ append_lex_state_name(struct parser_params *p, enum lex_state_e state, VALUE buf
     return buf;
 }
 
-enum lex_state_e
-rb_parser_trace_lex_state(struct parser_params *p, enum lex_state_e from,
-                          enum lex_state_e to, int line)
-{
-    VALUE mesg;
-    mesg = rb_str_new_cstr("lex_state: ");
-    append_lex_state_name(p, from, mesg);
-    rb_str_cat_cstr(mesg, " -> ");
-    append_lex_state_name(p, to, mesg);
-    rb_str_catf(mesg, " at line %d\n", line);
-    flush_debug_buffer(p, p->debug_output, mesg);
-    return to;
-}
 
 VALUE
 rb_parser_lex_state_name(struct parser_params *p, enum lex_state_e state)
