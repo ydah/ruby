@@ -631,16 +631,6 @@ int yy_state_deep_accepts_token(int yystate, int yychar,
                                 const void *stack_base, const void *stack_top);
 int yy_lexer_context_is(int yystate, int ctx_mask);
 
-/* Lexer context constants — values are 1 << index of each %lexer-context
- * directive (BEG=0, CMDARG=1, END=2, ...).  The generated table emits the
- * same defines inside #ifndef guards. */
-#define YY_CTX_BEG    0x01
-#define YY_CTX_CMDARG 0x02
-#define YY_CTX_END    0x04
-#define YY_CTX_ENDFN  0x08
-#define YY_CTX_MID    0x10
-#define YY_CTX_DOT    0x20
-
 /* Check if the current PSLR parser state has the given lexer context flag(s).
  * Returns 0 if the state has no context classification (UNKNOWN). */
 static inline int
