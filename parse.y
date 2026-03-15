@@ -3160,7 +3160,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token-pattern tIDENTIFIER /[a-z_][a-zA-Z0-9_]*/
 %token-pattern tLABEL /[a-z_][a-zA-Z0-9_]*:/
 
-%lexer-context BEG keyword_if keyword_unless keyword_while keyword_until keyword_case keyword_for keyword_begin keyword_do keyword_return keyword_break keyword_next keyword_yield keyword_super keyword_defined keyword_class keyword_module keyword_not keyword_and keyword_or keyword_in keyword_then keyword_else keyword_elsif keyword_when keyword_ensure keyword_rescue tLPAREN tLBRACK tLBRACE tLPAREN_ARG tLBRACE_ARG '(' '[' '{' tOP_ASGN '=' tPLUS tMINUS tSTAR tDSTAR tAMPER tPIPE tCARET tTILDE tBANG tPERCENT tLSHFT tRSHFT tCMP tEQ tEQQ tNEQ tMATCH tNMATCH tGEQ tLEQ tGT tLT tANDOP tOROP '+' '-' '*' '/' '%' '^' '|' '&' '<' '>' '!' '~' '?' tDOT2 tDOT3 tBDOT2 tBDOT3 ',' ';' tCOLON tSYMBEG tCOLON3 ':' tASSOC tLAMBDA tLAMBEG tSTRING_BEG tXSTRING_BEG tREGEXP_BEG tBACK_REF2 tUPLUS tUMINUS tUMINUS_NUM tNL tLABEL keyword_do_cond keyword_do_block keyword_do_LAMBDA
+%lexer-context BEG keyword_if keyword_unless keyword_while keyword_until keyword_case keyword_for keyword_begin keyword_do keyword_return keyword_break keyword_next keyword_yield keyword_super keyword_defined keyword_class keyword_module keyword_not keyword_and keyword_or keyword_in keyword_then keyword_else keyword_elsif keyword_when keyword_ensure keyword_rescue keyword_redo keyword_retry keyword_undef keyword_alias keyword_BEGIN keyword_END tLPAREN tLBRACK tLBRACE tLPAREN_ARG tLBRACE_ARG '(' '[' '{' tOP_ASGN '=' tPLUS tMINUS tSTAR tDSTAR tPOW tAMPER tPIPE tCARET tTILDE tBANG tPERCENT tLSHFT tRSHFT tCMP tEQ tEQQ tNEQ tMATCH tNMATCH tGEQ tLEQ tGT tLT tANDOP tOROP '+' '-' '*' '/' '%' '^' '|' '&' '<' '>' '!' '~' '?' tDOT2 tDOT3 tBDOT2 tBDOT3 ',' ';' '\n' ' ' tCOLON tSYMBEG tCOLON3 ':' tASSOC tLAMBDA tLAMBEG tSTRING_BEG tXSTRING_BEG tREGEXP_BEG tWORDS_BEG tQWORDS_BEG tSYMBOLS_BEG tQSYMBOLS_BEG tBACK_REF2 tUPLUS tUMINUS tUMINUS_NUM tNL tLABEL keyword_do_cond keyword_do_block keyword_do_LAMBDA tSTRING_DBEG tSTRING_DVAR
 %lexer-context BEG stmts stmt top_stmts top_stmt bodystmt then do opt_else if_tail case_body cases p_case_body brace_body do_body lambda_body opt_rescue opt_ensure
 %lexer-context BEG p_expr p_alt p_top_expr p_top_expr_body p_expr_basic p_args p_args_head p_args_tail p_find p_kwargs p_kwarg p_kw p_value p_primitive p_variable p_var_ref p_const p_lparen p_lbracket
 %lexer-context BEG mlhs mlhs_inner mlhs_basic mlhs_item mlhs_node lhs
@@ -3168,23 +3168,23 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %lexer-context BEG begin_block lex_ctxt begin_defined after_rescue
 %lexer-context BEG p_as p_rest p_args_post p_arg p_kw_label p_kwrest p_kwnorest p_any_kwrest p_expr_ref
 %lexer-context BEG f_eq kwrest_mark restarg_mark blkarg_mark opt_f_block_arg excessed_comma f_any_kwrest f_no_kwarg f_kwrest f_empty_arg
-%lexer-context BEG bv_decls bvar opt_bv_decl for_var none
-%lexer-context BEG numparam max_numparam it_id p_pvtbl p_pktbl p_in_kwarg stmt_or_begin block_open allow_exits args_forward
+%lexer-context BEG bv_decls bvar opt_bv_decl for_var none opt_block_param_def
+%lexer-context BEG numparam max_numparam it_id p_pvtbl p_pktbl p_in_kwarg stmt_or_begin block_open allow_exits args_forward p_cases
 %lexer-context BEG word_list symbol_list qword_list qsym_list string_contents regexp_contents xstring_contents string_content
-%lexer-context BEG f_args f_arg f_arg_item f_norm_arg f_label f_opt f_kwarg f_kw f_rest_arg f_block_arg f_largs f_larglist f_block_optarg f_block_opt f_block_kw f_block_kwarg f_marg f_margs f_rest_marg args_tail opt_args_tail
-%lexer-context BEG block_param opt_block_param block_param_def compstmt
+%lexer-context BEG f_args f_arg f_arg_item f_norm_arg f_label f_opt f_kwarg f_kw f_rest_arg f_block_arg f_largs f_larglist f_block_optarg f_block_opt f_block_kw f_block_kwarg f_marg f_margs f_rest_marg args_tail opt_args_tail largs_tail
+%lexer-context BEG block_param opt_block_param block_param_def compstmt block_args_tail block_args-opt_tail
 %lexer-context BEG k_begin k_if k_unless k_while k_until k_case k_for k_class k_module k_do k_do_block k_rescue k_ensure k_when k_else k_elsif k_return k_yield k_END
 %lexer-context CMDARG tIDENTIFIER tFID tCONSTANT
 %lexer-context CMDARG command_args opt_block_arg aref_args opt_call_args call_args
 %lexer-context CMDARG endless_command
-%lexer-context END tINTEGER tFLOAT tRATIONAL tIMAGINARY tCHAR tSTRING_END tREGEXP_END tLABEL_END tSYMBOL tSTRING keyword_self keyword_nil keyword_true keyword_false keyword___FILE__ keyword___LINE__ keyword___ENCODING__ keyword_end ')' ']' '}' modifier_if modifier_unless modifier_while modifier_until modifier_rescue
+%lexer-context END tINTEGER tFLOAT tRATIONAL tIMAGINARY tCHAR tSTRING_END tREGEXP_END tLABEL_END tSYMBOL tSTRING keyword_self keyword_nil keyword_true keyword_false keyword__FILE__ keyword__LINE__ keyword__ENCODING__ keyword_end ')' ']' '}' modifier_if modifier_unless modifier_while modifier_until modifier_rescue tAREF tASET '`' tSTRING_CONTENT tGVAR tIVAR tCVAR tBACK_REF tNTH_REF tRBRACE_ARG
 %lexer-context END expr arg arg_value arg_rhs primary primary_value literal numeric simple_numeric strings xstring regexp symbol ssym dsym var_ref method_call command_call command block_call block_command mrhs_arg rel_expr ternary command_rhs command_call_value args mrhs exc_list
 %lexer-context END rparen rbracket trailer term terms opt_terms opt_nl
 %lexer-context END command_asgn mlhs_head endless_arg def_endless_method_endless_arg
 %lexer-context END f_arglist f_paren_args f_opt_paren_args
 %lexer-context END singleton lambda string1 string words symbols qwords qsymbols word heredoc range_expr_arg
 %lexer-context END paren_args opt_paren_args do_block brace_block cmd_brace_block block_arg arg_splat case_args exc_var
-%lexer-context END backref nonlocal_var user_variable var_lhs rbrace string_dend string_dvar
+%lexer-context END backref nonlocal_var user_variable keyword_variable var_lhs rbrace string_dend string_dvar singleton_expr tDUMNY_END tSTRING_DEND
 %lexer-context END k_end
 %lexer-context ENDFN keyword_def
 %lexer-context ENDFN fname def_name defn_head defs_head
@@ -3193,7 +3193,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %lexer-context ENDFN k_def
 %lexer-context MID keyword_return keyword_break keyword_next
 %lexer-context MID expr_value expr_value_do
-%lexer-context DOT tDOT tCOLON2 tANDDOT
+%lexer-context DOT tDOT tCOLON2 tANDDOT '.'
 %lexer-context DOT dot_or_colon call_op call_op2
 
 %printer {
@@ -3268,7 +3268,6 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
     const struct vtable *vars;
     struct rb_strterm_struct *strterm;
     struct lex_context ctxt;
-    enum lex_state_e state;
 }
 
 %token <id>
@@ -3444,7 +3443,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token tQSYMBOLS_BEG	"verbatim symbol list"
 %token tSTRING_END	"terminator"
 %token tSTRING_DEND	"'}'"
-%token <state> tSTRING_DBEG "'#{'"
+%token tSTRING_DBEG "'#{'"
 %token tSTRING_DVAR tLAMBEG tLABEL_END
 
 %token tIGNORED_NL tCOMMENT tEMBDOC_BEG tEMBDOC tEMBDOC_END
@@ -9135,7 +9134,6 @@ parser_peek_variable_name(struct parser_params *p)
       case '{':
         p->lex.pcur = ptr;
         p->command_start = TRUE;
-        yylval.state = 0; /* formerly saved lex_state for restore; PSLR makes this unnecessary */
         return tSTRING_DBEG;
       default:
         return 0;
@@ -14006,9 +14004,6 @@ rb_parser_fatal(struct parser_params *p, const char *fmt, ...)
     RB_GC_GUARD(mesg);
 
     mesg = rb_str_new(0, 0);
-    append_lex_state_name(p, p->lex.state, mesg);
-    compile_error(p, "lex.state: %"PRIsVALUE, mesg);
-    rb_str_resize(mesg, 0);
     append_bitstack_value(p, p->cond_stack, mesg);
     compile_error(p, "cond_stack: %"PRIsVALUE, mesg);
     rb_str_resize(mesg, 0);
