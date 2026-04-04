@@ -934,7 +934,7 @@ parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
         !parser_pslr_deep_accepts_token(p, tCOLON3)) {
         return FALSE;
     }
-    /* Fallback: both eventually accepted or neither — use context table */
+    /* Fallback: both eventually accepted or neither -- use context table */
     return parser_pslr_context_is(p, YY_CTX_BEG | YY_CTX_MID) ||
            parser_pslr_begin_like_p(p);
 }
@@ -3882,7 +3882,7 @@ k_END		: keyword_END lex_ctxt
 
 stmt		: keyword_alias[kw] fitem[new]
                     {
-                        /* fitem の後でも、次の alias 対象は lexer 既定遷移で読める */
+                        /* next alias target is readable by lexer default transition */
                     }
                   fitem[old]
                     {
@@ -4116,7 +4116,7 @@ defs_head	: k_def singleton dot_or_colon
                         $$ = def_head_save(p, $k_def);
                         $$->nd_mid = $def_name;
                         $$->nd_def = NEW_DEFS($singleton, $def_name, 0, &@$);
-                        /* `def_name` を lex した時点で ENDFN は設定済み */
+                        /* ENDFN is already set when `def_name` is lexed */
                     /*% ripper: [$:singleton, $:dot_or_colon, $:def_name] %*/
                     }
                 ;
@@ -4457,7 +4457,7 @@ undef_list	: fitem
                     }
                 | undef_list ','
                     {
-                        /* `undef` 連結時も次の fitem は lexer 既定遷移で読める */
+                        /* next fitem in undef list is also readable by lexer default transition */
                     }
                   fitem
                     {
@@ -6036,7 +6036,7 @@ p_alt		: p_alt[left] '|'[alt]
 
 p_lparen	: '('
                     {
-                        /* AST.parse_file では class pattern kwargs がまだこれに依存する */
+                        /* AST.parse_file class pattern kwargs still depend on this */
                     }
                   p_pktbl
                     {
@@ -6047,7 +6047,7 @@ p_lparen	: '('
 
 p_lbracket	: '['
                     {
-                        /* AST.parse_file では class pattern kwargs がまだこれに依存する */
+                        /* AST.parse_file class pattern kwargs still depend on this */
                     }
                   p_pktbl
                     {
@@ -10624,8 +10624,8 @@ parse_percent(struct parser_params *p, const int space_seen)
 
           case 's':
             p->lex.strterm = NEW_STRTERM(str_ssym, term, paren);
-            /* quoted symbol 本体は strterm で読むので、返却後の FNAME/FITEM は不要 */
-            /* PSLR fname bridge により bare symbol 名は lexer 入口で補正する */
+            /* quoted symbol body is read by strterm, no FNAME/FITEM needed after return */
+            /* PSLR fname bridge corrects bare symbol name at lexer entry */
             return tSYMBEG;
 
           default:
@@ -11679,7 +11679,7 @@ parser_yylex(struct parser_params *p)
             pushback(p, c);
             break;
         }
-        /* AST.parse_file では operator symbol literal がまだこれに依存する */
+        /* AST.parse_file operator symbol literal still depends on this */
         return tSYMBEG;
 
       case '/':

@@ -41,13 +41,45 @@ module Lrama
 
     # Infer the lexer context for a single kernel item.
     #
+    # When the symbol before the dot is a mid-rule action ($@N, @N),
+    # it carries no lexer context information. Mid-rule actions in
+    # the original grammar often existed to transition lex_state for
+    # the upcoming symbol (e.g., SET_LEX_STATE(EXPR_BEG) before bodystmt).
+    # Therefore, prefer the NEXT symbol (what the parser expects) to
+    # determine context. Fall back to walking backwards if the next
+    # symbol also has no context.
+    #
     # @rbs (State::Item item) -> Integer
     def infer_item_context(item)
       # Position 0 means we're at the start of a rule (just entered via GOTO)
       return default_beg_context if item.position == 0
 
       prev_sym = item.rhs[item.position - 1]
-      classify_symbol_context(prev_sym)
+
+      unless prev_sym.midrule?
+        ctx = classify_symbol_context(prev_sym)
+        return ctx if ctx != 0
+      end
+
+      # Previous symbol is a mid-rule action or has unknown context.
+      # Look forward: mid-rule actions often transitioned lex_state
+      # for the upcoming symbol.
+      next_sym = item.rhs[item.position]
+      if next_sym
+        ctx = classify_symbol_context(next_sym)
+        return ctx if ctx != 0
+      end
+
+      # Fall back: walk backwards past mid-rule actions
+      (item.position - 2).downto(0) do |i|
+        sym = item.rhs[i]
+        unless sym.midrule?
+          ctx = classify_symbol_context(sym)
+          return ctx if ctx != 0
+        end
+      end
+
+      default_beg_context
     end
 
     # Classify context based on the symbol before the dot.
