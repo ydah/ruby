@@ -10586,7 +10586,8 @@ parse_percent(struct parser_params *p, const int space_seen, int cmd_state)
     register int c;
     const char *ptok = p->lex.pcur;
 
-    if (IS_BEG() || (cmd_state && parser_pslr_begin_like_p(p))) {
+    if ((IS_BEG() || (cmd_state && parser_pslr_begin_like_p(p))) &&
+        !parser_pslr_expects_fname_p(p)) {
         int term;
         int paren;
 
@@ -11281,7 +11282,10 @@ parser_yylex(struct parser_params *p)
                 return tOP_ASGN;
             }
             pushback(p, c);
-            if (parser_pslr_prefers_token_p(p, tDSTAR, tPOW)) {
+            if (parser_pslr_expects_fname_p(p)) {
+                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
+            else if (parser_pslr_prefers_token_p(p, tDSTAR, tPOW)) {
                 c = tDSTAR;
             }
             else if (parser_pslr_prefers_token_p(p, tPOW, tDSTAR)) {
