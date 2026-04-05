@@ -1162,7 +1162,7 @@ parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_to
     }
     /* When both forms are reachable only through stack-aware reductions
        (no direct or empty-reduction paths accept either), the state is
-       post-expression (e.g., "undef =~•", "arg•"). In such states the
+       post-expression (e.g., "undef =~ .", "arg ."). In such states the
        modifier form is the shorter reduction path and the expected parse. */
     if (stack_keyword && stack_modifier &&
         !accepts_keyword && !accepts_modifier &&
@@ -11257,7 +11257,7 @@ parser_yylex(struct parser_params *p)
                     RUBY_SET_YYLLOC(*p->yylloc);
                 }
                 /* Inside parentheses/brackets (not braces), newlines
-                   are whitespace — treat as continuation. This handles
+                   are whitespace -- treat as continuation. This handles
                    multi-line parameter lists like:
                      def foo(a = nil,
                              in: nil) */
