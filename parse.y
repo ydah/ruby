@@ -638,6 +638,7 @@ int yy_state_deep_accepts_token(int yystate, int yychar,
                                 const void *stack_base, const void *stack_top);
 int yy_pseudo_scan(int parser_state, const char *input, int *match_length);
 int yy_lexer_context_is(int yystate, int ctx_mask);
+int yy_state_has_empty_default_reduction(int yystate);
 
 /* Check if the current PSLR parser state has the given lexer context flag(s).
  * Returns 0 if the state has no context classification (UNKNOWN). */
@@ -646,6 +647,16 @@ parser_pslr_context_is(struct parser_params *p, int ctx_mask)
 {
     return p->pslr_current_state >= 0 &&
            yy_lexer_context_is(p->pslr_current_state, ctx_mask);
+}
+
+/* Check if the current state is a "transient" state with only an empty
+ * default reduction (yyr2 == 0).  Such states are pass-throughs created
+ * by mid-rule actions (e.g., in do_body after k_do_block). */
+static inline int
+parser_pslr_is_transient_state(struct parser_params *p)
+{
+    return p->pslr_current_state >= 0 &&
+           yy_state_has_empty_default_reduction(p->pslr_current_state);
 }
 
 /* Stack-aware deep token acceptance: traces through BOTH empty and non-empty
@@ -846,19 +857,50 @@ parser_pslr_lex_beg_like_p(struct parser_params *p)
 static inline int
 parser_pslr_ignores_newline_p(struct parser_params *p)
 {
-    if (parser_pslr_after_dot_p(p) ||
-        parser_pslr_expects_fname_p(p))
+    if (parser_pslr_after_dot_p(p))
+        return TRUE;
+    /* In fname context (after def/undef/alias), ignore newlines only
+       when '\n' is not a valid action in the current state.  After
+       `undef :foo` the state accepts '\n' to terminate the statement,
+       so the newline must pass through.  After `def` (expecting a
+       method name) '\n' is not accepted, so it should be ignored. */
+    if (parser_pslr_expects_fname_p(p) &&
+        !parser_pslr_accepts_token(p, '\n'))
         return TRUE;
     /* A state that accepts keyword_if (BEG form) but not modifier_if
        (END form) is a statement-beginning state where newlines should
-       be ignored, regardless of the context classifier's assignment. */
+       be ignored, unless `keyword_then` is reachable via the actual
+       parser stack (indicating we're in a context like `rescue` where
+       `then` follows optional empty rules). */
     if (parser_pslr_accepts_token(p, keyword_if) &&
-        !parser_pslr_accepts_token(p, modifier_if))
+        !parser_pslr_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then))
         return TRUE;
     /* Fall back to deep (empty-reduction) check for states that reach
        a keyword_if-accepting state through reductions. */
     if (parser_pslr_eventually_accepts_token(p, keyword_if) &&
-        !parser_pslr_eventually_accepts_token(p, modifier_if))
+        !parser_pslr_eventually_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then))
+        return TRUE;
+    /* Remaining BEG-context states should ignore newlines IF the state
+       is "transient" (has an empty default reduction, e.g., mid-rule
+       actions after `do` or `begin`).  Non-transient BEG states like
+       `keyword_undef undef_list .` or `defined? yield .` have non-empty
+       default reductions and newlines should terminate the statement.
+       Also guard against modifier_if and keyword_then as before. */
+    if (parser_pslr_context_is(p, YY_CTX_BEG) &&
+        parser_pslr_is_transient_state(p) &&
+        !parser_pslr_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then))
+        return TRUE;
+    /* Inside grouping constructs (parens, brackets), ignore newlines
+       unless modifier_if is reachable through the stack (indicating
+       an expression-completion state like after `a = 1` where newlines
+       are statement terminators even inside parens). */
+    if (p->lex.paren_nest > p->lex.brace_nest &&
+        !p->lex.strterm &&
+        !parser_pslr_deep_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then))
         return TRUE;
     return FALSE;
 }
@@ -7354,6 +7396,18 @@ none		: /* none */
                     }
                 ;
 %%
+/* Check if the given state's default reduction is an empty rule (yyr2 == 0).
+ * States with empty default reductions are "transient" pass-through states
+ * (e.g., after mid-rule actions in `do_body`).  States with non-empty
+ * defaults are "completion" states where a real reduction happens (e.g.,
+ * `keyword_undef undef_list → stmt`). */
+int
+yy_state_has_empty_default_reduction(int yystate)
+{
+    int rule = yydefact[yystate];
+    return rule != 0 && yyr2[rule] == 0;
+}
+
 # undef p
 # undef yylex
 # undef yylval
@@ -10594,7 +10648,16 @@ parse_percent(struct parser_params *p, const int space_seen, int cmd_state)
     register int c;
     const char *ptok = p->lex.pcur;
 
-    if ((IS_BEG() || (cmd_state && parser_pslr_begin_like_p(p))) &&
+    if ((IS_BEG() || cmd_state ||
+         /* After modifier keywords (if/unless/while/until/rescue),
+            the condition expression starts but IS_BEG() is FALSE
+            because the state has END context from the modifier token.
+            Detect by checking that keyword_not (expr start) is accepted
+            but modifier_if and tCMP are not — tCMP excludes fname states
+            (after def/alias) which also accept keyword_not as a method name. */
+         (parser_pslr_accepts_token(p, keyword_not) &&
+          !parser_pslr_accepts_token(p, modifier_if) &&
+          !parser_pslr_accepts_token(p, tCMP))) &&
         !parser_pslr_expects_fname_p(p)) {
         int term;
         int paren;
@@ -10684,8 +10747,10 @@ parse_percent(struct parser_params *p, const int space_seen, int cmd_state)
         goto quotation;
     }
     /* In ENDFN context (after method! names), %{...} with space before %
-       should still be a string literal, matching EXPR_ARG behavior. */
-    if (space_seen && !ISSPACE(c) && parser_pslr_context_is(p, YY_CTX_ENDFN)) {
+       should still be a string literal, matching EXPR_ARG behavior.
+       Exclude fname states (after def/alias) where % is a method name. */
+    if (space_seen && !ISSPACE(c) && parser_pslr_context_is(p, YY_CTX_ENDFN) &&
+        !parser_pslr_expects_fname_p(p)) {
         goto quotation;
     }
     pushback(p, c);
@@ -11018,7 +11083,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 if (COND_P() || do_token == keyword_do_cond) {
                     return keyword_do_cond;
                 }
-                if (CMDARG_P() && !parser_pslr_context_is(p, YY_CTX_CMDARG))
+                if (CMDARG_P())
                     return keyword_do_block;
                 if (do_token == keyword_do) return keyword_do;
                 if (do_token == keyword_do_block) {
@@ -11264,17 +11329,6 @@ parser_yylex(struct parser_params *p)
                 if (c != -1) {
                     token_flush(p);
                     RUBY_SET_YYLLOC(*p->yylloc);
-                }
-                /* Inside parentheses/brackets (not braces), newlines
-                   are whitespace -- treat as continuation. This handles
-                   multi-line parameter lists like:
-                     def foo(a = nil,
-                             in: nil)
-                   Skip when a heredoc is pending (strterm set) to avoid
-                   swallowing newlines that delimit heredoc bodies. */
-                if (c != -1 && p->lex.paren_nest > p->lex.brace_nest &&
-                    !p->lex.strterm) {
-                    goto retry;
                 }
                 goto normal_newline;
             }
@@ -11828,17 +11882,25 @@ parser_yylex(struct parser_params *p)
             if (pslr_c != 0) {
                 c = pslr_c;
             }
-            else if (IS_BEG()) {
+            else if (IS_BEG() || cmd_state) {
                 c = tLPAREN;
             }
         }
-        else if (IS_BEG()) {
+        else if (IS_BEG() || cmd_state) {
             c = tLPAREN;
         }
         else if (parser_pslr_lparen_arg_fallback_p(p, space_seen)) {
             c = tLPAREN_ARG;
         }
-        else if (parser_pslr_endfn_like_p(p) && !lambda_beginning_p()) {
+        else {
+            /* Space seen, not BEG/cmd_state, not LPAREN_ARG -- use PSLR to
+               disambiguate. */
+            int pslr_c = parser_pslr_lparen_token(p);
+            if (pslr_c != 0) {
+                c = pslr_c;
+            }
+        }
+        if (c == '(' && parser_pslr_endfn_like_p(p) && !lambda_beginning_p()) {
             rb_warning0("parentheses after method name is interpreted as "
                         "an argument list, not a decomposed argument");
         }
@@ -11862,7 +11924,7 @@ parser_yylex(struct parser_params *p)
             pushback(p, c);
             return '[';
         }
-        else if (IS_BEG()) {
+        else if (IS_BEG() || cmd_state) {
             c = tLBRACK;
         }
         else if (parser_pslr_lbrack_arg_fallback_p(p, space_seen)) {
@@ -11878,6 +11940,12 @@ parser_yylex(struct parser_params *p)
             c = tLAMBEG;
         else if (parser_pslr_after_labeled_p(p))
             c = tLBRACE;      /* hash */
+        else if (cmd_state) {
+            /* After newline/semicolon we are at statement beginning.
+               Use PSLR to pick the right brace, defaulting to hash. */
+            if ((c = parser_pslr_lbrace_token(p)) == 0)
+                c = tLBRACE;
+        }
         else if (parser_pslr_brace_primary_block_fallback_p(p))
             c = '{';          /* block (primary) */
         else if ((c = parser_pslr_lbrace_token(p)) != 0) {
