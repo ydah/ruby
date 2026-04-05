@@ -9300,12 +9300,20 @@ static NODE *
 mandatory_node(const rb_iseq_t *iseq, const NODE *cond_node)
 {
     const NODE *node = ISEQ_COMPILE_DATA(iseq)->root_node;
-    if (nd_type(node) == NODE_IF && RNODE_IF(node)->nd_cond == cond_node) {
+    if (nd_type(node) == NODE_BLOCK) {
+        const NODE *block = node;
+        while (block) {
+            const NODE *head = RNODE_BLOCK(block)->nd_head;
+            if (head && nd_type(head) == NODE_IF && RNODE_IF(head)->nd_cond == cond_node) {
+                return RNODE_IF(head)->nd_body;
+            }
+            block = RNODE_BLOCK(block)->nd_next;
+        }
+    }
+    else if (nd_type(node) == NODE_IF && RNODE_IF(node)->nd_cond == cond_node) {
         return RNODE_IF(node)->nd_body;
     }
-    else {
-        rb_bug("mandatory_node: can't find mandatory node");
-    }
+    rb_bug("mandatory_node: can't find mandatory node");
 }
 
 static int
