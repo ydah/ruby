@@ -859,11 +859,6 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
 {
     if (parser_pslr_after_dot_p(p))
         return TRUE;
-    /* In fname context (after def/undef/alias), ignore newlines only
-       when '\n' is not a valid action in the current state.  After
-       `undef :foo` the state accepts '\n' to terminate the statement,
-       so the newline must pass through.  After `def` (expecting a
-       method name) '\n' is not accepted, so it should be ignored. */
     if (parser_pslr_expects_fname_p(p) &&
         !parser_pslr_accepts_token(p, '\n'))
         return TRUE;
@@ -876,8 +871,6 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
         !parser_pslr_accepts_token(p, modifier_if) &&
         !parser_pslr_deep_accepts_token(p, keyword_then))
         return TRUE;
-    /* Fall back to deep (empty-reduction) check for states that reach
-       a keyword_if-accepting state through reductions. */
     if (parser_pslr_eventually_accepts_token(p, keyword_if) &&
         !parser_pslr_eventually_accepts_token(p, modifier_if) &&
         !parser_pslr_deep_accepts_token(p, keyword_then))
@@ -891,13 +884,22 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
     if (parser_pslr_context_is(p, YY_CTX_BEG) &&
         parser_pslr_is_transient_state(p) &&
         !parser_pslr_accepts_token(p, modifier_if) &&
-        !parser_pslr_deep_accepts_token(p, keyword_then))
-        return TRUE;
+        !parser_pslr_deep_accepts_token(p, keyword_then)) {
+        /* Distinguish transient states where newlines should be ignored
+         * (e.g., after `do`) from those where newlines terminate the
+         * preceding construct (e.g., after `def foo *args`).
+         * If '\n' is directly accepted OR reachable via exactly the
+         * empty reductions this transient state leads to, newlines
+         * should NOT be ignored. */
+        if (!p->ctxt.in_argdef)
+            return TRUE;
+    }
     /* Inside grouping constructs (parens, brackets), ignore newlines
        unless modifier_if is reachable through the stack (indicating
        an expression-completion state like after `a = 1` where newlines
        are statement terminators even inside parens). */
     if (p->lex.paren_nest > p->lex.brace_nest &&
+        p->lex.brace_nest == 0 &&
         !p->lex.strterm &&
         !parser_pslr_deep_accepts_token(p, modifier_if) &&
         !parser_pslr_deep_accepts_token(p, keyword_then))
@@ -1026,7 +1028,10 @@ parser_pslr_lparen_arg_fallback_p(struct parser_params *p, int space_seen)
     if (!space_seen) return FALSE;
     if (accepts_plain + accepts_paren + accepts_arg == 1) return accepts_arg;
     if (parser_pslr_arg_state_fallback_p(p)) return TRUE;
-    if (parser_pslr_accepts_token(p, tLPAREN_ARG)) return TRUE;
+    /* Only return TRUE when tLPAREN is NOT also accepted.
+     * When both tLPAREN and tLPAREN_ARG are accepted (e.g., mlhs after comma),
+     * tLPAREN_ARG would be wrong — let the caller fall through to other checks. */
+    if (accepts_arg && !accepts_paren) return TRUE;
     /* Deep PSLR: after lex_state fallback, check if tLPAREN_ARG uniquely reachable */
     {
         int deep_plain = parser_pslr_eventually_accepts_token(p, '(');
@@ -1110,6 +1115,10 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
     }
     if (accepts_hash + accepts_primary_block + accepts_expr_block == 1) {
         return accepts_primary_block;
+    }
+    /* When hash is not accepted, both block forms indicate a block context */
+    if (!accepts_hash && (accepts_primary_block || accepts_expr_block)) {
+        return TRUE;
     }
     /* Deep PSLR: check if primary block uniquely reachable via empty reductions */
     {
@@ -11152,6 +11161,12 @@ parser_pslr_lbrace_token(struct parser_params *p)
     if (accepts_hash && !accepts_primary_block && !accepts_expr_block) {
         return tLBRACE;
     }
+    /* When hash is not accepted but both block forms are, it's a block.
+     * e.g., after keyword_super: primary block and expr block are both
+     * accepted, but hash is not. Prefer primary block. */
+    if (!accepts_hash && (accepts_primary_block || accepts_expr_block)) {
+        return accepts_primary_block ? '{' : tLBRACE_ARG;
+    }
     /* Deep PSLR: trace empty reductions for unique brace determination */
     {
         int deep_hash = parser_pslr_eventually_accepts_token(p, tLBRACE);
@@ -11663,6 +11678,8 @@ parser_yylex(struct parser_params *p)
         if (parser_pslr_prefers_token_p(p, tUPLUS, '+') ||
             (parser_pslr_eventually_accepts_token(p, tUPLUS) &&
              !parser_pslr_eventually_accepts_token(p, '+')) ||
+            (parser_pslr_deep_accepts_token(p, tUPLUS) &&
+             !parser_pslr_deep_accepts_token(p, '+')) ||
             IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
@@ -11694,6 +11711,8 @@ parser_yylex(struct parser_params *p)
         if (parser_pslr_prefers_token_p(p, tUMINUS, '-') ||
             (parser_pslr_eventually_accepts_token(p, tUMINUS) &&
              !parser_pslr_eventually_accepts_token(p, '-')) ||
+            (parser_pslr_deep_accepts_token(p, tUMINUS) &&
+             !parser_pslr_deep_accepts_token(p, '-')) ||
             IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
@@ -11827,6 +11846,11 @@ parser_yylex(struct parser_params *p)
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
             return tREGEXP_BEG;
         }
+        if (parser_pslr_deep_accepts_token(p, tREGEXP_BEG) &&
+            !parser_pslr_deep_accepts_token(p, '/')) {
+            p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
+            return tREGEXP_BEG;
+        }
         if (IS_BEG()) {
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
             return tREGEXP_BEG;
@@ -11885,19 +11909,29 @@ parser_yylex(struct parser_params *p)
             else if (IS_BEG() || cmd_state) {
                 c = tLPAREN;
             }
-        }
-        else if (IS_BEG() || cmd_state) {
-            c = tLPAREN;
-        }
-        else if (parser_pslr_lparen_arg_fallback_p(p, space_seen)) {
-            c = tLPAREN_ARG;
+            else if (parser_pslr_accepts_token(p, tLPAREN) &&
+                     !parser_pslr_accepts_token(p, '(')) {
+                /* e.g., mlhs after comma: tLPAREN accepted but not plain '(' */
+                c = tLPAREN;
+            }
         }
         else {
-            /* Space seen, not BEG/cmd_state, not LPAREN_ARG -- use PSLR to
-               disambiguate. */
+            /* Space seen: try PSLR action-table disambiguation first */
             int pslr_c = parser_pslr_lparen_token(p);
             if (pslr_c != 0) {
                 c = pslr_c;
+            }
+            else if (IS_BEG() || cmd_state) {
+                c = tLPAREN;
+            }
+            else if (parser_pslr_lparen_arg_fallback_p(p, space_seen)) {
+                c = tLPAREN_ARG;
+            }
+            else {
+                /* When PSLR can't disambiguate and we're not in an arg state,
+                 * default to tLPAREN. This handles mlhs after comma where
+                 * both tLPAREN and tLPAREN_ARG are accepted. */
+                c = tLPAREN;
             }
         }
         if (c == '(' && parser_pslr_endfn_like_p(p) && !lambda_beginning_p()) {
