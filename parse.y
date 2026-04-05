@@ -518,6 +518,7 @@ struct parser_params {
         int brace_nest;
         /* track the nest level of do...end blocks */
         int do_nest;
+        int in_block_param; /* inside |...| block parameters */
     } lex;
     stack_type cond_stack;
     stack_type cmdarg_stack;
@@ -574,6 +575,7 @@ struct parser_params {
     signed int frozen_string_literal:2; /* -1: not specified, 0: false, 1: true */
 
     unsigned int command_start:1;
+    unsigned int cmd_state:1;  /* saved command_start for PSLR newline checks */
     unsigned int eofp: 1;
     unsigned int ruby__end__seen: 1;
     unsigned int debug: 1;
@@ -866,16 +868,18 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
         return TRUE;
     /* A state that accepts keyword_if (BEG form) but not modifier_if
        (END form) is a statement-beginning state where newlines should
-       be ignored, unless `keyword_then` is reachable via the actual
-       parser stack (indicating we're in a context like `rescue` where
-       `then` follows optional empty rules). */
+       be ignored.  However, keywords like next/break/return also accept
+       keyword_if (as the start of their argument expression) but their
+       lexer context is MID, so we exclude MID-context states. */
     if (parser_pslr_accepts_token(p, keyword_if) &&
         !parser_pslr_accepts_token(p, modifier_if) &&
-        !parser_pslr_deep_accepts_token(p, keyword_then))
+        !parser_pslr_deep_accepts_token(p, keyword_then) &&
+        !parser_pslr_context_is(p, YY_CTX_MID))
         return TRUE;
     if (parser_pslr_eventually_accepts_token(p, keyword_if) &&
         !parser_pslr_eventually_accepts_token(p, modifier_if) &&
-        !parser_pslr_deep_accepts_token(p, keyword_then))
+        !parser_pslr_deep_accepts_token(p, keyword_then) &&
+        !parser_pslr_context_is(p, YY_CTX_MID))
         return TRUE;
     /* Remaining BEG-context states should ignore newlines IF the state
        is "transient" (has an empty default reduction, e.g., mid-rule
@@ -887,19 +891,15 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
         parser_pslr_is_transient_state(p) &&
         !parser_pslr_accepts_token(p, modifier_if) &&
         !parser_pslr_deep_accepts_token(p, keyword_then)) {
-        /* Distinguish transient states where newlines should be ignored
-         * (e.g., after `do`) from those where newlines terminate the
-         * preceding construct (e.g., after `def foo *args`).
-         * If '\n' is directly accepted OR reachable via exactly the
-         * empty reductions this transient state leads to, newlines
-         * should NOT be ignored. */
-        if (!p->ctxt.in_argdef)
+        /* Only suppress newlines if command_start was set by a block-starting
+           keyword (begin/do/else/ensure/then).  Keywords like return/break/next
+           do NOT set command_start, so newlines after them should terminate. */
+        if (!p->ctxt.in_argdef && p->cmd_state)
             return TRUE;
     }
-    /* Inside grouping constructs (parens, brackets), ignore newlines
-       unless modifier_if is reachable through the stack (indicating
-       an expression-completion state like after `a = 1` where newlines
-       are statement terminators even inside parens). */
+    /* Inside block parameter delimiters |...|, ignore newlines. */
+    if (p->lex.in_block_param)
+        return TRUE;
     /* Inside grouping constructs (parens, brackets) but not inside a
        block scope (brace or do...end), ignore newlines. */
     if (p->lex.paren_nest > p->lex.brace_nest &&
@@ -3290,6 +3290,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %lexer-context ENDFN f_bad_arg f_arg_asgn sym fcall
 %lexer-context ENDFN k_def
 %lexer-context MID keyword_return keyword_break keyword_next
+%lexer-context MID k_return k_yield
 %lexer-context MID expr_value expr_value_do
 %lexer-context DOT tDOT tCOLON2 tANDDOT '.'
 %lexer-context DOT dot_or_colon call_op call_op2
@@ -5702,12 +5703,17 @@ opt_block_param_def	: none
                         }
                     ;
 
-block_param_def	: '|' opt_block_param opt_bv_decl '|'
+block_param_def	: '|'
                     {
+                        p->lex.in_block_param = 1;
+                    }
+                  opt_block_param opt_bv_decl '|'
+                    {
+                        p->lex.in_block_param = 0;
                         p->max_numparam = ORDINAL_PARAM;
                         p->ctxt.in_argdef = 0;
-                        $$ = $2;
-                    /*% ripper: block_var!($:2, $:3) %*/
+                        $$ = $opt_block_param;
+                    /*% ripper: block_var!($:opt_block_param, $:opt_bv_decl) %*/
                     }
                 ;
 
@@ -7406,6 +7412,7 @@ term		: ';'
 
 terms		: term
                 | terms ';' {yyerrok;}
+                | terms '\n'
                 ;
 
 none		: /* none */
@@ -11223,6 +11230,7 @@ parser_yylex(struct parser_params *p)
         }
     }
     cmd_state = p->command_start;
+    p->cmd_state = cmd_state;  /* save for PSLR newline checks */
     p->command_start = FALSE;
     p->token_seen = TRUE;
 #ifndef RIPPER
