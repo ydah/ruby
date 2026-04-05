@@ -11260,8 +11260,11 @@ parser_yylex(struct parser_params *p)
                    are whitespace -- treat as continuation. This handles
                    multi-line parameter lists like:
                      def foo(a = nil,
-                             in: nil) */
-                if (c != -1 && p->lex.paren_nest > p->lex.brace_nest) {
+                             in: nil)
+                   Skip when a heredoc is pending (strterm set) to avoid
+                   swallowing newlines that delimit heredoc bodies. */
+                if (c != -1 && p->lex.paren_nest > p->lex.brace_nest &&
+                    !p->lex.strterm) {
                     goto retry;
                 }
                 goto normal_newline;
