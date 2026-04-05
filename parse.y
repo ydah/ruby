@@ -838,9 +838,21 @@ parser_pslr_lex_beg_like_p(struct parser_params *p)
 static inline int
 parser_pslr_ignores_newline_p(struct parser_params *p)
 {
-    return parser_pslr_context_is(p, YY_CTX_BEG) ||
-           parser_pslr_after_dot_p(p) ||
-           parser_pslr_expects_fname_p(p);
+    if (parser_pslr_after_dot_p(p) ||
+        parser_pslr_expects_fname_p(p))
+        return TRUE;
+    /* A state that accepts keyword_if (BEG form) but not modifier_if
+       (END form) is a statement-beginning state where newlines should
+       be ignored, regardless of the context classifier's assignment. */
+    if (parser_pslr_accepts_token(p, keyword_if) &&
+        !parser_pslr_accepts_token(p, modifier_if))
+        return TRUE;
+    /* Fall back to deep (empty-reduction) check for states that reach
+       a keyword_if-accepting state through reductions. */
+    if (parser_pslr_eventually_accepts_token(p, keyword_if) &&
+        !parser_pslr_eventually_accepts_token(p, modifier_if))
+        return TRUE;
+    return FALSE;
 }
 
 static inline int
@@ -1043,7 +1055,7 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
     int accepts_primary_block = parser_pslr_accepts_token(p, '{');
     int accepts_expr_block = parser_pslr_accepts_token(p, tLBRACE_ARG);
 
-    if (parser_pslr_context_is(p, YY_CTX_CMDARG | YY_CTX_END)) {
+    if (parser_pslr_context_is(p, YY_CTX_CMDARG | YY_CTX_END | YY_CTX_ENDFN)) {
         return TRUE;
     }
     if (accepts_hash + accepts_primary_block + accepts_expr_block == 1) {
@@ -1121,7 +1133,20 @@ parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_to
     int deep_keyword, deep_modifier, stack_keyword, stack_modifier;
 
     if (accepts_keyword + accepts_modifier == 1) {
-        return accepts_keyword ? keyword_token : modifier_token;
+        if (accepts_keyword) {
+            /* State directly accepts keyword form but not modifier.
+               Check if modifier is reachable through reductions (deep).
+               If so, MID context means prefer modifier form.
+               e.g., state after "next" accepts keyword_if for call_args
+               but "next if cond" needs modifier_if via reductions. */
+            if (parser_pslr_context_is(p, YY_CTX_MID) &&
+                (parser_pslr_eventually_accepts_token(p, modifier_token) ||
+                 parser_pslr_deep_accepts_token(p, modifier_token))) {
+                return modifier_token;
+            }
+            return keyword_token;
+        }
+        return modifier_token;
     }
     /* Deep PSLR (empty reductions only) */
     deep_keyword = parser_pslr_eventually_accepts_token(p, keyword_token);
@@ -1134,6 +1159,15 @@ parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_to
     stack_modifier = parser_pslr_deep_accepts_token(p, modifier_token);
     if (stack_keyword + stack_modifier == 1) {
         return stack_keyword ? keyword_token : modifier_token;
+    }
+    /* When both forms are reachable only through stack-aware reductions
+       (no direct or empty-reduction paths accept either), the state is
+       post-expression (e.g., "undef =~•", "arg•"). In such states the
+       modifier form is the shorter reduction path and the expected parse. */
+    if (stack_keyword && stack_modifier &&
+        !accepts_keyword && !accepts_modifier &&
+        !deep_keyword && !deep_modifier) {
+        return modifier_token;
     }
     return 0;
 }
@@ -10640,6 +10674,11 @@ parse_percent(struct parser_params *p, const int space_seen)
     if (IS_SPCARG(c)) {
         goto quotation;
     }
+    /* In ENDFN context (after method! names), %{...} with space before %
+       should still be a string literal, matching EXPR_ARG behavior. */
+    if (space_seen && !ISSPACE(c) && parser_pslr_context_is(p, YY_CTX_ENDFN)) {
+        goto quotation;
+    }
     pushback(p, c);
     return warn_balanced('%', "%%", "string literal");
 }
@@ -10984,6 +11023,21 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
             /* keyword_variant cannot disambiguate modifier keywords here:
              * in CMDARG context, deep check finds keyword form via new-statement
              * path but misses modifier form (shift action, not on default path) */
+            /* Use action-table disambiguation first */
+            if (kw->id[0] != kw->id[1]) {
+                keyword_variant = parser_pslr_keyword_variant(p, kw->id[0], kw->id[1]);
+                if (keyword_variant) return keyword_variant;
+            }
+            /* Fall back to context-based check, but verify with deep accepts.
+               If the modifier form is reachable via stack-aware reductions
+               (e.g., undef_list reduces to stmt, then modifier_if applies),
+               prefer modifier form even in BEG context. */
+            if (kw->id[0] != kw->id[1]) {
+                int deep_mod = parser_pslr_deep_accepts_token(p, kw->id[1]);
+                int deep_kw = parser_pslr_deep_accepts_token(p, kw->id[0]);
+                if (deep_mod && !deep_kw) return kw->id[1];
+                if (deep_kw && !deep_mod) return kw->id[0];
+            }
             if (parser_pslr_reserved_word_begin_p(p)) {
                 return kw->id[0];
             }
@@ -11201,6 +11255,14 @@ parser_yylex(struct parser_params *p)
                 if (c != -1) {
                     token_flush(p);
                     RUBY_SET_YYLLOC(*p->yylloc);
+                }
+                /* Inside parentheses/brackets (not braces), newlines
+                   are whitespace — treat as continuation. This handles
+                   multi-line parameter lists like:
+                     def foo(a = nil,
+                             in: nil) */
+                if (c != -1 && p->lex.paren_nest > p->lex.brace_nest) {
+                    goto retry;
                 }
                 goto normal_newline;
             }
@@ -11683,6 +11745,10 @@ parser_yylex(struct parser_params *p)
         return tSYMBEG;
 
       case '/':
+        /* In fname context (alias, def, sym), / is a method name, not regexp */
+        if (parser_pslr_expects_fname_p(p) || parser_pslr_after_dot_p(p)) {
+            return '/';
+        }
         if (parser_pslr_prefers_token_p(p, tREGEXP_BEG, '/')) {
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
             return tREGEXP_BEG;
@@ -11739,11 +11805,20 @@ parser_yylex(struct parser_params *p)
                  (c = parser_pslr_lparen_token(p)) == '(') {
             /* singleton literal diagnostics still need plain '(' after ENDFN */
         }
+        else if (!space_seen) {
+            /* No space: use PSLR action-table to pick the right paren token.
+               e.g., yield( needs '(' to match "k_yield '(' call_args rparen",
+               but IS_BEG() would wrongly choose tLPAREN. */
+            int pslr_c = parser_pslr_lparen_token(p);
+            if (pslr_c != 0) {
+                c = pslr_c;
+            }
+            else if (IS_BEG()) {
+                c = tLPAREN;
+            }
+        }
         else if (IS_BEG()) {
             c = tLPAREN;
-        }
-        else if (!space_seen) {
-            /* foo( ... ) => method call, no ambiguity */
         }
         else if (parser_pslr_lparen_arg_fallback_p(p, space_seen)) {
             c = tLPAREN_ARG;

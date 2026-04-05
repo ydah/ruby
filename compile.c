@@ -9303,9 +9303,19 @@ mandatory_node(const rb_iseq_t *iseq, const NODE *cond_node)
     if (nd_type(node) == NODE_IF && RNODE_IF(node)->nd_cond == cond_node) {
         return RNODE_IF(node)->nd_body;
     }
-    else {
-        rb_bug("mandatory_node: can't find mandatory node");
+    /* When the body is wrapped in NODE_BLOCK (e.g., from stmts terms
+       stmt_or_begin path), walk through to find the NODE_IF. */
+    if (nd_type(node) == NODE_BLOCK) {
+        const NODE *n = node;
+        while (n) {
+            const NODE *head = RNODE_BLOCK(n)->nd_head;
+            if (nd_type(head) == NODE_IF && RNODE_IF(head)->nd_cond == cond_node) {
+                return RNODE_IF(head)->nd_body;
+            }
+            n = RNODE_BLOCK(n)->nd_next;
+        }
     }
+    rb_bug("mandatory_node: can't find mandatory node");
 }
 
 static int
