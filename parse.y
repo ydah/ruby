@@ -516,6 +516,8 @@ struct parser_params {
         int lpar_beg;
         /* track the nest level of only braces "{}" */
         int brace_nest;
+        /* track the nest level of do...end blocks */
+        int do_nest;
     } lex;
     stack_type cond_stack;
     stack_type cmdarg_stack;
@@ -898,8 +900,11 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
        unless modifier_if is reachable through the stack (indicating
        an expression-completion state like after `a = 1` where newlines
        are statement terminators even inside parens). */
+    /* Inside grouping constructs (parens, brackets) but not inside a
+       block scope (brace or do...end), ignore newlines. */
     if (p->lex.paren_nest > p->lex.brace_nest &&
         p->lex.brace_nest == 0 &&
+        p->lex.do_nest == 0 &&
         !p->lex.strterm &&
         !parser_pslr_deep_accepts_token(p, modifier_if) &&
         !parser_pslr_deep_accepts_token(p, keyword_then))
@@ -5272,6 +5277,7 @@ primary		: inline_primary
                     $$ = NEW_FOR($expr_value, scope, &@$, &@k_for, &@keyword_in, &do_keyword_loc, &@k_end);
                     RNODE_SCOPE(scope)->nd_parent = $$;
                     fixpos($$, $for_var);
+                    if ($do == keyword_do_cond) p->lex.do_nest--;
                 /*% ripper: for!($:for_var, $:expr_value, $:compstmt) %*/
                 }
             | k_class cpath superclass
@@ -5488,6 +5494,7 @@ k_do		: keyword_do
                     {
                         token_info_push(p, "do", &@$);
                         push_end_expect_token_locations(p, &@1.beg_pos);
+                        p->lex.do_nest++;
                     }
                 ;
 
@@ -5495,6 +5502,7 @@ k_do_block	: keyword_do_block
                     {
                         token_info_push(p, "do", &@$);
                         push_end_expect_token_locations(p, &@1.beg_pos);
+                        p->lex.do_nest++;
                     }
                 ;
 
@@ -5825,6 +5833,7 @@ do_block	: k_do_block do_body k_end
                     {
                         $$ = $2;
                         set_embraced_location($$, &@1, &@3);
+                        p->lex.do_nest--;
                     /*% ripper: $:2 %*/
                     }
                 ;
@@ -5938,6 +5947,7 @@ brace_block	: '{' brace_body '}'
                     {
                         $$ = $2;
                         set_embraced_location($$, &@1, &@3);
+                        p->lex.do_nest--;
                     /*% ripper: $:2 %*/
                     }
                 ;
