@@ -10586,7 +10586,7 @@ parse_percent(struct parser_params *p, const int space_seen)
     register int c;
     const char *ptok = p->lex.pcur;
 
-    if (IS_BEG()) {
+    if (IS_BEG() || parser_pslr_begin_like_p(p)) {
         int term;
         int paren;
 
