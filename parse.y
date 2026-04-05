@@ -618,11 +618,19 @@ struct parser_params {
 };
 
 /* Rename lrama-generated PSLR symbols to avoid leaked global symbols */
+#ifdef RIPPER
+#define yy_state_accepts_token ripper_yy_state_accepts_token
+#define yy_state_eventually_accepts_token ripper_yy_state_eventually_accepts_token
+#define yy_state_deep_accepts_token ripper_yy_state_deep_accepts_token
+#define yy_pseudo_scan ripper_yy_pseudo_scan
+#define yy_lexer_context_is ripper_yy_lexer_context_is
+#else
 #define yy_state_accepts_token rb_yy_state_accepts_token
 #define yy_state_eventually_accepts_token rb_yy_state_eventually_accepts_token
 #define yy_state_deep_accepts_token rb_yy_state_deep_accepts_token
 #define yy_pseudo_scan rb_yy_pseudo_scan
 #define yy_lexer_context_is rb_yy_lexer_context_is
+#endif
 
 int yy_state_accepts_token(int yystate, int token);
 int yy_state_eventually_accepts_token(int yystate, int token);
