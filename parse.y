@@ -1136,12 +1136,12 @@ parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_to
         if (accepts_keyword) {
             /* State directly accepts keyword form but not modifier.
                Check if modifier is reachable through reductions (deep).
-               If so, MID context means prefer modifier form.
-               e.g., state after "next" accepts keyword_if for call_args
-               but "next if cond" needs modifier_if via reductions. */
-            if (parser_pslr_context_is(p, YY_CTX_MID) &&
-                (parser_pslr_eventually_accepts_token(p, modifier_token) ||
-                 parser_pslr_deep_accepts_token(p, modifier_token))) {
+               If so, prefer modifier form -- this handles states after
+               return/break/next where "return if cond" needs modifier_if.
+               States like after '(' do NOT have modifier deep-reachable
+               so keyword_if is correctly preserved there. */
+            if (parser_pslr_eventually_accepts_token(p, modifier_token) ||
+                parser_pslr_deep_accepts_token(p, modifier_token)) {
                 return modifier_token;
             }
             return keyword_token;
@@ -10581,12 +10581,12 @@ parse_qmark(struct parser_params *p, int space_seen)
 }
 
 static enum yytokentype
-parse_percent(struct parser_params *p, const int space_seen)
+parse_percent(struct parser_params *p, const int space_seen, int cmd_state)
 {
     register int c;
     const char *ptok = p->lex.pcur;
 
-    if (IS_BEG() || parser_pslr_begin_like_p(p)) {
+    if (IS_BEG() || (cmd_state && parser_pslr_begin_like_p(p))) {
         int term;
         int paren;
 
@@ -11894,7 +11894,7 @@ parser_yylex(struct parser_params *p)
         return '\\';
 
       case '%':
-        return parse_percent(p, space_seen);
+        return parse_percent(p, space_seen, cmd_state);
 
       case '$':
         return parse_gvar(p);
