@@ -628,12 +628,14 @@ struct parser_params {
 #define yy_state_deep_accepts_token ripper_yy_state_deep_accepts_token
 #define yy_pseudo_scan ripper_yy_pseudo_scan
 #define yy_lexer_context_is ripper_yy_lexer_context_is
+#define yy_state_has_empty_default_reduction ripper_yy_state_has_empty_default_reduction
 #else
 #define yy_state_accepts_token rb_yy_state_accepts_token
 #define yy_state_eventually_accepts_token rb_yy_state_eventually_accepts_token
 #define yy_state_deep_accepts_token rb_yy_state_deep_accepts_token
 #define yy_pseudo_scan rb_yy_pseudo_scan
 #define yy_lexer_context_is rb_yy_lexer_context_is
+#define yy_state_has_empty_default_reduction rb_yy_state_has_empty_default_reduction
 #endif
 
 int yy_state_accepts_token(int yystate, int token);
