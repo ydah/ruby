@@ -3272,7 +3272,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %lexer-context BEG f_args f_arg f_arg_item f_norm_arg f_label f_opt f_kwarg f_kw f_rest_arg f_block_arg f_largs f_larglist f_block_optarg f_block_opt f_block_kw f_block_kwarg f_marg f_margs f_rest_marg args_tail opt_args_tail largs_tail
 %lexer-context BEG block_param opt_block_param block_param_def compstmt block_args_tail block_args-opt_tail
 %lexer-context BEG k_begin k_if k_unless k_while k_until k_case k_for k_class k_module k_do k_do_block k_rescue k_ensure k_when k_else k_elsif k_return k_yield k_END
-%lexer-context CMDARG tIDENTIFIER tFID tCONSTANT
+%lexer-context CMDARG tIDENTIFIER tFID tCONSTANT keyword_super
 %lexer-context CMDARG command_args opt_block_arg aref_args opt_call_args call_args
 %lexer-context CMDARG endless_command
 %lexer-context END tINTEGER tFLOAT tRATIONAL tIMAGINARY tCHAR tSTRING_END tREGEXP_END tLABEL_END tSYMBOL tSTRING keyword_self keyword_nil keyword_true keyword_false keyword__FILE__ keyword__LINE__ keyword__ENCODING__ keyword_end ')' ']' '}' modifier_if modifier_unless modifier_while modifier_until modifier_rescue tAREF tASET '`' tSTRING_CONTENT tGVAR tIVAR tCVAR tBACK_REF tNTH_REF tRBRACE_ARG
