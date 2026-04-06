@@ -650,7 +650,7 @@ int yy_state_has_empty_default_reduction(int yystate);
  * Maps PSLR context bits to the traditional lex_state_e values.
  * Uses yy_lexer_context_is directly since parser_pslr_context_is
  * is not yet defined at this point in the file. */
-static enum lex_state_e
+MAYBE_UNUSED(static enum lex_state_e)
 parser_pslr_synthesize_lex_state(struct parser_params *p)
 {
     int s;
@@ -11644,7 +11644,11 @@ parser_yylex(struct parser_params *p)
         return '>';
 
       case '"':
-        label = (IS_LABEL_POSSIBLE() ? str_label : 0);
+        /* PSLR: In CMDARG context (after method name like `foo`), labels
+           like "key": are valid for hash-style arguments. The original parser
+           uses IS_ARG() (EXPR_ARG|EXPR_CMDARG) in IS_LABEL_POSSIBLE(). */
+        label = ((IS_LABEL_POSSIBLE() || parser_pslr_context_is(p, YY_CTX_CMDARG))
+                 ? str_label : 0);
         p->lex.strterm = NEW_STRTERM(str_dquote | label, '"', 0);
         p->lex.ptok = p->lex.pcur-1;
         return tSTRING_BEG;
@@ -11660,7 +11664,8 @@ parser_yylex(struct parser_params *p)
         return tXSTRING_BEG;
 
       case '\'':
-        label = (IS_LABEL_POSSIBLE() ? str_label : 0);
+        label = ((IS_LABEL_POSSIBLE() || parser_pslr_context_is(p, YY_CTX_CMDARG))
+                 ? str_label : 0);
         p->lex.strterm = NEW_STRTERM(str_squote | label, '\'', 0);
         p->lex.ptok = p->lex.pcur-1;
         return tSTRING_BEG;
