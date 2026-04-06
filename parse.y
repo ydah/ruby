@@ -646,6 +646,38 @@ int yy_pseudo_scan(int parser_state, const char *input, int *match_length);
 int yy_lexer_context_is(int yystate, int ctx_mask);
 int yy_state_has_empty_default_reduction(int yystate);
 
+/* Synthesize lex_state from PSLR context for Ripper compatibility.
+ * Maps PSLR context bits to the traditional lex_state_e values.
+ * Uses yy_lexer_context_is directly since parser_pslr_context_is
+ * is not yet defined at this point in the file. */
+static enum lex_state_e
+parser_pslr_synthesize_lex_state(struct parser_params *p)
+{
+    int s;
+    enum lex_state_e state = EXPR_NONE;
+
+    if (p->pslr_current_state < 0)
+        return p->lex.state;
+
+    s = p->pslr_current_state;
+    if (yy_lexer_context_is(s, YY_CTX_BEG))
+        state |= EXPR_BEG;
+    if (yy_lexer_context_is(s, YY_CTX_END))
+        state |= EXPR_END;
+    if (yy_lexer_context_is(s, YY_CTX_CMDARG))
+        state |= EXPR_CMDARG;
+    if (yy_lexer_context_is(s, YY_CTX_ENDFN))
+        state |= EXPR_ENDFN;
+    if (yy_lexer_context_is(s, YY_CTX_MID))
+        state |= EXPR_MID;
+    if (yy_lexer_context_is(s, YY_CTX_DOT))
+        state |= EXPR_DOT;
+
+    if (state == EXPR_NONE)
+        state = p->lex.state;
+    return state;
+}
+
 /* Check if the current PSLR parser state has the given lexer context flag(s).
  * Returns 0 if the state has no context classification (UNKNOWN). */
 static inline int
@@ -16718,7 +16750,7 @@ rb_ruby_parser_ruby_sourceline(rb_parser_t *p)
 int
 rb_ruby_parser_lex_state(rb_parser_t *p)
 {
-    return p->lex.state;
+    return parser_pslr_synthesize_lex_state(p);
 }
 
 void
