@@ -11977,15 +11977,17 @@ parser_yylex(struct parser_params *p)
             /* Space seen: try PSLR action-table disambiguation first */
             int pslr_c = parser_pslr_lparen_token(p);
             if (pslr_c != 0 && pslr_c != '(') {
-                /* PSLR disambiguated to tLPAREN or tLPAREN_ARG */
+                /* PSLR uniquely disambiguated to tLPAREN or tLPAREN_ARG */
                 c = pslr_c;
             }
             else if (pslr_c == '(' &&
+                     !parser_pslr_eventually_accepts_token(p, '!') &&
                      (parser_pslr_eventually_accepts_token(p, tLPAREN_ARG) ||
                       parser_pslr_deep_accepts_token(p, tLPAREN_ARG))) {
-                /* Space before ( and tLPAREN_ARG is reachable: use tLPAREN_ARG.
-                   This handles defined? (;x), obj.foo (1) {}, etc.
-                   The original parser uses IS_SPCARG to override plain '(' here. */
+                /* PSLR chose plain '(' but tLPAREN_ARG is also reachable,
+                   AND we're NOT in a general expression context ('!' not accepted).
+                   This handles defined? (;x) where the grammar has both
+                   keyword_defined '(' and the tLPAREN_ARG compstmt path. */
                 c = tLPAREN_ARG;
             }
             else if (pslr_c != 0) {
