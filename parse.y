@@ -10654,7 +10654,7 @@ parse_qmark(struct parser_params *p, int space_seen)
                            parser_pslr_eventually_accepts_token(p, tCHAR) ||
                            parser_pslr_deep_accepts_token(p, tCHAR))) {
             const uint8_t *s = (const uint8_t *)start;
-            if (!lex_eol_ptr_p(p, start)) {
+            if (!lex_eol_ptr_p(p, start) && !rb_enc_isspace(*s, p->enc)) {
                 if (*s == '\\') {
                     /* Backslash escape: ?\n, ?\t, etc. -- character literal */
                     goto char_literal;
@@ -10663,6 +10663,10 @@ parse_qmark(struct parser_params *p, int space_seen)
                 if (w > 0 && is_identchar(p, start, p->lex.pend, p->enc) &&
                     (lex_eol_ptr_n_p(p, start, w) || !is_identchar(p, start + w, p->lex.pend, p->enc))) {
                     /* Single identchar after ?: character literal like `p ?x` */
+                    goto char_literal;
+                }
+                if (w > 0 && !is_identchar(p, start, p->lex.pend, p->enc) && ISASCII(*s)) {
+                    /* Non-identchar ASCII after ?: character literal like `p ?&` */
                     goto char_literal;
                 }
             }
@@ -11998,11 +12002,17 @@ parser_yylex(struct parser_params *p)
                e.g., yield( needs '(' to match "k_yield '(' call_args rparen",
                but IS_BEG() would wrongly choose tLPAREN. */
             int pslr_c = parser_pslr_lparen_token(p);
-            if (pslr_c != 0) {
+            if (pslr_c != 0 && pslr_c != '(') {
+                /* PSLR uniquely chose tLPAREN or tLPAREN_ARG */
                 c = pslr_c;
             }
             else if (IS_BEG() || cmd_state) {
+                /* At expression start (BEG) or command start, use tLPAREN
+                   for compstmt support: (require "x"\n begin\n ...) */
                 c = tLPAREN;
+            }
+            else if (pslr_c != 0) {
+                c = pslr_c;
             }
             else if (parser_pslr_accepts_token(p, tLPAREN) &&
                      !parser_pslr_accepts_token(p, '(')) {
