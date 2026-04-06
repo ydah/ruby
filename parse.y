@@ -518,6 +518,8 @@ struct parser_params {
         int brace_nest;
         /* track the nest level of do...end blocks */
         int do_nest;
+        /* track the nest level of tLPAREN (compstmt parens) */
+        int lpar_nest;
         int in_block_param; /* inside |...| block parameters */
     } lex;
     stack_type cond_stack;
@@ -900,11 +902,6 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
     if (parser_pslr_expects_fname_p(p) &&
         !parser_pslr_accepts_token(p, '\n'))
         return TRUE;
-    /* A state that accepts keyword_if (BEG form) but not modifier_if
-       (END form) is a statement-beginning state where newlines should
-       be ignored.  However, keywords like next/break/return also accept
-       keyword_if (as the start of their argument expression) but their
-       lexer context is MID, so we exclude MID-context states. */
     if (parser_pslr_accepts_token(p, keyword_if) &&
         !parser_pslr_accepts_token(p, modifier_if) &&
         !parser_pslr_deep_accepts_token(p, keyword_then) &&
@@ -934,11 +931,15 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
     /* Inside block parameter delimiters |...|, ignore newlines. */
     if (p->lex.in_block_param)
         return TRUE;
-    /* Inside grouping constructs (parens, brackets) but not inside a
-       block scope (brace or do...end), ignore newlines. */
+    /* Inside grouping constructs (parens, brackets), ignore newlines.
+       Exceptions: tLPAREN/tLPAREN_ARG (compstmt parens), cond (while/until),
+       cmd_state (after begin/do/else). */
     if (p->lex.paren_nest > p->lex.brace_nest &&
         p->lex.brace_nest == 0 &&
         p->lex.do_nest == 0 &&
+        p->lex.lpar_nest == 0 &&
+        !p->cmd_state &&
+        !(p->cond_stack & 1) &&
         !p->lex.strterm &&
         !parser_pslr_deep_accepts_token(p, modifier_if) &&
         !parser_pslr_deep_accepts_token(p, keyword_then))
@@ -5104,11 +5105,13 @@ primary		: inline_primary
             | k_begin[kw]
                 {
                     CMDARG_PUSH(0);
+                    p->lex.lpar_nest++;
                 }
               bodystmt[body]
               k_end[k_end]
                 {
                     CMDARG_POP();
+                    if (p->lex.lpar_nest > 0) p->lex.lpar_nest--;
                     set_line_body($body, @kw.end_pos.lineno);
                     $$ = NEW_BEGIN($body, &@$);
                     nd_set_line($$, @kw.end_pos.lineno);
@@ -12002,16 +12005,7 @@ parser_yylex(struct parser_params *p)
                e.g., yield( needs '(' to match "k_yield '(' call_args rparen",
                but IS_BEG() would wrongly choose tLPAREN. */
             int pslr_c = parser_pslr_lparen_token(p);
-            if (pslr_c != 0 && pslr_c != '(') {
-                /* PSLR uniquely chose tLPAREN or tLPAREN_ARG */
-                c = pslr_c;
-            }
-            else if (IS_BEG() || cmd_state) {
-                /* At expression start (BEG) or command start, use tLPAREN
-                   for compstmt support: (require "x"\n begin\n ...) */
-                c = tLPAREN;
-            }
-            else if (pslr_c != 0) {
+            if (pslr_c != 0) {
                 c = pslr_c;
             }
             else if (parser_pslr_accepts_token(p, tLPAREN) &&
