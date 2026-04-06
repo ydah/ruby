@@ -1039,7 +1039,7 @@ parser_pslr_lparen_arg_fallback_p(struct parser_params *p, int space_seen)
     if (parser_pslr_arg_state_fallback_p(p)) return TRUE;
     /* Only return TRUE when tLPAREN is NOT also accepted.
      * When both tLPAREN and tLPAREN_ARG are accepted (e.g., mlhs after comma),
-     * tLPAREN_ARG would be wrong — let the caller fall through to other checks. */
+     * tLPAREN_ARG would be wrong -- let the caller fall through to other checks. */
     if (accepts_arg && !accepts_paren) return TRUE;
     /* Deep PSLR: after lex_state fallback, check if tLPAREN_ARG uniquely reachable */
     {
@@ -7430,7 +7430,7 @@ none		: /* none */
  * States with empty default reductions are "transient" pass-through states
  * (e.g., after mid-rule actions in `do_body`).  States with non-empty
  * defaults are "completion" states where a real reduction happens (e.g.,
- * `keyword_undef undef_list → stmt`). */
+ * `keyword_undef undef_list -> stmt`). */
 int
 yy_state_has_empty_default_reduction(int yystate)
 {
@@ -10615,14 +10615,14 @@ parse_qmark(struct parser_params *p, int space_seen)
         /* PSLR: when both ? and tCHAR are accepted, the END fallback may
            wrongly choose ternary for `method ?x` (character literal).
            Peek ahead: if space_seen AND next char is a single identchar
-           (character literal pattern), don't treat as ternary — fall through. */
+           (character literal pattern), don't treat as ternary -- fall through. */
         if (space_seen && (parser_pslr_accepts_token(p, tCHAR) ||
                            parser_pslr_eventually_accepts_token(p, tCHAR) ||
                            parser_pslr_deep_accepts_token(p, tCHAR))) {
             const uint8_t *s = (const uint8_t *)start;
             if (!lex_eol_ptr_p(p, start)) {
                 if (*s == '\\') {
-                    /* Backslash escape: ?\n, ?\t, etc. — character literal */
+                    /* Backslash escape: ?\n, ?\t, etc. -- character literal */
                     goto char_literal;
                 }
                 int w = parser_precise_mbclen(p, start);
@@ -10705,7 +10705,7 @@ parse_percent(struct parser_params *p, const int space_seen, int cmd_state)
             the condition expression starts but IS_BEG() is FALSE
             because the state has END context from the modifier token.
             Detect by checking that keyword_not (expr start) is accepted
-            but modifier_if and tCMP are not — tCMP excludes fname states
+            but modifier_if and tCMP are not -- tCMP excludes fname states
             (after def/alias) which also accept keyword_not as a method name. */
          (parser_pslr_accepts_token(p, keyword_not) &&
           !parser_pslr_accepts_token(p, modifier_if) &&
@@ -11864,7 +11864,7 @@ parser_yylex(struct parser_params *p)
             return tCOLON2;
         }
         if (ISSPACE(c) || c == '#') {
-            /* Space or comment after ':' — always treat as colon, not symbol */
+            /* Space or comment after ':' -- always treat as colon, not symbol */
             pushback(p, c);
             c = warn_balanced(':', ":", "symbol literal");
             return c;
