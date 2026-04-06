@@ -962,6 +962,10 @@ parser_pslr_qmark_is_ternary_p(struct parser_params *p)
         int stack_char = parser_pslr_deep_accepts_token(p, tCHAR);
         if (stack_ternary + stack_char == 1) return stack_ternary;
     }
+    /* When PSLR cannot disambiguate, use END context as fallback.
+       This is equivalent to the original IS_END() check.
+       Cases where this wrongly returns ternary (e.g. `p ?x` where p is a method)
+       are handled in parse_qmark by checking if the char after ? is a single identchar. */
     return parser_pslr_end_state_fallback_p(p);
 }
 
@@ -10608,8 +10612,30 @@ parse_qmark(struct parser_params *p, int space_seen)
     const char *start = p->lex.pcur;
 
     if (parser_pslr_qmark_is_ternary_p(p)) {
+        /* PSLR: when both ? and tCHAR are accepted, the END fallback may
+           wrongly choose ternary for `method ?x` (character literal).
+           Peek ahead: if space_seen AND next char is a single identchar
+           (character literal pattern), don't treat as ternary — fall through. */
+        if (space_seen && (parser_pslr_accepts_token(p, tCHAR) ||
+                           parser_pslr_eventually_accepts_token(p, tCHAR) ||
+                           parser_pslr_deep_accepts_token(p, tCHAR))) {
+            const uint8_t *s = (const uint8_t *)start;
+            if (!lex_eol_ptr_p(p, start)) {
+                if (*s == '\\') {
+                    /* Backslash escape: ?\n, ?\t, etc. — character literal */
+                    goto char_literal;
+                }
+                int w = parser_precise_mbclen(p, start);
+                if (w > 0 && is_identchar(p, start, p->lex.pend, p->enc) &&
+                    (lex_eol_ptr_n_p(p, start, w) || !is_identchar(p, start + w, p->lex.pend, p->enc))) {
+                    /* Single identchar after ?: character literal like `p ?x` */
+                    goto char_literal;
+                }
+            }
+        }
         return '?';
     }
+  char_literal:
     c = nextc(p);
     if (c == -1) {
         compile_error(p, "incomplete character syntax");
@@ -10770,6 +10796,12 @@ parse_percent(struct parser_params *p, const int space_seen, int cmd_state)
         return tOP_ASGN;
     }
     if (IS_SPCARG(c)) {
+        goto quotation;
+    }
+    /* In fname/fitem context (e.g. undef a, %s(p) or alias a %s(p)),
+       %s should be treated as a percent symbol literal.
+       This matches the original EXPR_FITEM && c == 's' check. */
+    if (parser_pslr_expects_fname_p(p) && c == 's') {
         goto quotation;
     }
     /* In ENDFN context (after method! names), %{...} with space before %
@@ -11831,6 +11863,12 @@ parser_yylex(struct parser_params *p)
             set_yylval_id(idCOLON2);
             return tCOLON2;
         }
+        if (ISSPACE(c) || c == '#') {
+            /* Space or comment after ':' — always treat as colon, not symbol */
+            pushback(p, c);
+            c = warn_balanced(':', ":", "symbol literal");
+            return c;
+        }
         if (parser_pslr_colon_symbol_literal_p(p, c)) {
             pushback(p, c);
             c = warn_balanced(':', ":", "symbol literal");
@@ -11977,7 +12015,28 @@ parser_yylex(struct parser_params *p)
             return '[';
         }
         else if (IS_BEG() || cmd_state) {
-            c = tLBRACK;
+            /* PSLR: when IS_BEG() is true due to context (e.g. after keyword_super),
+             * check if the parser can disambiguate between '[' (aref) and tLBRACK (array).
+             * If only '[' is accepted, use it instead of tLBRACK. */
+            int accepts_plain = parser_pslr_accepts_token(p, '[');
+            int accepts_lbrack = parser_pslr_accepts_token(p, tLBRACK);
+            if (accepts_plain && !accepts_lbrack) {
+                c = '[';
+            }
+            else if (!accepts_plain && accepts_lbrack) {
+                c = tLBRACK;
+            }
+            else {
+                /* Both or neither accepted at surface level; try deep checks */
+                int deep_plain = parser_pslr_deep_accepts_token(p, '[');
+                int deep_lbrack = parser_pslr_deep_accepts_token(p, tLBRACK);
+                if (deep_plain && !deep_lbrack) {
+                    c = '[';
+                }
+                else {
+                    c = tLBRACK;
+                }
+            }
         }
         else if (parser_pslr_lbrack_arg_fallback_p(p, space_seen)) {
             c = tLBRACK;
