@@ -1060,7 +1060,7 @@ parser_pslr_colon_symbol_literal_p(struct parser_params *p, int c)
         if (deep_sym && !deep_colon) return FALSE;
     }
     /* ':' followed by a digit cannot be a symbol literal (:1 is invalid).
-       Also space/comment → colon. Stack-aware deep check: if ':' (colon)
+       Also space/comment -> colon. Stack-aware deep check: if ':' (colon)
        is accepted via non-empty reductions (e.g. ternary), prefer colon. */
     if (ISSPACE(c) || c == '#' || ISDIGIT(c)) return TRUE;
     if (parser_pslr_deep_accepts_token(p, ':') &&
