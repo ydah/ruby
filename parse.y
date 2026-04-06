@@ -1059,7 +1059,14 @@ parser_pslr_colon_symbol_literal_p(struct parser_params *p, int c)
         if (deep_colon && !deep_sym) return TRUE;
         if (deep_sym && !deep_colon) return FALSE;
     }
-    return ISSPACE(c) || c == '#';
+    /* ':' followed by a digit cannot be a symbol literal (:1 is invalid).
+       Also space/comment → colon. Stack-aware deep check: if ':' (colon)
+       is accepted via non-empty reductions (e.g. ternary), prefer colon. */
+    if (ISSPACE(c) || c == '#' || ISDIGIT(c)) return TRUE;
+    if (parser_pslr_deep_accepts_token(p, ':') &&
+        !parser_pslr_deep_accepts_token(p, tSYMBEG))
+        return TRUE;
+    return FALSE;
 }
 
 static inline int
@@ -11492,7 +11499,14 @@ parser_yylex(struct parser_params *p)
                 return tOP_ASGN;
             }
             pushback(p, c);
-            if (parser_pslr_prefers_token_p(p, tSTAR, '*')) {
+            if (parser_pslr_context_is(p, YY_CTX_MID)) {
+                /* In MID context (after yield/return/break/next),
+                   * is always splat. The LALR action table may accept
+                   '*' (multiply) due to argless-yield reduction, but
+                   semantically splat is correct here. */
+                c = tSTAR;
+            }
+            else if (parser_pslr_prefers_token_p(p, tSTAR, '*')) {
                 c = tSTAR;
             }
             else if (parser_pslr_prefers_token_p(p, '*', tSTAR)) {
