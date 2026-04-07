@@ -521,6 +521,8 @@ struct parser_params {
         /* track the nest level of tLPAREN (compstmt parens) */
         int lpar_nest;
         int in_block_param; /* inside |...| block parameters */
+        stack_type lparen_arg_stack;    /* bitstack: 1 if paren was tLPAREN_ARG */
+        stack_type compstmt_paren_stack; /* bitstack: 1 if paren was tLPAREN/tLPAREN_ARG */
     } lex;
     stack_type cond_stack;
     stack_type cmdarg_stack;
@@ -578,7 +580,17 @@ struct parser_params {
 
     unsigned int command_start:1;
     unsigned int cmd_state:1;  /* saved command_start for PSLR newline checks */
-    unsigned int last_token_lvar:1;  /* last identifier was a known local variable */
+    /* Track the semantic type of the last lexed token for disambiguation.
+     * PSLR parser states don't distinguish local vars from method names,
+     * but the original parser used lex_state for this. */
+    unsigned int last_token_type:2;
+#define LAST_TOKEN_OTHER  0  /* operator, keyword, delimiter */
+#define LAST_TOKEN_LVAR   1  /* known local variable identifier */
+#define LAST_TOKEN_VALUE  2  /* literal (integer, string end, symbol, etc.) */
+#define LAST_TOKEN_METHOD 3  /* method/function name identifier */
+#define LAST_TOKEN_IS_VALUE(p) ((p)->last_token_type == LAST_TOKEN_LVAR || (p)->last_token_type == LAST_TOKEN_VALUE)
+#define LAST_TOKEN_IS_METHOD(p) ((p)->last_token_type == LAST_TOKEN_METHOD)
+    unsigned int last_rparen_cmdarg:1;  /* ')' just closed a tLPAREN_ARG paren */
     unsigned int eofp: 1;
     unsigned int ruby__end__seen: 1;
     unsigned int debug: 1;
@@ -1022,7 +1034,7 @@ parser_pslr_heredoc_fallback_p(struct parser_params *p, int space_seen)
            !parser_pslr_class_context_p(p) &&
            !parser_pslr_end_state_fallback_p(p) &&
            !parser_pslr_context_is(p, YY_CTX_ENDFN) &&
-           !p->last_token_lvar &&
+           !LAST_TOKEN_IS_VALUE(p) &&
            (!parser_pslr_accepts_token(p, tLSHFT) || parser_pslr_arg_state_fallback_p(p)) &&
            (!parser_pslr_arg_state_fallback_p(p) || parser_pslr_after_labeled_p(p) || space_seen);
 }
@@ -11244,7 +11256,13 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     if (!after_dot && result == tIDENTIFIER &&
         (lvar_defined(p, ident) || NUMPARAM_ID_P(ident))) {
         p->lex.state = EXPR_END;
-        p->last_token_lvar = TRUE;
+        p->last_token_type = LAST_TOKEN_LVAR;
+    }
+    else if (expects_fname) {
+        /* In fname context (after tSYMBEG, def, alias), identifier is
+           a symbol/method name, not a method call. Treat as value. */
+        p->lex.state = EXPR_ENDFN;
+        p->last_token_type = LAST_TOKEN_VALUE;
     }
     else {
         if (cmd_state) {
@@ -11253,7 +11271,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         else {
             p->lex.state = EXPR_ARG;
         }
-        p->last_token_lvar = FALSE;
+        p->last_token_type = LAST_TOKEN_METHOD;
     }
     return result;
 }
@@ -11485,6 +11503,16 @@ parser_yylex(struct parser_params *p)
             pushback(p, c);
             if (parser_pslr_expects_fname_p(p)) {
                 c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
+            else if (LAST_TOKEN_IS_VALUE(p)) {
+                /* After value (local var, literal), ** is exponentiation */
+                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
+            else if (LAST_TOKEN_IS_METHOD(p) && space_seen && !ISSPACE(c)) {
+                /* After method name with space, ** is argument prefix (tDSTAR).
+                   Matches original IS_SPCARG behavior for EXPR_CMDARG. */
+                rb_warning0("'**' interpreted as argument prefix");
+                c = tDSTAR;
             }
             else if (parser_pslr_prefers_token_p(p, tDSTAR, tPOW)) {
                 c = tDSTAR;
@@ -11738,8 +11766,8 @@ parser_yylex(struct parser_params *p)
             return tANDDOT;
         }
         pushback(p, c);
-        if (p->last_token_lvar) {
-            /* After known local variable, '&' is bitwise AND */
+        if (LAST_TOKEN_IS_VALUE(p)) {
+            /* After local variable or literal, '&' is bitwise AND */
             c = warn_balanced('&', "&", "argument prefix");
             return c;
         }
@@ -11929,6 +11957,12 @@ parser_yylex(struct parser_params *p)
         COND_POP();
         CMDARG_POP();
         p->lex.paren_nest--;
+        p->last_rparen_cmdarg = (p->lex.lparen_arg_stack & 1);
+        p->lex.lparen_arg_stack >>= 1;
+        if (p->lex.compstmt_paren_stack & 1) {
+            if (p->lex.lpar_nest > 0) p->lex.lpar_nest--;
+        }
+        p->lex.compstmt_paren_stack >>= 1;
         return c;
 
       case ']':
@@ -12060,7 +12094,14 @@ parser_yylex(struct parser_params *p)
             }
         }
         else {
-            /* Space seen: try PSLR action-table disambiguation first */
+            /* Space seen */
+            if (LAST_TOKEN_IS_METHOD(p)) {
+                /* After method name with space, ( is tLPAREN_ARG.
+                   Matches original IS_SPCARG for EXPR_CMDARG/EXPR_ARG. */
+                c = tLPAREN_ARG;
+                goto paren_done;
+            }
+            /* try PSLR action-table disambiguation */
             int pslr_c = parser_pslr_lparen_token(p);
             if (pslr_c != 0 && pslr_c != '(') {
                 /* PSLR uniquely disambiguated to tLPAREN or tLPAREN_ARG */
@@ -12092,11 +12133,17 @@ parser_yylex(struct parser_params *p)
                 c = tLPAREN;
             }
         }
+      paren_done:
         if (c == '(' && parser_pslr_endfn_like_p(p) && !lambda_beginning_p()) {
             rb_warning0("parentheses after method name is interpreted as "
                         "an argument list, not a decomposed argument");
         }
         p->lex.paren_nest++;
+        /* Track paren type for brace and newline disambiguation */
+        p->lex.lparen_arg_stack = (p->lex.lparen_arg_stack << 1) | (c == tLPAREN_ARG ? 1 : 0);
+        p->lex.compstmt_paren_stack = (p->lex.compstmt_paren_stack << 1) | ((c == tLPAREN || c == tLPAREN_ARG) ? 1 : 0);
+        if (c == tLPAREN || c == tLPAREN_ARG)
+            p->lex.lpar_nest++;
         COND_PUSH(0);
         CMDARG_PUSH(0);
         return c;
@@ -12158,6 +12205,11 @@ parser_yylex(struct parser_params *p)
                Use PSLR to pick the right brace, defaulting to hash. */
             if ((c = parser_pslr_lbrace_token(p)) == 0)
                 c = tLBRACE;
+        }
+        else if (p->last_rparen_cmdarg) {
+            /* ')' just closed a tLPAREN_ARG paren: '{' is cmd_brace_block */
+            c = tLBRACE_ARG;
+            p->last_rparen_cmdarg = FALSE;
         }
         else if (parser_pslr_brace_primary_block_fallback_p(p))
             c = '{';          /* block (primary) */
@@ -12238,7 +12290,7 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
      * functions expose it. Map token types to approximate lex_state values. */
     switch (t) {
       case tIDENTIFIER: case tFID: case tCONSTANT:
-        /* parse_ident already sets lex.state and last_token_lvar.
+        /* parse_ident already sets lex.state and last_token_type.
          * Keep those values. */
         break;
       case tINTEGER: case tFLOAT: case tRATIONAL: case tIMAGINARY:
@@ -12248,11 +12300,17 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
       case keyword__FILE__: case keyword__LINE__: case keyword__ENCODING__:
       case keyword_end: case tGVAR: case tIVAR: case tCVAR:
       case tNTH_REF: case tBACK_REF:
-        p->lex.state = EXPR_END; break;
+        p->lex.state = EXPR_END;
+        p->last_token_type = LAST_TOKEN_VALUE;
+        break;
       case ')':
-        p->lex.state = EXPR_ENDARG; break;
+        p->lex.state = EXPR_ENDARG;
+        p->last_token_type = LAST_TOKEN_VALUE;
+        break;
       case ']': case '}':
-        p->lex.state = EXPR_END; break;
+        p->lex.state = EXPR_END;
+        p->last_token_type = LAST_TOKEN_VALUE;
+        break;
       case tSTRING_CONTENT: case tSTRING_DBEG: case tSTRING_DVAR:
       case tSTRING_BEG: case tXSTRING_BEG: case tREGEXP_BEG:
       case tWORDS_BEG: case tQWORDS_BEG: case tSYMBOLS_BEG:
@@ -12260,22 +12318,31 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
       case tLAMBEG: case tLBRACE: case tLBRACE_ARG:
       case tLPAREN: case tLPAREN_ARG: case tLBRACK:
       case tCOLON3:
-        p->lex.state = EXPR_BEG; break;
+        p->lex.state = EXPR_BEG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
       case tLABEL:
-        p->lex.state = EXPR_LABELED; break;
+        p->lex.state = EXPR_LABELED;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
       case keyword_def:
-        p->lex.state = EXPR_FNAME; break;
+        p->lex.state = EXPR_FNAME;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
       case '.': case tCOLON2: case tANDDOT:
-        p->lex.state = EXPR_DOT; break;
+        p->lex.state = EXPR_DOT;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
       default:
-        /* Keep existing state or use context-based synthesis */
         p->lex.state = parser_pslr_synthesize_lex_state(p);
-        p->last_token_lvar = FALSE;
+        p->last_token_type = LAST_TOKEN_OTHER;
         break;
     }
-    /* Reset last_token_lvar for non-identifier tokens */
-    if (t != tIDENTIFIER && t != tFID && t != tCONSTANT) {
-        p->last_token_lvar = FALSE;
+
+    /* Reset last_rparen_cmdarg: keep it alive from ')' until '{'.
+     * ')' sets it, '{' reads it; anything else in between clears it. */
+    if (t != ')' && t != '{' && t != tLBRACE && t != tLBRACE_ARG && t != tLAMBEG) {
+        p->last_rparen_cmdarg = FALSE;
     }
 
     if (has_delayed_token(p))
