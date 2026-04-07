@@ -12202,6 +12202,40 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
 
     t = parser_yylex(p);
 
+    /* Synthesize lex_state from the returned token for Ripper compatibility.
+     * PSLR does not maintain lex_state internally, but Ripper's dispatch
+     * functions expose it. Map token types to approximate lex_state values. */
+    switch (t) {
+      case tIDENTIFIER: case tFID: case tCONSTANT:
+        p->lex.state = EXPR_CMDARG; break;
+      case tINTEGER: case tFLOAT: case tRATIONAL: case tIMAGINARY:
+      case tCHAR: case tSTRING_END: case tREGEXP_END: case tLABEL_END:
+      case keyword_self: case keyword_nil:
+      case keyword_true: case keyword_false:
+      case keyword__FILE__: case keyword__LINE__: case keyword__ENCODING__:
+      case keyword_end: case tGVAR: case tIVAR: case tCVAR:
+      case tNTH_REF: case tBACK_REF:
+        p->lex.state = EXPR_END; break;
+      case tSTRING_CONTENT: case tSTRING_DBEG: case tSTRING_DVAR:
+      case tSTRING_BEG: case tXSTRING_BEG: case tREGEXP_BEG:
+      case tWORDS_BEG: case tQWORDS_BEG: case tSYMBOLS_BEG:
+      case tQSYMBOLS_BEG: case tSYMBEG: case tLAMBDA:
+      case tLAMBEG: case tLBRACE: case tLBRACE_ARG:
+      case tLPAREN: case tLPAREN_ARG: case tLBRACK:
+      case tCOLON3:
+        p->lex.state = EXPR_BEG; break;
+      case tLABEL:
+        p->lex.state = EXPR_LABELED; break;
+      case keyword_def:
+        p->lex.state = EXPR_FNAME; break;
+      case '.': case tCOLON2: case tANDDOT:
+        p->lex.state = EXPR_DOT; break;
+      default:
+        /* Keep existing state or use context-based synthesis */
+        p->lex.state = parser_pslr_synthesize_lex_state(p);
+        break;
+    }
+
     if (has_delayed_token(p))
         dispatch_delayed_token(p, t);
     else if (t != END_OF_INPUT)
