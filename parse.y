@@ -11867,7 +11867,7 @@ parser_yylex(struct parser_params *p)
         }
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
-                if (p->ctxt.in_argdef || IS_LABEL_POSSIBLE()) {
+                if (p->ctxt.in_argdef) {
                     return tBDOT3;
                 }
                 if (p->lex.paren_nest == 0 && looking_at_eol_p(p)) {
