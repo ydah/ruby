@@ -578,6 +578,7 @@ struct parser_params {
 
     unsigned int command_start:1;
     unsigned int cmd_state:1;  /* saved command_start for PSLR newline checks */
+    unsigned int last_token_lvar:1;  /* last identifier was a known local variable */
     unsigned int eofp: 1;
     unsigned int ruby__end__seen: 1;
     unsigned int debug: 1;
@@ -1021,6 +1022,7 @@ parser_pslr_heredoc_fallback_p(struct parser_params *p, int space_seen)
            !parser_pslr_class_context_p(p) &&
            !parser_pslr_end_state_fallback_p(p) &&
            !parser_pslr_context_is(p, YY_CTX_ENDFN) &&
+           !p->last_token_lvar &&
            (!parser_pslr_accepts_token(p, tLSHFT) || parser_pslr_arg_state_fallback_p(p)) &&
            (!parser_pslr_arg_state_fallback_p(p) || parser_pslr_after_labeled_p(p) || space_seen);
 }
@@ -11234,6 +11236,25 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 
     ident = tokenize_ident(p);
     if (result == tCONSTANT && is_local_id(ident)) result = tIDENTIFIER;
+    /* Track whether this identifier is a known local variable.
+     * Store in lex.state for PSLR helper functions to distinguish
+     * local variables (EXPR_END) from method names (EXPR_CMDARG).
+     * This does NOT affect PSLR disambiguation directly, only
+     * lex_state-dependent heuristics like heredoc detection. */
+    if (!after_dot && result == tIDENTIFIER &&
+        (lvar_defined(p, ident) || NUMPARAM_ID_P(ident))) {
+        p->lex.state = EXPR_END;
+        p->last_token_lvar = TRUE;
+    }
+    else {
+        if (cmd_state) {
+            p->lex.state = EXPR_CMDARG;
+        }
+        else {
+            p->lex.state = EXPR_ARG;
+        }
+        p->last_token_lvar = FALSE;
+    }
     return result;
 }
 
@@ -11717,6 +11738,11 @@ parser_yylex(struct parser_params *p)
             return tANDDOT;
         }
         pushback(p, c);
+        if (p->last_token_lvar) {
+            /* After known local variable, '&' is bitwise AND */
+            c = warn_balanced('&', "&", "argument prefix");
+            return c;
+        }
         if (parser_pslr_prefers_token_p(p, tAMPER, '&')) {
             c = tAMPER;
         }
@@ -12212,7 +12238,9 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
      * functions expose it. Map token types to approximate lex_state values. */
     switch (t) {
       case tIDENTIFIER: case tFID: case tCONSTANT:
-        p->lex.state = EXPR_CMDARG; break;
+        /* parse_ident already sets lex.state and last_token_lvar.
+         * Keep those values. */
+        break;
       case tINTEGER: case tFLOAT: case tRATIONAL: case tIMAGINARY:
       case tCHAR: case tSTRING_END: case tREGEXP_END: case tLABEL_END:
       case keyword_self: case keyword_nil:
@@ -12220,6 +12248,10 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
       case keyword__FILE__: case keyword__LINE__: case keyword__ENCODING__:
       case keyword_end: case tGVAR: case tIVAR: case tCVAR:
       case tNTH_REF: case tBACK_REF:
+        p->lex.state = EXPR_END; break;
+      case ')':
+        p->lex.state = EXPR_ENDARG; break;
+      case ']': case '}':
         p->lex.state = EXPR_END; break;
       case tSTRING_CONTENT: case tSTRING_DBEG: case tSTRING_DVAR:
       case tSTRING_BEG: case tXSTRING_BEG: case tREGEXP_BEG:
@@ -12238,7 +12270,12 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
       default:
         /* Keep existing state or use context-based synthesis */
         p->lex.state = parser_pslr_synthesize_lex_state(p);
+        p->last_token_lvar = FALSE;
         break;
+    }
+    /* Reset last_token_lvar for non-identifier tokens */
+    if (t != tIDENTIFIER && t != tFID && t != tCONSTANT) {
+        p->last_token_lvar = FALSE;
     }
 
     if (has_delayed_token(p))
