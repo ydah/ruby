@@ -1020,6 +1020,7 @@ parser_pslr_heredoc_fallback_p(struct parser_params *p, int space_seen)
     return !parser_pslr_after_dot_p(p) &&
            !parser_pslr_class_context_p(p) &&
            !parser_pslr_end_state_fallback_p(p) &&
+           !parser_pslr_context_is(p, YY_CTX_ENDFN) &&
            (!parser_pslr_accepts_token(p, tLSHFT) || parser_pslr_arg_state_fallback_p(p)) &&
            (!parser_pslr_arg_state_fallback_p(p) || parser_pslr_after_labeled_p(p) || space_seen);
 }
