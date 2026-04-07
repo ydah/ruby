@@ -12290,22 +12290,28 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
 
     /* Synthesize lex_state from the returned token for Ripper compatibility.
      * PSLR does not maintain lex_state internally, but Ripper's dispatch
-     * functions expose it. Map token types to approximate lex_state values. */
+     * functions expose it. Map token types to the lex_state that the
+     * original parser would set via SET_LEX_STATE after each token.
+     * This does NOT affect PSLR disambiguation -- only Ripper reporting. */
     switch (t) {
+      /* Identifiers: parse_ident already sets lex.state and last_token_type */
       case tIDENTIFIER: case tFID: case tCONSTANT:
-        /* parse_ident already sets lex.state and last_token_type.
-         * Keep those values. */
         break;
+
+      /* Values/literals -> EXPR_END */
       case tINTEGER: case tFLOAT: case tRATIONAL: case tIMAGINARY:
       case tCHAR: case tSTRING_END: case tREGEXP_END: case tLABEL_END:
       case keyword_self: case keyword_nil:
       case keyword_true: case keyword_false:
       case keyword__FILE__: case keyword__LINE__: case keyword__ENCODING__:
-      case keyword_end: case tGVAR: case tIVAR: case tCVAR:
+      case keyword_end:
+      case tGVAR: case tIVAR: case tCVAR:
       case tNTH_REF: case tBACK_REF:
         p->lex.state = EXPR_END;
         p->last_token_type = LAST_TOKEN_VALUE;
         break;
+
+      /* Closing parens/brackets */
       case ')':
         p->lex.state = EXPR_ENDARG;
         p->last_token_type = LAST_TOKEN_VALUE;
@@ -12314,28 +12320,113 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
         p->lex.state = EXPR_END;
         p->last_token_type = LAST_TOKEN_VALUE;
         break;
-      case tSTRING_CONTENT: case tSTRING_DBEG: case tSTRING_DVAR:
+
+      /* String/regexp/symbol/lambda begin -> EXPR_BEG */
       case tSTRING_BEG: case tXSTRING_BEG: case tREGEXP_BEG:
       case tWORDS_BEG: case tQWORDS_BEG: case tSYMBOLS_BEG:
       case tQSYMBOLS_BEG: case tSYMBEG: case tLAMBDA:
-      case tLAMBEG: case tLBRACE: case tLBRACE_ARG:
+        p->lex.state = EXPR_BEG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* String interpolation */
+      case tSTRING_DBEG:
+        p->lex.state = EXPR_BEG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+      case tSTRING_DVAR:
+        p->lex.state = EXPR_BEG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+      case tSTRING_CONTENT:
+        p->lex.state = EXPR_BEG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* Opening parens/brackets/braces -> EXPR_BEG */
+      case tLBRACE: case tLBRACE_ARG: case tLAMBEG:
       case tLPAREN: case tLPAREN_ARG: case tLBRACK:
+      case '(': case '[': case '{':
+        p->lex.state = EXPR_BEG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* Operators -> EXPR_BEG (binary operators set BEG for the RHS) */
+      case '+': case '-': case '*': case '/': case '%':
+      case '^': case '|': case '&': case '<': case '>':
+      case '!': case '~': case '?': case ':': case '=':
+      case tOP_ASGN:
+      case tAMPER: case tSTAR: case tDSTAR: case tPOW:
+      case tUPLUS: case tUMINUS: case tUMINUS_NUM:
+      case tEQ: case tNEQ: case tEQQ:
+      case tCMP: case tGEQ: case tLEQ:
+      case tMATCH: case tNMATCH:
+      case tLSHFT: case tRSHFT:
+      case tDOT2: case tDOT3: case tBDOT2: case tBDOT3:
+      case tANDOP: case tOROP:
+      case tASSOC:
       case tCOLON3:
         p->lex.state = EXPR_BEG;
         p->last_token_type = LAST_TOKEN_OTHER;
         break;
-      case tLABEL:
-        p->lex.state = EXPR_LABELED;
-        p->last_token_type = LAST_TOKEN_OTHER;
-        break;
-      case keyword_def:
-        p->lex.state = EXPR_FNAME;
-        p->last_token_type = LAST_TOKEN_OTHER;
-        break;
+
+      /* Dot/scope -> EXPR_DOT */
       case '.': case tCOLON2: case tANDDOT:
         p->lex.state = EXPR_DOT;
         p->last_token_type = LAST_TOKEN_OTHER;
         break;
+
+      /* Delimiters -> EXPR_BEG */
+      case ',': case ';': case '\n':
+        p->lex.state = EXPR_BEG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* Label -> EXPR_LABELED */
+      case tLABEL:
+        p->lex.state = EXPR_LABELED;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* Keywords that start expressions -> EXPR_BEG */
+      case keyword_if: case keyword_unless:
+      case keyword_while: case keyword_until:
+      case keyword_case: case keyword_for:
+      case keyword_begin: case keyword_do:
+      case keyword_do_cond: case keyword_do_block: case keyword_do_LAMBDA:
+      case keyword_return: case keyword_break: case keyword_next:
+      case keyword_yield: case keyword_super:
+      case keyword_not: case keyword_defined:
+      case keyword_and: case keyword_or: case keyword_in:
+      case keyword_then: case keyword_else: case keyword_elsif:
+      case keyword_when: case keyword_ensure: case keyword_rescue:
+      case keyword_redo: case keyword_retry:
+      case keyword_BEGIN: case keyword_END:
+        p->lex.state = EXPR_BEG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* Modifier keywords -> EXPR_BEG|EXPR_LABEL */
+      case modifier_if: case modifier_unless:
+      case modifier_while: case modifier_until:
+      case modifier_rescue:
+        p->lex.state = EXPR_BEG | EXPR_LABEL;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* def/alias/undef -> EXPR_FNAME */
+      case keyword_def:
+      case keyword_alias: case keyword_undef:
+        p->lex.state = EXPR_FNAME;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* class/module -> EXPR_CLASS */
+      case keyword_class: case keyword_module:
+        p->lex.state = EXPR_CLASS;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
       default:
         p->lex.state = parser_pslr_synthesize_lex_state(p);
         p->last_token_type = LAST_TOKEN_OTHER;
