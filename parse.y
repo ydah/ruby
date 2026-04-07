@@ -11108,6 +11108,14 @@ parse_atmark(struct parser_params *p)
 
     if (tokadd_ident(p, c)) return 0;
     tokenize_ident(p);
+    /* Set lex_state for Ripper: EXPR_ENDFN in symbol/fname context,
+     * EXPR_END otherwise. yylex wrapper preserves this for tIVAR/tCVAR. */
+    if (parser_pslr_expects_fname_p(p)) {
+        p->lex.state = EXPR_ENDFN;
+    }
+    else {
+        p->lex.state = EXPR_END;
+    }
     return result;
 }
 
@@ -12297,6 +12305,10 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
       /* Identifiers: parse_ident already sets lex.state and last_token_type */
       case tIDENTIFIER: case tFID: case tCONSTANT:
         break;
+      /* Instance/class vars: parse_atmark sets lex.state (ENDFN in symbol ctx) */
+      case tIVAR: case tCVAR:
+        p->last_token_type = LAST_TOKEN_VALUE;
+        break;
 
       /* Values/literals -> EXPR_END */
       case tINTEGER: case tFLOAT: case tRATIONAL: case tIMAGINARY:
@@ -12305,7 +12317,7 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
       case keyword_true: case keyword_false:
       case keyword__FILE__: case keyword__LINE__: case keyword__ENCODING__:
       case keyword_end:
-      case tGVAR: case tIVAR: case tCVAR:
+      case tGVAR:
       case tNTH_REF: case tBACK_REF:
         p->lex.state = EXPR_END;
         p->last_token_type = LAST_TOKEN_VALUE;
@@ -12345,9 +12357,14 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
 
       /* Opening parens/brackets/braces -> EXPR_BEG */
       case tLBRACE: case tLBRACE_ARG: case tLAMBEG:
-      case tLPAREN: case tLPAREN_ARG: case tLBRACK:
+      case tLBRACK:
       case '(': case '[': case '{':
         p->lex.state = EXPR_BEG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+      /* tLPAREN/tLPAREN_ARG: EXPR_BEG|EXPR_LABEL (labels valid in param lists) */
+      case tLPAREN: case tLPAREN_ARG:
+        p->lex.state = EXPR_BEG | EXPR_LABEL;
         p->last_token_type = LAST_TOKEN_OTHER;
         break;
 
@@ -12425,6 +12442,30 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
       case keyword_class: case keyword_module:
         p->lex.state = EXPR_CLASS;
         p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* Heredoc tokens -> EXPR_BEG */
+      case tHEREDOC_BEG: case tHEREDOC_END:
+        p->lex.state = EXPR_BEG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* String interpolation end -> EXPR_END */
+      case tSTRING_DEND:
+        p->lex.state = EXPR_END;
+        p->last_token_type = LAST_TOKEN_VALUE;
+        break;
+
+      /* AREF/ASET -> EXPR_ARG */
+      case tAREF: case tASET:
+        p->lex.state = EXPR_ARG;
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+
+      /* Ignored tokens: preserve previous lex_state */
+      case tIGNORED_NL: case tCOMMENT:
+      case tEMBDOC_BEG: case tEMBDOC: case tEMBDOC_END:
+        /* Don't change p->lex.state or last_token_type */
         break;
 
       default:
