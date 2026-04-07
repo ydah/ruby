@@ -988,6 +988,9 @@ parser_pslr_end_state_fallback_p(struct parser_params *p)
 static inline int
 parser_pslr_space_arg_fallback_p(struct parser_params *p, int c, int space_seen)
 {
+    /* After a value (local var or literal), space+operator is binary, not SPCARG.
+     * Original: IS_ARG() is FALSE for EXPR_END (after values). */
+    if (LAST_TOKEN_IS_VALUE(p)) return FALSE;
     return parser_pslr_arg_state_fallback_p(p) && space_seen && !ISSPACE(c);
 }
 
@@ -10418,7 +10421,7 @@ parser_prepare(struct parser_params *p)
 #endif
 #define warn_balanced(tok, op, syn) ((void) \
     (!(parser_pslr_after_dot_p(p) || parser_pslr_class_context_p(p) || parser_pslr_pending_def_body_p(p)) && \
-     !parser_pslr_expects_fname_p(p) && \
+     (!parser_pslr_expects_fname_p(p) || LAST_TOKEN_IS_VALUE(p)) && \
      space_seen && !ISSPACE(c) && \
      (ambiguous_operator(tok, op, syn), 0)), \
      (enum yytokentype)(tok))
