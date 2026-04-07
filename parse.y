@@ -1007,7 +1007,11 @@ parser_pslr_qmark_is_ternary_p(struct parser_params *p)
 static inline int
 parser_pslr_qmark_warn_space_char_p(struct parser_params *p)
 {
-    return !parser_pslr_arg_state_fallback_p(p);
+    /* Original: !IS_ARG(), where IS_ARG = EXPR_ARG|EXPR_CMDARG.
+       After method? names (ENDFN context), lex_state is EXPR_ARG,
+       so suppress the warning. CMDARG also suppresses. */
+    return !parser_pslr_arg_state_fallback_p(p) &&
+           !parser_pslr_context_is(p, YY_CTX_ENDFN);
 }
 
 static inline int
