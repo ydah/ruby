@@ -946,9 +946,10 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
     if (p->lex.in_block_param)
         return TRUE;
     /* Inside paren-free argument definitions, suppress newlines after ','
-     * (where parser state has BEG context). Don't suppress ALL newlines
-     * in argdef -- that would eat the term(\n) that resets in_argdef. */
-    if (p->ctxt.in_argdef && parser_pslr_context_is(p, YY_CTX_BEG))
+     * so multiline arg lists work: def foo *args,\n kw: val.
+     * Use last_token_id to detect comma -- don't suppress ALL newlines
+     * in argdef as that would eat the term(\n) that resets in_argdef. */
+    if (p->ctxt.in_argdef && p->last_token_id == ',')
         return TRUE;
     /* Inside grouping constructs (parens, brackets), ignore newlines.
        Exceptions: tLPAREN/tLPAREN_ARG (compstmt parens), cond (while/until),
