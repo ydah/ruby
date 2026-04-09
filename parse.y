@@ -944,6 +944,11 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
     /* Inside block parameter delimiters |...|, ignore newlines. */
     if (p->lex.in_block_param)
         return TRUE;
+    /* Inside paren-free argument definitions, suppress newlines after ','
+     * (where BEG is set in lex.state). Don't suppress ALL newlines in
+     * argdef -- that would eat the term(\n) that resets in_argdef. */
+    if (p->ctxt.in_argdef && (p->lex.state & EXPR_BEG))
+        return TRUE;
     /* Inside grouping constructs (parens, brackets), ignore newlines.
        Exceptions: tLPAREN/tLPAREN_ARG (compstmt parens), cond (while/until),
        cmd_state (after begin/do/else). */
