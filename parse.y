@@ -882,6 +882,55 @@ parser_pslr_lex_beg_like_p(struct parser_params *p)
 }
 
 static inline int
+parser_pslr_ignores_newline_p(struct parser_params *p)
+{
+    if (parser_pslr_after_dot_p(p))
+        return TRUE;
+    if (parser_pslr_expects_fname_p(p) &&
+        !parser_pslr_accepts_token(p, '\n'))
+        return TRUE;
+    /* States that accept keyword_if but not modifier_if are expression-
+       beginning states where newlines should be ignored (e.g., after '('). */
+    if (parser_pslr_accepts_token(p, keyword_if) &&
+        !parser_pslr_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then))
+        return TRUE;
+    if (parser_pslr_eventually_accepts_token(p, keyword_if) &&
+        !parser_pslr_eventually_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then))
+        return TRUE;
+    /* BEG-like transient states (mid-rule action states after do/begin):
+       suppress newlines only when command_start was set by block-starting
+       keyword and we're not in argument definitions. */
+    if (parser_pslr_accepts_expr_beg_token_p(p) &&
+        yy_state_has_empty_default_reduction(p->pslr_current_state) &&
+        !parser_pslr_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then)) {
+        if (!p->ctxt.in_argdef && p->cmd_state)
+            return TRUE;
+    }
+    /* Inside block parameter delimiters |...|, ignore newlines. */
+    if (p->lex.in_block_param)
+        return TRUE;
+    /* Inside paren-free argument definitions after comma, suppress newlines
+       for multiline arg lists. */
+    if (p->ctxt.in_argdef && p->last_token_id == ',')
+        return TRUE;
+    /* Inside grouping constructs (parens, brackets), ignore newlines. */
+    if (p->lex.paren_nest > p->lex.brace_nest &&
+        p->lex.brace_nest == 0 &&
+        p->lex.do_nest == 0 &&
+        p->lex.lpar_nest == 0 &&
+        !p->cmd_state &&
+        !(p->cond_stack & 1) &&
+        !p->lex.strterm &&
+        !parser_pslr_deep_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then))
+        return TRUE;
+    return FALSE;
+}
+
+static inline int
 parser_pslr_reserved_word_begin_p(struct parser_params *p)
 {
     if (parser_pslr_after_labeled_state_p(p)) return TRUE;
@@ -11442,13 +11491,13 @@ parser_yylex(struct parser_params *p)
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
         int after_labeled = parser_pslr_after_labeled_p(p);
-        int newline_is_layout = !parser_pslr_accepts_token(p, '\n');
-        if (newline_is_layout || after_labeled) {
+        c = (parser_pslr_ignores_newline_p(p) && !after_labeled);
+        if (c || after_labeled) {
             if (!fallthru) {
                 dispatch_scan_event(p, tIGNORED_NL);
             }
             fallthru = FALSE;
-            if (newline_is_layout && p->ctxt.in_kwarg) {
+            if (!c && p->ctxt.in_kwarg) {
                 goto normal_newline;
             }
             goto retry;
