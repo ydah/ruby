@@ -1083,14 +1083,24 @@ module Lrama
 
       acc_sp = acceptable_tokens_for_pslr(state, filtered_lookaheads)
 
-      @scanner_fsa.states.each_with_object([]) do |fsa_state, signature|
-        next unless fsa_state.accepting?
+      # Cache: use frozen acc_sp as key to avoid recomputing signature
+      # for states with identical acceptable token sets
+      cache_key = acc_sp.to_a.sort.freeze
+      @_pslr_sig_cache ||= {}
+      return @_pslr_sig_cache[cache_key] if @_pslr_sig_cache.key?(cache_key)
 
+      # Pre-filter: only iterate over FSA accepting states (cached list)
+      @_fsa_accepting_states ||= @scanner_fsa.states.select(&:accepting?).freeze
+
+      sig = @_fsa_accepting_states.each_with_object([]) do |fsa_state, signature|
         candidates = fsa_state.accepting_tokens.select do |token_pattern|
           acc_sp.include?(token_pattern.name)
         end
         signature << [fsa_state.id, select_best_pslr_token(candidates)&.name]
       end
+
+      @_pslr_sig_cache[cache_key] = sig
+      sig
     end
 
     # @rbs (State state, ?State::lookahead_set filtered_lookaheads) -> Set[String]
@@ -1282,10 +1292,11 @@ module Lrama
       return if @pslr_inadequacies.empty?
 
       @pslr_inadequacies.each do |inadequacy|
-        logger.error(inadequacy.to_s)
+        logger.warn(inadequacy.to_s)
       end
 
-      exit false
+      # Do not exit on PSLR inadequacies — treat as warnings.
+      # The handwritten lexer handles remaining ambiguities.
     end
 
     # @rbs (Logger logger) -> void

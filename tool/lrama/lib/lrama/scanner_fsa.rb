@@ -431,10 +431,14 @@ module Lrama
       nfa_start = nfa_states[0]
       start_closure = epsilon_closure([nfa_start])
 
-      # Map NFA state sets to DFA states
+      # Map NFA state sets to DFA states using frozen sorted id arrays as keys
+      start_key = start_closure.map(&:id).sort.freeze
       dfa_states = {}
+      # Also cache the key for each closure to avoid recomputing
+      closure_keys = {}
       work_list = [start_closure]
-      dfa_states[start_closure.map(&:id).sort] = create_state
+      dfa_states[start_key] = create_state
+      closure_keys[start_closure.object_id] = start_key
 
       @initial_state = @states[0]
 
@@ -447,9 +451,10 @@ module Lrama
 
       while !work_list.empty?
         current_nfa_set = work_list.shift
-        current_dfa = dfa_states[current_nfa_set.map(&:id).sort]
+        current_key = closure_keys[current_nfa_set.object_id]
+        current_dfa = dfa_states[current_key]
 
-        # Find all possible transitions
+        # Find all possible transitions, grouping targets by character
         transitions = {}
         current_nfa_set.each do |nfa_state|
           nfa_state.transitions.each do |char, targets|
@@ -461,7 +466,7 @@ module Lrama
 
         transitions.each do |char, targets|
           target_closure = epsilon_closure(targets.uniq)
-          target_key = target_closure.map(&:id).sort
+          target_key = target_closure.map(&:id).sort.freeze
 
           unless dfa_states.key?(target_key)
             new_dfa_state = create_state
@@ -474,6 +479,7 @@ module Lrama
               end
             end
 
+            closure_keys[target_closure.object_id] = target_key
             work_list << target_closure
           end
 
@@ -486,6 +492,7 @@ module Lrama
     # @rbs (Array[NFAState] nfa_states) -> Array[NFAState]
     def epsilon_closure(nfa_states)
       closure = nfa_states.dup
+      seen = Set.new(nfa_states.map(&:id))
       work_list = nfa_states.dup
 
       while !work_list.empty?
@@ -493,7 +500,8 @@ module Lrama
         epsilon_targets = state.transitions[nil] || []
 
         epsilon_targets.each do |target|
-          unless closure.include?(target)
+          unless seen.include?(target.id)
+            seen << target.id
             closure << target
             work_list << target
           end
