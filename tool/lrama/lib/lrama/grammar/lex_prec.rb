@@ -53,6 +53,23 @@ module Lrama
         TOKEN_RIGHT_LENGTH
       ].freeze #: Array[Symbol]
 
+      # Raw declaration stored before operand expansion.
+      # Operands may be :token, :symbol_set, or :yyall.
+      class Declaration
+        attr_reader :left_operand #: Lexer::Token::Base
+        attr_reader :operator #: Symbol
+        attr_reader :right_operand #: Lexer::Token::Base
+        attr_reader :lineno #: Integer
+
+        # @rbs (left_operand: Lexer::Token::Base, operator: Symbol, right_operand: Lexer::Token::Base, lineno: Integer) -> void
+        def initialize(left_operand:, operator:, right_operand:, lineno:)
+          @left_operand = left_operand
+          @operator = operator
+          @right_operand = right_operand
+          @lineno = lineno
+        end
+      end
+
       class Rule
         attr_reader :left_token #: Lexer::Token::Base
         attr_reader :operator #: Symbol
@@ -79,10 +96,39 @@ module Lrama
       end
 
       attr_reader :rules #: Array[Rule]
+      attr_reader :declarations #: Array[Declaration]
+      attr_reader :used_rules #: Set[Integer]
 
       # @rbs () -> void
       def initialize
         @rules = []
+        @declarations = []
+        @used_rules = Set.new
+      end
+
+      # Mark a rule as used by conflict resolution.
+      # @rbs (Integer rule_index) -> void
+      def mark_used(rule_index)
+        @used_rules << rule_index
+      end
+
+      # Returns rules that were never used in conflict resolution.
+      # @rbs () -> Array[Rule]
+      def useless_rules
+        @rules.each_with_index.select { |_, i| !@used_rules.include?(i) }.map(&:first)
+      end
+
+      # Store a raw declaration for delayed expansion.
+      # @rbs (left_operand: Lexer::Token::Base, operator: Symbol, right_operand: Lexer::Token::Base, lineno: Integer) -> Declaration
+      def add_declaration(left_operand:, operator:, right_operand:, lineno:)
+        decl = Declaration.new(
+          left_operand: left_operand,
+          operator: operator,
+          right_operand: right_operand,
+          lineno: lineno
+        )
+        @declarations << decl
+        decl
       end
 
       # @rbs (left_token: Lexer::Token::Base, operator: Symbol, right_token: Lexer::Token::Base, lineno: Integer) -> Rule
@@ -99,14 +145,19 @@ module Lrama
 
       # True when winner explicitly wins an identity conflict against loser.
       # The relation is intentionally not transitive.
-      # @rbs (String winner, String loser) -> bool
-      def identity_precedes?(winner, loser)
+      # @rbs (String winner, String loser, ?track: bool) -> bool
+      def identity_precedes?(winner, loser, track: false)
         return true if winner == loser
 
-        @rules.any? do |rule|
-          IDENTITY_OPERATORS.include?(rule.operator) &&
-            rule.left_name == loser &&
-            rule.right_name == winner
+        @rules.each_with_index.any? do |rule, i|
+          if IDENTITY_OPERATORS.include?(rule.operator) &&
+              rule.left_name == loser &&
+              rule.right_name == winner
+            mark_used(i) if track
+            true
+          else
+            false
+          end
         end
       end
 

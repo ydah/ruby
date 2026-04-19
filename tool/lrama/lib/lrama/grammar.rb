@@ -22,9 +22,11 @@ require_relative "grammar/symbols"
 require_relative "grammar/type"
 require_relative "grammar/union"
 require_relative "grammar/token_pattern"
+require_relative "grammar/token_action"
 require_relative "grammar/lex_prec"
 require_relative "grammar/lex_tie"
 require_relative "grammar/lexer_context"
+require_relative "grammar/scoped_lex_decl"
 require_relative "lexer"
 
 module Lrama
@@ -119,6 +121,8 @@ module Lrama
     attr_reader :symbol_sets #: Hash[String, Array[Lexer::Token::Base]]
     attr_reader :lex_tie #: Grammar::LexTie
     attr_reader :lexer_contexts #: Hash[String, Grammar::LexerContext]
+    attr_reader :token_actions #: Array[Grammar::TokenAction]
+    attr_reader :scoped_lex_declarations #: Array[Grammar::ScopedLexDecl]
 
     # Argument symbol names for each parameterized rule expansion.
     # @rbs () -> Hash[String, Array[String]]
@@ -165,6 +169,9 @@ module Lrama
       @lexer_contexts = {}
       @lexer_context_counter = 0
       @token_pattern_counter = 0
+      @token_actions = []
+      @scoped_lex_declarations = []
+      @current_scoped_lex_decl = nil
 
       append_special_symbols
     end
@@ -395,16 +402,38 @@ module Lrama
     end
 
     # Add lex-prec rules from %lex-prec directive.
-    # Symbol-set operands are expanded eagerly, so the resolver only sees token pairs.
-    # @rbs (left_token: Lexer::Token::Base, operator: Symbol, right_token: Lexer::Token::Base, lineno: Integer) -> Array[Grammar::LexPrec::Rule]
+    # Stores as raw declaration for delayed expansion after implicit literal synthesis.
+    # @rbs (left_token: Lexer::Token::Base, operator: Symbol, right_token: Lexer::Token::Base, lineno: Integer) -> Grammar::LexPrec::Declaration
     def add_lex_prec_rule(left_token:, operator:, right_token:, lineno:)
-      expand_pslr_operand(left_token).product(expand_pslr_operand(right_token)).map do |left, right|
-        @lex_prec.add_rule(
-          left_token: left,
-          operator: operator,
-          right_token: right,
-          lineno: lineno
-        )
+      # Register terminals so they are known to the symbol resolver
+      add_term(id: left_token) unless left_token.s_value == "yyall" || @symbol_sets.key?(left_token.s_value)
+      add_term(id: right_token) unless right_token.s_value == "yyall" || @symbol_sets.key?(right_token.s_value)
+
+      @lex_prec.add_declaration(
+        left_operand: left_token,
+        operator: operator,
+        right_operand: right_token,
+        lineno: lineno
+      )
+    end
+
+    # Finalize lexical declarations after implicit literal synthesis.
+    # Expands yyall and symbol-set operands using the post-synthesis token universe.
+    # Validates that identity-component operators are not used as self-pairs.
+    # @rbs () -> void
+    def finalize_lexical_declarations!
+      @lex_prec.declarations.each do |decl|
+        expand_pslr_operand(decl.left_operand).product(expand_pslr_operand(decl.right_operand)).each do |left, right|
+          validate_lex_prec_self_pair!(left, right, decl.operator, decl.lineno)
+          next if left.s_value == right.s_value && Grammar::LexPrec::IDENTITY_OPERATORS.include?(decl.operator)
+
+          @lex_prec.add_rule(
+            left_token: left,
+            operator: decl.operator,
+            right_token: right,
+            lineno: decl.lineno
+          )
+        end
       end
     end
 
@@ -448,6 +477,82 @@ module Lrama
       end
       ctx.add_symbols(symbols)
       ctx
+    end
+
+    # Add a token action from %token-action directive
+    # @rbs (id: Lexer::Token::Ident, code: Lexer::Token::UserCode, lineno: Integer) -> Grammar::TokenAction
+    def add_token_action(id:, code:, lineno:)
+      token_action = Grammar::TokenAction.new(
+        token_id: id,
+        code: code,
+        lineno: lineno
+      )
+      @token_actions << token_action
+      token_action
+    end
+
+    # Begin a scoped lexical declaration block from %lex-scope directive
+    # @rbs (name: String, lineno: Integer) -> Grammar::ScopedLexDecl
+    def begin_scoped_lex_declaration(name:, lineno:)
+      decl = Grammar::ScopedLexDecl.new(scope_name: name, lineno: lineno)
+      @scoped_lex_declarations << decl
+      @current_scoped_lex_decl = decl
+      decl
+    end
+
+    # End the current scoped lexical declaration block
+    # @rbs () -> void
+    def end_scoped_lex_declaration
+      @current_scoped_lex_decl = nil
+    end
+
+    # Add a lex-prec rule, respecting current scope
+    # @rbs (left_token: Lexer::Token::Base, operator: Symbol, right_token: Lexer::Token::Base, lineno: Integer) -> void
+    def add_scoped_or_global_lex_prec_rule(left_token:, operator:, right_token:, lineno:)
+      if @current_scoped_lex_decl
+        expand_pslr_operand(left_token).product(expand_pslr_operand(right_token)).each do |left, right|
+          rule = Grammar::LexPrec::Rule.new(
+            left_token: left,
+            operator: operator,
+            right_token: right,
+            lineno: lineno
+          )
+          @current_scoped_lex_decl.add_lex_prec_rule(rule)
+        end
+      else
+        add_lex_prec_rule(left_token: left_token, operator: operator, right_token: right_token, lineno: lineno)
+      end
+    end
+
+    # Find the scoped lex-prec rules that apply to a given parser state.
+    # A scope is active in a state if any item in the state derives from the scope nonterminal.
+    # @rbs (Array[String] active_nterm_names) -> Grammar::LexPrec
+    def scoped_lex_prec_for(active_nterm_names)
+      merged = Grammar::LexPrec.new
+      @lex_prec.rules.each do |rule|
+        merged.add_rule(
+          left_token: rule.left_token,
+          operator: rule.operator,
+          right_token: rule.right_token,
+          lineno: rule.lineno
+        )
+      end
+
+      active_set = active_nterm_names.to_set
+      @scoped_lex_declarations.each do |decl|
+        next unless active_set.include?(decl.scope_name)
+
+        decl.lex_prec_rules.each do |rule|
+          merged.add_rule(
+            left_token: rule.left_token,
+            operator: rule.operator,
+            right_token: rule.right_token,
+            lineno: rule.lineno
+          )
+        end
+      end
+
+      merged
     end
 
     # Find a token pattern by its name
@@ -502,14 +607,54 @@ module Lrama
 
     private
 
+    # Validate that identity-component operators are not applied to self-pairs.
+    # Self-pair is allowed only for length-only operators (-~ and -s).
+    # @rbs (Lexer::Token::Base left, Lexer::Token::Base right, Symbol operator, Integer lineno) -> void
+    def validate_lex_prec_self_pair!(left, right, operator, lineno)
+      return unless left.s_value == right.s_value
+
+      # Length-only operators are fine for self-pairs (e.g., %lex-prec COM -s COM)
+      return if operator == Grammar::LexPrec::LONGEST
+      return if operator == Grammar::LexPrec::SHORTEST
+
+      # Identity-component operators on self-pairs are errors
+      if Grammar::LexPrec::IDENTITY_OPERATORS.include?(operator)
+        raise "%lex-prec self-pair identity rule is invalid: #{left.s_value} cannot have an identity conflict with itself (line #{lineno})."
+      end
+
+      # TOKEN_RIGHT_LENGTH (-<) on self-pair is contradictory
+      if operator == Grammar::LexPrec::TOKEN_RIGHT_LENGTH
+        raise "%lex-prec self-pair with -< is contradictory: #{left.s_value} (line #{lineno})."
+      end
+    end
+
     # @rbs (Lexer::Token::Base id) -> String?
     def implicit_literal_regex_pattern(id)
-      return nil unless id.is_a?(Lrama::Lexer::Token::Char)
+      case id
+      when Lrama::Lexer::Token::Char
+        literal = char_literal_value(id.s_value)
+        return nil unless literal&.ascii_only?
 
-      literal = char_literal_value(id.s_value)
-      return nil unless literal&.ascii_only?
+        escape_regex_literal(literal)
+      when Lrama::Lexer::Token::Str
+        literal = str_literal_value(id.s_value)
+        return nil unless literal
+        return nil unless literal.ascii_only?
 
-      escape_regex_literal(literal)
+        escape_regex_literal(literal)
+      end
+    end
+
+    # Extract the string content from a quoted string literal (e.g., "=>" -> =>)
+    # @rbs (String s_value) -> String?
+    def str_literal_value(s_value)
+      # String literals are stored as "..." with quotes
+      return nil if s_value.length < 2
+
+      inner = s_value[1..-2]
+      return nil if inner.nil? || inner.empty?
+
+      inner
     end
 
     # @rbs (String s_value) -> String?

@@ -183,9 +183,13 @@ module Lrama
       @pslr_split_enabled = true
       report_duration(:split_states) { split_states }
       @pslr_split_enabled = false
-      # Phase 3b: Lexer context classification + context-based split
-      report_duration(:classify_lexer_contexts) { classify_lexer_contexts }
-      report_duration(:split_states_by_context) { split_states_by_context }
+      # Phase 3b: Lexer context classification + context-based split.
+      # Lrama/Ruby extension, not part of the PSLR dissertation core.
+      # No-op unless %lexer-context directives are present.
+      if @grammar.lexer_contexts.any?
+        report_duration(:classify_lexer_contexts) { classify_lexer_contexts }
+        report_duration(:split_states_by_context) { split_states_by_context }
+      end
       # Phase 4
       report_duration(:clear_look_ahead_sets) { clear_look_ahead_sets }
       report_duration(:compute_look_ahead_sets) { compute_look_ahead_sets }
@@ -194,8 +198,11 @@ module Lrama
       report_duration(:compute_default_reduction) { compute_default_reduction }
       report_duration(:build_scanner_accepts) { build_scanner_accepts }
       report_duration(:handle_pslr_inadequacies) { handle_pslr_inadequacies }
-      # Phase 6: Re-classify after all splits
-      report_duration(:classify_lexer_contexts) { classify_lexer_contexts }
+      # Phase 6: Re-classify after all splits.
+      # Lrama/Ruby extension, not part of the PSLR dissertation core.
+      if @grammar.lexer_contexts.any?
+        report_duration(:classify_lexer_contexts) { classify_lexer_contexts }
+      end
       finalize_pslr_metrics
     end
 
@@ -250,6 +257,8 @@ module Lrama
       validate_pslr_state_growth!(logger)
       validate_pslr_scanner_conflicts!(logger)
       validate_pslr_inadequacies!(logger)
+      validate_pslr_useless_lex_prec!(logger)
+      validate_pslr_lexical_tie_candidates!(logger)
     end
 
     # Classify each state's lexer context based on kernel items.
@@ -1207,6 +1216,7 @@ module Lrama
     # @rbs () -> void
     def build_scanner_fsa
       @grammar.synthesize_implicit_literal_token_patterns!
+      @grammar.finalize_lexical_declarations!
       return if token_patterns.empty?
 
       @scanner_fsa = ScannerFSA.new(token_patterns)
@@ -1227,15 +1237,53 @@ module Lrama
 
       collect_lexical_tie_candidates
 
+      effective_lex_prec = lex_prec
+      scoped_lex_precs = build_scoped_lex_precs
+
       @scanner_accepts_table = State::ScannerAccepts.new(
         reachable_parser_states,
         @scanner_fsa,
-        lex_prec,
+        effective_lex_prec,
         @length_precedences,
         lex_tie,
-        layout_token_names: @grammar.layout_token_names
+        layout_token_names: @grammar.layout_token_names,
+        scoped_lex_precs: scoped_lex_precs
       )
       @scanner_accepts_table.build
+    end
+
+    # Build per-state scoped lex-prec lookup.
+    # Returns a hash of parser_state_id -> LexPrec that includes
+    # both global and scope-active rules.
+    # @rbs () -> Hash[Integer, Grammar::LexPrec]
+    def build_scoped_lex_precs
+      return {} if @grammar.scoped_lex_declarations.empty?
+
+      result = {}
+      reachable_parser_states.each do |state|
+        active_nterms = active_nterm_names_for(state)
+        next if active_nterms.empty?
+
+        has_active_scope = @grammar.scoped_lex_declarations.any? do |decl|
+          active_nterms.include?(decl.scope_name)
+        end
+        next unless has_active_scope
+
+        result[state.id] = @grammar.scoped_lex_prec_for(active_nterms)
+      end
+
+      result
+    end
+
+    # Collect the nonterminal names that are "active" in a parser state.
+    # A nonterminal is active if it appears as the LHS of any item in the state's closure.
+    # @rbs (State state) -> Array[String]
+    def active_nterm_names_for(state)
+      names = Set.new
+      (state.kernels + state.closure).each do |item|
+        names << item.rule.lhs.id.s_value if item.rule.lhs.nterm?
+      end
+      names.to_a
     end
 
     # Handle PSLR inadequacies
@@ -1415,6 +1463,40 @@ module Lrama
       end
 
       exit false
+    end
+
+    # Report %lex-prec rules that were never used in scanner conflict resolution.
+    # @rbs (Logger logger) -> void
+    def validate_pslr_useless_lex_prec!(logger)
+      return unless pslr_defined?
+      return unless @scanner_accepts_table
+
+      useless = lex_prec.useless_rules
+      return if useless.empty?
+
+      useless.each do |rule|
+        operator_label = LengthPrecedences.operator_label(rule.operator)
+        logger.warn(
+          "useless %lex-prec rule at line #{rule.lineno}: " \
+          "#{rule.left_name} #{operator_label} #{rule.right_name} " \
+          "does not resolve any PSLR scanner conflict"
+        )
+      end
+    end
+
+    # Report lexical tie candidates that are not covered by %lex-tie or %lex-no-tie.
+    # @rbs (Logger logger) -> void
+    def validate_pslr_lexical_tie_candidates!(logger)
+      return unless pslr_defined?
+      return if @lexical_tie_candidates.empty?
+
+      @lexical_tie_candidates.each do |left, right|
+        logger.warn(
+          "PSLR lexical tie candidate: #{left} and #{right} have scanner conflicts " \
+          "but are not always accepted together. " \
+          "Add %lex-tie #{left} #{right} or %lex-no-tie #{left} #{right}."
+        )
+      end
     end
   end
 end
