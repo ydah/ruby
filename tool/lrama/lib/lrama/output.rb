@@ -424,7 +424,19 @@ module Lrama
 
       if pslr_scanner_enabled?
         declarations << <<~C_CODE
+          #ifndef YYPSLR_SCAN_RESULT_DEFINED
+          # define YYPSLR_SCAN_RESULT_DEFINED
+          typedef struct yypslr_scan_result {
+            int token;
+            int length;
+            int is_layout;
+            int is_character_token;
+          } yypslr_scan_result;
+          #endif
+
+          int yy_pseudo_scan_result (int parser_state, const char *input, yypslr_scan_result *result);
           int yy_pseudo_scan (int parser_state, const char *input, int *match_length);
+          int yy_pslr_token_is_layout (int token);
         C_CODE
 
         declarations << <<~C_CODE
@@ -434,6 +446,15 @@ module Lrama
           #ifndef YYPSLR_PSEUDO_SCAN_STATE
           # define YYPSLR_PSEUDO_SCAN_STATE(ParserState, Input, MatchLength) \\
             yy_pseudo_scan ((ParserState), (Input), (MatchLength))
+          #endif
+
+          #ifndef YYPSLR_PSEUDO_SCAN_RESULT_STATE
+          # define YYPSLR_PSEUDO_SCAN_RESULT_STATE(ParserState, Input, Result) \\
+            yy_pseudo_scan_result ((ParserState), (Input), (Result))
+          #endif
+
+          #ifndef YYPSLR_TOKEN_IS_LAYOUT
+          # define YYPSLR_TOKEN_IS_LAYOUT(Token) yy_pslr_token_is_layout ((Token))
           #endif
         C_CODE
       end
@@ -451,6 +472,13 @@ module Lrama
             # define YYPSLR_PSEUDO_SCAN(Context, Input, MatchLength) \\
               ((Context) != 0 \\
                ? YYPSLR_PSEUDO_SCAN_STATE (YYGETSTATE_CONTEXT (Context), (Input), (MatchLength)) \\
+               : YYEMPTY)
+            #endif
+
+            #ifndef YYPSLR_PSEUDO_SCAN_RESULT
+            # define YYPSLR_PSEUDO_SCAN_RESULT(Context, Input, Result) \\
+              ((Context) != 0 \\
+               ? YYPSLR_PSEUDO_SCAN_RESULT_STATE (YYGETSTATE_CONTEXT (Context), (Input), (Result)) \\
                : YYEMPTY)
             #endif
           C_CODE
@@ -549,6 +577,20 @@ module Lrama
       lines << "static const int yy_token_pattern_to_token_id[YY_NUM_TOKEN_PATTERNS] = {"
       lines << "  #{@context.states.token_patterns.map {|token_pattern| pslr_token_id(token_pattern) }.join(', ')}"
       lines << "};"
+      lines << ""
+      lines << "static const int yy_token_pattern_is_layout[YY_NUM_TOKEN_PATTERNS] = {"
+      lines << "  #{@context.states.token_patterns.map {|token_pattern| token_pattern.layout? ? 1 : 0 }.join(', ')}"
+      lines << "};"
+      lines << ""
+      lines << "int"
+      lines << "yy_pslr_token_is_layout (int token)"
+      lines << "{"
+      lines << "  int i;"
+      lines << "  for (i = 0; i < YY_NUM_TOKEN_PATTERNS; i++)"
+      lines << "    if (yy_token_pattern_to_token_id[i] == token)"
+      lines << "      return yy_token_pattern_is_layout[i];"
+      lines << "  return 0;"
+      lines << "}"
       lines.join("\n")
     end
 
@@ -560,7 +602,6 @@ module Lrama
       lines = []
       lines << ""
       lines << "/* Accepting state token IDs */"
-      lines << "/* For each accepting state, list of (token_id, definition_order) pairs */"
       lines << ""
 
       # Collect all unique tokens
@@ -601,13 +642,14 @@ module Lrama
 
       if num_accepting_states > 0
         lines << "static const int yy_scanner_accepts[YY_NUM_PARSER_STATES][YY_NUM_ACCEPTING_STATES] = {"
+        token_pattern_indexes = @context.states.token_patterns.each_with_index.to_h
 
         @context.states.states.each_with_index do |parser_state, ps_idx|
           row = []
           pslr_accepting_states.each do |fsa_state|
             token = scanner_accepts[parser_state.id, fsa_state.id]
             if token
-              row << token.definition_order
+              row << token_pattern_indexes.fetch(token)
             else
               row << -1
             end
@@ -616,6 +658,14 @@ module Lrama
           lines << "  /* parser state #{ps_idx} */ {#{row.join(', ')}}#{ps_idx < num_parser_states - 1 ? ',' : ''}"
         end
 
+        lines << "};"
+        lines << ""
+        lines << "static const int yy_scanner_fallback_accepts[YY_NUM_ACCEPTING_STATES] = {"
+        fallback_row = pslr_accepting_states.map do |fsa_state|
+          token = scanner_accepts.fallback_table[fsa_state.id]
+          token ? token_pattern_indexes.fetch(token) : -1
+        end
+        lines << "  #{fallback_row.join(', ')}"
         lines << "};"
       end
 
@@ -630,31 +680,136 @@ module Lrama
 
       lines = []
       lines << ""
-      lines << "/* length_precedences[token1][token2] -> precedence */"
-      lines << "#define YY_LENGTH_PREC_UNDEFINED 0"
-      lines << "#define YY_LENGTH_PREC_LEFT 1      /* shorter token wins */"
-      lines << "#define YY_LENGTH_PREC_RIGHT 2     /* longer token wins */"
+      lines << "/* yy_pslr_length_precedes[old_token][new_token] is true when a longer"
+      lines << "   match for new_token replaces an earlier match for old_token. */"
       lines << ""
 
       num_tokens = pslr_token_pattern_count
       if num_tokens > 0
-        lines << "static const int yy_length_precedences[#{num_tokens}][#{num_tokens}] = {"
+        lines << length_precedence_matrix_code(
+          "yy_pslr_length_precedes",
+          num_tokens,
+          :normal_precedes?
+        )
 
-        @context.states.token_patterns.each_with_index do |t1, i|
-          row = @context.states.token_patterns.map do |t2|
-            case length_precedences.precedence(t1.name, t2.name)
-            when :left then 1
-            when :right then 2
-            else 0
-            end
-          end
-          lines << "  /* #{t1.name} */ {#{row.join(', ')}}#{i < num_tokens - 1 ? ',' : ''}"
-        end
+        lines << ""
+        lines << "/* yy_pslr_fallback_length_precedes keeps explicit PSLR length"
+        lines << "   precedence and otherwise uses traditional longest-match fallback. */"
+        lines << ""
 
-        lines << "};"
+        lines << length_precedence_matrix_code(
+          "yy_pslr_fallback_length_precedes",
+          num_tokens,
+          :fallback_precedes?
+        )
       end
 
       lines.join("\n")
+    end
+
+    def length_precedence_matrix_code(table_name, num_tokens, query_method)
+      length_precedences = @context.states.length_precedences
+      lines = []
+
+      lines << "static const int #{table_name}[#{num_tokens}][#{num_tokens}] = {"
+      @context.states.token_patterns.each_with_index do |t1, i|
+        row = @context.states.token_patterns.map do |t2|
+          length_precedences.public_send(query_method, t1.name, t2.name) ? 1 : 0
+        end
+        lines << "  /* #{t1.name} */ {#{row.join(', ')}}#{i < num_tokens - 1 ? ',' : ''}"
+      end
+      lines << "};"
+
+      lines.join("\n")
+    end
+
+    def pslr_lac_function
+      return "" unless pslr_enabled?
+
+      <<~C_CODE
+
+        static int
+        yy_lac_check_ (yy_state_t *yyss, yy_state_t *yyssp, yysymbol_kind_t yytoken)
+        {
+          YYPTRDIFF_T yylac_len = yyssp - yyss + 1;
+          yy_state_t *yylac_base = YY_CAST (yy_state_t *,
+            YYMALLOC (YY_CAST (YYSIZE_T, YYMAXDEPTH * YYSIZEOF (yy_state_t))));
+          yy_state_t *yylac_top;
+
+          if (!yylac_base)
+            return 1;
+
+          if (YYMAXDEPTH < yylac_len)
+            {
+              YYFREE (yylac_base);
+              return 1;
+            }
+
+          YYCOPY (yylac_base, yyss, yylac_len);
+          yylac_top = yylac_base + yylac_len - 1;
+
+          for (;;)
+            {
+              int yystate = *yylac_top;
+              int yyn = yypact[yystate];
+
+              if (!yypact_value_is_default (yyn))
+                {
+                  yyn += yytoken;
+                  if (0 <= yyn && yyn <= YYLAST && yycheck[yyn] == yytoken)
+                    {
+                      yyn = yytable[yyn];
+                      if (0 < yyn)
+                        {
+                          YYFREE (yylac_base);
+                          return 1;
+                        }
+                      if (yytable_value_is_error (yyn))
+                        {
+                          YYFREE (yylac_base);
+                          return 0;
+                        }
+                      yyn = -yyn;
+                    }
+                  else
+                    {
+                      yyn = yydefact[yystate];
+                      if (yyn == 0)
+                        {
+                          YYFREE (yylac_base);
+                          return 0;
+                        }
+                    }
+                }
+              else
+                {
+                  yyn = yydefact[yystate];
+                  if (yyn == 0)
+                    {
+                      YYFREE (yylac_base);
+                      return 0;
+                    }
+                }
+
+              yylac_top -= yyr2[yyn];
+              {
+                const int yylhs = yyr1[yyn] - YYNTOKENS;
+                const int yyi = yypgoto[yylhs] + *yylac_top;
+                yystate = (0 <= yyi && yyi <= YYLAST && yycheck[yyi] == *yylac_top
+                           ? yytable[yyi]
+                           : yydefgoto[yylhs]);
+              }
+
+              if (yylac_base + YYMAXDEPTH - 1 <= yylac_top)
+                {
+                  YYFREE (yylac_base);
+                  return 1;
+                }
+
+              *++yylac_top = YY_CAST (yy_state_t, yystate);
+            }
+        }
+      C_CODE
     end
 
     # Generate pseudo_scan function as C code
@@ -672,25 +827,35 @@ module Lrama
          *   input: Input buffer pointer
          *   match_length: Output parameter for matched length
          *
-         * Returns: Selected parser token ID, or YYEMPTY if no match
+         * Returns: Selected parser token ID. If neither the parser-state row
+         * nor fallback row matches, returns YYUNDEF and consumes one byte.
          */
         int
-        yy_pseudo_scan(int parser_state, const char *input, int *match_length)
+        yy_pseudo_scan_result (int parser_state, const char *input, yypslr_scan_result *result)
         {
-          int local_match_length = 0;
           int ss = 0;  /* FSA initial state */
           int ibest = 0;
           int pbest = YY_PSLR_EMPTY_PATTERN;
+          int fallback_ibest = 0;
+          int fallback_pbest = YY_PSLR_EMPTY_PATTERN;
           int i = 0;
 
-          if (match_length == NULL) {
-            match_length = &local_match_length;
+          if (result == NULL) {
+            return YYEMPTY;
           }
 
-          *match_length = 0;
+          result->token = YYEMPTY;
+          result->length = 0;
+          result->is_layout = 0;
+          result->is_character_token = 0;
 
           if (parser_state < 0 || parser_state >= YY_NUM_PARSER_STATES || input == NULL) {
             return YYEMPTY;
+          }
+
+          if (input[0] == '\\0') {
+            result->token = YYEOF;
+            return result->token;
           }
 
           while (input[i] != '\\0') {
@@ -709,23 +874,55 @@ module Lrama
             if (sa != YY_ACCEPTING_NONE) {
               int pattern_index = yy_scanner_accepts[parser_state][sa];
               if (pattern_index != YY_PSLR_EMPTY_PATTERN) {
-                /* Check length precedences */
                 if (pbest == YY_PSLR_EMPTY_PATTERN ||
-                    (i > ibest && yy_length_precedences[pbest][pattern_index] != YY_LENGTH_PREC_LEFT) ||
-                    (i == ibest && yy_length_precedences[pattern_index][pbest] == YY_LENGTH_PREC_LEFT)) {
+                    yy_pslr_length_precedes[pbest][pattern_index]) {
                   pbest = pattern_index;
                   ibest = i;
+                }
+              }
+
+              pattern_index = yy_scanner_fallback_accepts[sa];
+              if (pattern_index != YY_PSLR_EMPTY_PATTERN) {
+                if (fallback_pbest == YY_PSLR_EMPTY_PATTERN ||
+                    yy_pslr_fallback_length_precedes[fallback_pbest][pattern_index]) {
+                  fallback_pbest = pattern_index;
+                  fallback_ibest = i;
                 }
               }
             }
           }
 
-          *match_length = ibest;
-          if (pbest == YY_PSLR_EMPTY_PATTERN) {
-            return YYEMPTY;
+          if (pbest != YY_PSLR_EMPTY_PATTERN) {
+            result->token = yy_token_pattern_to_token_id[pbest];
+            result->length = ibest;
+            result->is_layout = yy_token_pattern_is_layout[pbest];
+            return result->token;
           }
 
-          return yy_token_pattern_to_token_id[pbest];
+          if (fallback_pbest != YY_PSLR_EMPTY_PATTERN) {
+            result->token = yy_token_pattern_to_token_id[fallback_pbest];
+            result->length = fallback_ibest;
+            result->is_layout = yy_token_pattern_is_layout[fallback_pbest];
+            return result->token;
+          }
+
+          result->token = YYUNDEF;
+          result->length = 1;
+          result->is_character_token = 1;
+          return result->token;
+        }
+
+        int
+        yy_pseudo_scan(int parser_state, const char *input, int *match_length)
+        {
+          yypslr_scan_result result;
+          int token = yy_pseudo_scan_result (parser_state, input, &result);
+
+          if (match_length != NULL) {
+            *match_length = result.length;
+          }
+
+          return token;
         }
       C_CODE
     end

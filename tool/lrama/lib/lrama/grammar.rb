@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "forwardable"
+require "set"
 require_relative "grammar/auxiliary"
 require_relative "grammar/binding"
 require_relative "grammar/code"
@@ -22,6 +23,7 @@ require_relative "grammar/type"
 require_relative "grammar/union"
 require_relative "grammar/token_pattern"
 require_relative "grammar/lex_prec"
+require_relative "grammar/lex_tie"
 require_relative "grammar/lexer_context"
 require_relative "lexer"
 
@@ -78,6 +80,8 @@ module Lrama
     #   @start_nterm: Lrama::Lexer::Token::Base?
     #   @token_patterns: Array[Grammar::TokenPattern]
     #   @lex_prec: Grammar::LexPrec
+    #   @symbol_sets: Hash[String, Array[Lexer::Token::Base]]
+    #   @lex_tie: Grammar::LexTie
 
     extend Forwardable
 
@@ -112,7 +116,15 @@ module Lrama
     attr_accessor :required #: bool
     attr_reader :token_patterns #: Array[Grammar::TokenPattern]
     attr_reader :lex_prec #: Grammar::LexPrec
+    attr_reader :symbol_sets #: Hash[String, Array[Lexer::Token::Base]]
+    attr_reader :lex_tie #: Grammar::LexTie
     attr_reader :lexer_contexts #: Hash[String, Grammar::LexerContext]
+
+    # Argument symbol names for each parameterized rule expansion.
+    # @rbs () -> Hash[String, Array[String]]
+    def parameterized_expansion_args
+      @parameterized_resolver.expansion_args
+    end
 
     def_delegators "@symbols_resolver", :symbols, :nterms, :terms, :add_nterm, :add_term, :find_term_by_s_value,
                                         :find_symbol_by_number!, :find_symbol_by_id!, :token_to_symbol,
@@ -148,6 +160,8 @@ module Lrama
       @start_nterm = nil
       @token_patterns = []
       @lex_prec = Grammar::LexPrec.new
+      @symbol_sets = {}
+      @lex_tie = Grammar::LexTie.new
       @lexer_contexts = {}
       @lexer_context_counter = 0
       @token_pattern_counter = 0
@@ -343,6 +357,16 @@ module Lrama
       parse_pslr_positive_float('pslr.max-state-ratio')
     end
 
+    # @rbs () -> Array[Grammar::TokenPattern]
+    def layout_token_patterns
+      @token_patterns.select(&:layout?)
+    end
+
+    # @rbs () -> Set[String]
+    def layout_token_names
+      layout_token_patterns.map(&:name).to_set
+    end
+
     # Add a token pattern from %token-pattern directive
     # @rbs (id: Lexer::Token::Ident, pattern: Lexer::Token::Regex, ?alias_name: String?, ?tag: Lexer::Token::Tag?, lineno: Integer) -> Grammar::TokenPattern
     def add_token_pattern(id:, pattern:, alias_name: nil, tag: nil, lineno:)
@@ -363,15 +387,55 @@ module Lrama
       token_pattern
     end
 
-    # Add a lex-prec rule from %lex-prec directive
-    # @rbs (left_token: Lexer::Token::Ident, operator: Symbol, right_token: Lexer::Token::Ident, lineno: Integer) -> Grammar::LexPrec::Rule
+    # Add a symbol set from %symbol-set directive.
+    # @rbs (name: String, symbols: Array[Lexer::Token::Base]) -> Array[Lexer::Token::Base]
+    def add_symbol_set(name:, symbols:)
+      @symbol_sets[name] = symbols
+      symbols.each {|id| add_term(id: id) }
+    end
+
+    # Add lex-prec rules from %lex-prec directive.
+    # Symbol-set operands are expanded eagerly, so the resolver only sees token pairs.
+    # @rbs (left_token: Lexer::Token::Base, operator: Symbol, right_token: Lexer::Token::Base, lineno: Integer) -> Array[Grammar::LexPrec::Rule]
     def add_lex_prec_rule(left_token:, operator:, right_token:, lineno:)
-      @lex_prec.add_rule(
-        left_token: left_token,
-        operator: operator,
-        right_token: right_token,
-        lineno: lineno
-      )
+      expand_pslr_operand(left_token).product(expand_pslr_operand(right_token)).map do |left, right|
+        @lex_prec.add_rule(
+          left_token: left,
+          operator: operator,
+          right_token: right,
+          lineno: lineno
+        )
+      end
+    end
+
+    # Add lexical tie relationships from %lex-tie directive.
+    # @rbs (operands: Array[Lexer::Token::Base]) -> void
+    def add_lex_tie(operands:)
+      groups = operands.map {|operand| pslr_operand_group(operand) }
+      @lex_tie.add_tie_declaration(groups: groups)
+    end
+
+    # Add no-tie declarations from %lex-no-tie directive.
+    # @rbs (operands: Array[Lexer::Token::Base]) -> void
+    def add_lex_no_tie(operands:)
+      groups = operands.map {|operand| pslr_operand_group(operand) }
+      @lex_tie.add_no_tie_declaration(groups: groups)
+      expanded = groups.map {|group| group.names.map {|name| Lrama::Lexer::Token::Ident.new(s_value: name) } }
+      i = 0
+      while i < expanded.size
+        j = i + 1
+        while j < expanded.size
+          left_group = expanded.fetch(i)
+          right_group = expanded.fetch(j)
+          left_group.product(right_group).each do |left, right|
+            next if left.s_value == right.s_value
+
+            @lex_tie.add_no_tie(left.s_value, right.s_value)
+          end
+          j += 1
+        end
+        i += 1
+      end
     end
 
     # Add a lexer context from %lexer-context directive
@@ -392,7 +456,106 @@ module Lrama
       @token_patterns.find { |tp| tp.name == name }
     end
 
+    # @rbs (Set[String] tokens) -> Set[String]
+    def expand_lexical_ties(tokens)
+      tokens.each_with_object(Set.new) do |token, expanded|
+        @lex_tie.tied_names(token).each {|name| expanded << name }
+      end
+    end
+
+    # @rbs (ScannerFSA scanner_fsa) -> void
+    def finalize_lexical_ties!(scanner_fsa)
+      @lex_tie.finalize!(
+        @token_patterns.map(&:name),
+        scanner_fsa.pairwise_conflict_pairs
+      )
+    end
+
+    REGEX_LITERAL_ESCAPES = ["/", "\\", "*", "+", "?", "(", ")", "[", "]", "{", "}", ".", "|", "^", "$", "-"].freeze #: Array[String]
+    REGEX_CONTROL_ESCAPES = {
+      "\n" => "\\n",
+      "\t" => "\\t",
+      "\r" => "\\r",
+      "\f" => "\\f",
+      "\v" => "\\v"
+    }.freeze #: Hash[String, String]
+
+    # @rbs () -> void
+    def synthesize_implicit_literal_token_patterns!
+      existing_names = @token_patterns.map(&:name).to_set
+
+      terms.each do |term|
+        pattern = implicit_literal_regex_pattern(term.id)
+        next unless pattern
+        next if existing_names.include?(term.id.s_value)
+
+        @token_patterns << Grammar::TokenPattern.new(
+          id: term.id,
+          pattern: Lrama::Lexer::Token::Regex.new(s_value: "/#{pattern}/", location: term.id.location),
+          lineno: token_lineno(term.id),
+          definition_order: @token_pattern_counter
+        )
+        @token_pattern_counter += 1
+        existing_names << term.id.s_value
+      end
+    end
+
     private
+
+    # @rbs (Lexer::Token::Base id) -> String?
+    def implicit_literal_regex_pattern(id)
+      return nil unless id.is_a?(Lrama::Lexer::Token::Char)
+
+      literal = char_literal_value(id.s_value)
+      return nil unless literal&.ascii_only?
+
+      escape_regex_literal(literal)
+    end
+
+    # @rbs (String s_value) -> String?
+    def char_literal_value(s_value)
+      inner = s_value[1..-2]
+      case inner
+      when "\\b"
+        "\b"
+      when "\\f"
+        "\f"
+      when "\\n"
+        "\n"
+      when "\\r"
+        "\r"
+      when "\\t"
+        "\t"
+      when "\\v"
+        "\v"
+      when "\\\\"
+        "\\"
+      when /\A\\(\d+)\z/
+        octal = Regexp.last_match(1)
+        octal ? octal.oct.chr : nil
+      when /\A.\z/m
+        inner
+      end
+    end
+
+    # @rbs (String literal) -> String
+    def escape_regex_literal(literal)
+      escaped = REGEX_CONTROL_ESCAPES[literal]
+      return escaped if escaped
+
+      literal.each_char.map do |char|
+        if REGEX_LITERAL_ESCAPES.include?(char)
+          "\\#{char}"
+        else
+          char
+        end
+      end.join
+    end
+
+    # @rbs (Lexer::Token::Base id) -> Integer
+    def token_lineno(id)
+      id.location ? id.first_line : 0
+    end
 
     # @rbs () -> void
     def validate_pslr_configuration!
@@ -405,6 +568,27 @@ module Lrama
 
       pslr_max_states
       pslr_max_state_ratio
+    end
+
+    # @rbs (Lexer::Token::Base operand) -> Array[Lexer::Token::Base]
+    def expand_pslr_operand(operand)
+      return @token_patterns.map(&:id) if operand.s_value == "yyall"
+      return @symbol_sets.fetch(operand.s_value) if @symbol_sets.key?(operand.s_value)
+
+      add_term(id: operand)
+      [operand]
+    end
+
+    # @rbs (Lexer::Token::Base operand) -> Grammar::LexTie::OperandGroup
+    def pslr_operand_group(operand)
+      if operand.s_value == "yyall"
+        Grammar::LexTie::OperandGroup.new(names: @token_patterns.map(&:name), kind: :all)
+      elsif @symbol_sets.key?(operand.s_value)
+        Grammar::LexTie::OperandGroup.new(names: @symbol_sets.fetch(operand.s_value).map(&:s_value), kind: :set)
+      else
+        add_term(id: operand)
+        Grammar::LexTie::OperandGroup.new(names: [operand.s_value], kind: :token)
+      end
     end
 
     # @rbs (String key) -> Integer?
