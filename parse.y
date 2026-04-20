@@ -11574,50 +11574,31 @@ parser_yylex(struct parser_params *p)
                 return tOP_ASGN;
             }
             pushback(p, c);
+            /* Semantic overrides first, then pseudo-scan. */
             if (parser_pslr_expects_fname_p(p)) {
                 c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
             }
             else if (LAST_TOKEN_IS_VALUE(p)) {
-                /* After value (local var, literal), ** is exponentiation */
                 c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
             }
             else if (LAST_TOKEN_IS_METHOD(p) && space_seen && !ISSPACE(c)) {
-                /* After method name with space, ** is argument prefix (tDSTAR).
-                   Keep this as arg-context behavior for method-name calls. */
                 rb_warning0("'**' interpreted as argument prefix");
-                c = tDSTAR;
-            }
-            else if (parser_pslr_prefers_token_p(p, tDSTAR, tPOW)) {
-                c = tDSTAR;
-            }
-            else if (parser_pslr_prefers_token_p(p, tPOW, tDSTAR)) {
-                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
-            }
-            else if (parser_pslr_eventually_accepts_token(p, tDSTAR) &&
-                     !parser_pslr_eventually_accepts_token(p, tPOW)) {
-                c = tDSTAR;
-            }
-            else if (parser_pslr_eventually_accepts_token(p, tPOW) &&
-                     !parser_pslr_eventually_accepts_token(p, tDSTAR)) {
-                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
-            }
-            else if (parser_pslr_deep_accepts_token(p, tDSTAR) &&
-                     !parser_pslr_deep_accepts_token(p, tPOW)) {
-                c = tDSTAR;
-            }
-            else if (parser_pslr_deep_accepts_token(p, tPOW) &&
-                     !parser_pslr_deep_accepts_token(p, tDSTAR)) {
-                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
-            }
-            else if (parser_pslr_space_arg_fallback_p(p, c, space_seen)) {
-                rb_warning0("'**' interpreted as argument prefix");
-                c = tDSTAR;
-            }
-            else if (parser_pslr_lex_beg_like_p(p)) {
                 c = tDSTAR;
             }
             else {
-                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+                ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+                if (scan.token == tDSTAR) {
+                    c = tDSTAR;
+                }
+                else if (scan.token == tPOW) {
+                    c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+                }
+                else if (parser_pslr_lex_beg_like_p(p)) {
+                    c = tDSTAR;
+                }
+                else {
+                    c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+                }
             }
         }
         else {
@@ -11626,47 +11607,27 @@ parser_yylex(struct parser_params *p)
                 return tOP_ASGN;
             }
             pushback(p, c);
-            if (parser_pslr_accepts_token(p, tSTAR) &&
-                !parser_pslr_end_state_fallback_p(p) &&
-                !parser_pslr_expects_fname_p(p) &&
-                !parser_pslr_after_dot_p(p) &&
-                !LAST_TOKEN_IS_VALUE(p)) {
-                /* After expression-beginning tokens (yield/return etc),
-                   * is splat, not multiply. Check that we are not in a
-                   post-value context. */
-                c = tSTAR;
-            }
-            else if (parser_pslr_prefers_token_p(p, tSTAR, '*')) {
-                c = tSTAR;
-            }
-            else if (parser_pslr_prefers_token_p(p, '*', tSTAR)) {
+            if (parser_pslr_expects_fname_p(p) || LAST_TOKEN_IS_VALUE(p)) {
                 c = warn_balanced('*', "*", "argument prefix");
             }
-            else if (parser_pslr_eventually_accepts_token(p, tSTAR) &&
-                     !parser_pslr_eventually_accepts_token(p, '*')) {
-                c = tSTAR;
-            }
-            else if (parser_pslr_eventually_accepts_token(p, '*') &&
-                     !parser_pslr_eventually_accepts_token(p, tSTAR)) {
-                c = warn_balanced('*', "*", "argument prefix");
-            }
-            else if (parser_pslr_deep_accepts_token(p, tSTAR) &&
-                     !parser_pslr_deep_accepts_token(p, '*')) {
-                c = tSTAR;
-            }
-            else if (parser_pslr_deep_accepts_token(p, '*') &&
-                     !parser_pslr_deep_accepts_token(p, tSTAR)) {
-                c = warn_balanced('*', "*", "argument prefix");
-            }
-            else if (parser_pslr_space_arg_fallback_p(p, c, space_seen)) {
+            else if (LAST_TOKEN_IS_METHOD(p) && space_seen && !ISSPACE(c)) {
                 rb_warning0("'*' interpreted as argument prefix");
                 c = tSTAR;
             }
-            else if (parser_pslr_lex_beg_like_p(p)) {
-                c = tSTAR;
-            }
             else {
-                c = warn_balanced('*', "*", "argument prefix");
+                ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+                if (scan.token == tSTAR) {
+                    c = tSTAR;
+                }
+                else if (scan.token == '*') {
+                    c = warn_balanced('*', "*", "argument prefix");
+                }
+                else if (parser_pslr_lex_beg_like_p(p)) {
+                    c = tSTAR;
+                }
+                else {
+                    c = warn_balanced('*', "*", "argument prefix");
+                }
             }
         }
         return c;
@@ -11840,46 +11801,23 @@ parser_yylex(struct parser_params *p)
         }
         pushback(p, c);
         if (LAST_TOKEN_IS_VALUE(p)) {
-            /* After local variable or literal, '&' is bitwise AND */
             c = warn_balanced('&', "&", "argument prefix");
             return c;
         }
-        if (parser_pslr_prefers_token_p(p, tAMPER, '&')) {
-            c = tAMPER;
-        }
-        else if (parser_pslr_prefers_token_p(p, '&', tAMPER)) {
-            c = '&';
-        }
-        else if (parser_pslr_eventually_accepts_token(p, tAMPER) &&
-                 !parser_pslr_eventually_accepts_token(p, '&')) {
-            c = tAMPER;
-        }
-        else if (parser_pslr_eventually_accepts_token(p, '&') &&
-                 !parser_pslr_eventually_accepts_token(p, tAMPER)) {
-            c = '&';
-        }
-        else if (parser_pslr_deep_accepts_token(p, tAMPER) &&
-                 !parser_pslr_deep_accepts_token(p, '&')) {
-            c = tAMPER;
-        }
-        else if (parser_pslr_deep_accepts_token(p, '&') &&
-                 !parser_pslr_deep_accepts_token(p, tAMPER)) {
-            c = '&';
-        }
-        else if (parser_pslr_space_arg_fallback_p(p, c, space_seen)) {
-            if ((c != ':') ||
-                (c = peekc_n(p, 1)) == -1 ||
-                !(c == '\'' || c == '"' ||
-                  is_identchar(p, (p->lex.pcur+1), p->lex.pend, p->enc))) {
-                rb_warning0("'&' interpreted as argument prefix");
+        {
+            ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+            if (scan.token == tAMPER) {
+                c = tAMPER;
             }
-            c = tAMPER;
-        }
-        else if (parser_pslr_lex_beg_like_p(p)) {
-            c = tAMPER;
-        }
-        else {
-            c = warn_balanced('&', "&", "argument prefix");
+            else if (scan.token == '&') {
+                c = warn_balanced('&', "&", "argument prefix");
+            }
+            else if (parser_pslr_lex_beg_like_p(p)) {
+                c = tAMPER;
+            }
+            else {
+                c = warn_balanced('&', "&", "argument prefix");
+            }
         }
         return c;
 
@@ -11917,17 +11855,17 @@ parser_yylex(struct parser_params *p)
             set_yylval_id('+');
             return tOP_ASGN;
         }
-        if (parser_pslr_prefers_token_p(p, tUPLUS, '+') ||
-            (parser_pslr_eventually_accepts_token(p, tUPLUS) &&
-             !parser_pslr_eventually_accepts_token(p, '+')) ||
-            (parser_pslr_deep_accepts_token(p, tUPLUS) &&
-             !parser_pslr_deep_accepts_token(p, '+')) ||
-            parser_pslr_lex_beg_like_p(p) || (parser_pslr_space_arg_fallback_p(p, c, space_seen) && arg_ambiguous(p, '+'))) {
-            pushback(p, c);
-            if (c != -1 && ISDIGIT(c)) {
-                return parse_numeric(p, '+');
+        {
+            ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+            if (scan.token == tUPLUS ||
+                parser_pslr_lex_beg_like_p(p) ||
+                (parser_pslr_space_arg_fallback_p(p, c, space_seen) && arg_ambiguous(p, '+'))) {
+                pushback(p, c);
+                if (c != -1 && ISDIGIT(c)) {
+                    return parse_numeric(p, '+');
+                }
+                return tUPLUS;
             }
-            return tUPLUS;
         }
         pushback(p, c);
         return warn_balanced('+', "+", "unary operator");
@@ -11950,47 +11888,35 @@ parser_yylex(struct parser_params *p)
             p->lex.lpar_beg = p->lex.paren_nest;
             return tLAMBDA;
         }
-        if (parser_pslr_prefers_token_p(p, tUMINUS, '-') ||
-            (parser_pslr_eventually_accepts_token(p, tUMINUS) &&
-             !parser_pslr_eventually_accepts_token(p, '-')) ||
-            (parser_pslr_deep_accepts_token(p, tUMINUS) &&
-             !parser_pslr_deep_accepts_token(p, '-')) ||
-            parser_pslr_lex_beg_like_p(p) || (parser_pslr_space_arg_fallback_p(p, c, space_seen) && arg_ambiguous(p, '-'))) {
-            pushback(p, c);
-            if (c != -1 && ISDIGIT(c)) {
-                return tUMINUS_NUM;
+        {
+            ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+            if (scan.token == tUMINUS ||
+                parser_pslr_lex_beg_like_p(p) ||
+                (parser_pslr_space_arg_fallback_p(p, c, space_seen) && arg_ambiguous(p, '-'))) {
+                pushback(p, c);
+                if (c != -1 && ISDIGIT(c)) {
+                    return tUMINUS_NUM;
+                }
+                return tUMINUS;
             }
-            return tUMINUS;
         }
         pushback(p, c);
         return warn_balanced('-', "-", "unary operator");
 
       case '.': {
         int is_beg;
-        /* Try PSLR first for tBDOT vs tDOT disambiguation */
-        if (parser_pslr_prefers_token_p(p, tBDOT2, tDOT2) ||
-            parser_pslr_prefers_token_p(p, tBDOT3, tDOT3)) {
-            is_beg = TRUE;
-        }
-        else if (parser_pslr_prefers_token_p(p, tDOT2, tBDOT2) ||
-                 parser_pslr_prefers_token_p(p, tDOT3, tBDOT3)) {
-            is_beg = FALSE;
-        }
-        /* Deep PSLR: trace empty reductions for dot disambiguation */
-        else if ((parser_pslr_eventually_accepts_token(p, tBDOT2) &&
-                  !parser_pslr_eventually_accepts_token(p, tDOT2)) ||
-                 (parser_pslr_eventually_accepts_token(p, tBDOT3) &&
-                  !parser_pslr_eventually_accepts_token(p, tDOT3))) {
-            is_beg = TRUE;
-        }
-        else if ((parser_pslr_eventually_accepts_token(p, tDOT2) &&
-                  !parser_pslr_eventually_accepts_token(p, tBDOT2)) ||
-                 (parser_pslr_eventually_accepts_token(p, tDOT3) &&
-                  !parser_pslr_eventually_accepts_token(p, tBDOT3))) {
-            is_beg = FALSE;
-        }
-        else {
-            is_beg = parser_pslr_lex_beg_like_p(p);
+        /* Use pseudo-scan for tBDOT vs tDOT disambiguation. */
+        {
+            ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+            if (scan.token == tBDOT2 || scan.token == tBDOT3) {
+                is_beg = TRUE;
+            }
+            else if (scan.token == tDOT2 || scan.token == tDOT3) {
+                is_beg = FALSE;
+            }
+            else {
+                is_beg = parser_pslr_lex_beg_like_p(p);
+            }
         }
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
@@ -12091,19 +12017,12 @@ parser_yylex(struct parser_params *p)
         if (parser_pslr_expects_fname_p(p) || parser_pslr_after_dot_p(p)) {
             return '/';
         }
-        if (parser_pslr_prefers_token_p(p, tREGEXP_BEG, '/')) {
-            p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
-            return tREGEXP_BEG;
-        }
-        if (parser_pslr_eventually_accepts_token(p, tREGEXP_BEG) &&
-            !parser_pslr_eventually_accepts_token(p, '/')) {
-            p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
-            return tREGEXP_BEG;
-        }
-        if (parser_pslr_deep_accepts_token(p, tREGEXP_BEG) &&
-            !parser_pslr_deep_accepts_token(p, '/')) {
-            p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
-            return tREGEXP_BEG;
+        {
+            ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+            if (scan.token == tREGEXP_BEG) {
+                p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
+                return tREGEXP_BEG;
+            }
         }
         if (parser_pslr_lex_beg_like_p(p)) {
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
