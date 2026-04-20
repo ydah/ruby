@@ -1018,23 +1018,41 @@ module Lrama
       end
     end
 
-    # @rbs (State state, State::lookahead_set pslr_lookaheads) -> void
+    # Clear memoized PSLR scanner signatures.
+    # The acceptable token set of a state can change after PSLR lookahead
+    # propagation.  Cached scanner signatures must not survive such changes.
+    # @rbs () -> void
+    def invalidate_pslr_signature_cache!
+      @_pslr_sig_cache = nil
+    end
+
+    # @rbs (State state, State::lookahead_set pslr_lookaheads) -> bool
     def merge_pslr_lookaheads(state, pslr_lookaheads)
       state.pslr_item_lookahead_set ||= state.kernels.map {|kernel| [kernel, []] }.to_h
-      return if state.kernels.all? {|item| (pslr_lookaheads[item] - state.pslr_item_lookahead_set[item]).empty? }
 
-      state.pslr_item_lookahead_set = state.pslr_item_lookahead_set.merge(pslr_lookaheads) {|_, v1, v2| v1 | v2 }
-
-      # Invalidate signature cache for this state since lookaheads changed
-      if @_pslr_sig_cache
-        @_pslr_sig_cache.delete_if {|k, _| k[0] == state.id }
+      changed = state.kernels.any? do |item|
+        !(pslr_lookaheads[item] - state.pslr_item_lookahead_set[item]).empty?
       end
 
-      # Forward propagation: re-evaluate successor transitions with
-      # updated lookaheads, like merge_lookaheads does for IELR.
-      state.transitions.each do |transition|
-        compute_state(state, transition, transition.to_state)
+      return false unless changed
+
+      merged = state.pslr_item_lookahead_set.merge(pslr_lookaheads) do |_, existing, incoming|
+        existing | incoming
       end
+
+      state.pslr_item_lookahead_set = merged
+
+      state.invalidate_lookahead_caches
+      invalidate_pslr_signature_cache!
+
+      # Forward propagation: once this state's PSLR lookahead set grows,
+      # every outgoing transition may produce a different PSLR scanner
+      # profile in its successor.
+      state.transitions.dup.each do |successor_transition|
+        compute_state(state, successor_transition, successor_transition.to_state)
+      end
+
+      true
     end
 
     # @rbs (State state, State::Action::Shift | State::Action::Goto transition, State next_state) -> void
@@ -1071,6 +1089,8 @@ module Lrama
         s.lookaheads_recomputed = true
         s.item_lookahead_set = pslr_lookaheads
         s.pslr_item_lookahead_set = pslr_lookaheads
+        s.invalidate_lookahead_caches
+        invalidate_pslr_signature_cache!
       else
         merge_pslr_lookaheads(s, pslr_lookaheads) if @pslr_split_enabled
         merge_lookaheads(s, propagating_lookaheads)

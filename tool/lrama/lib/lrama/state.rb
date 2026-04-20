@@ -88,6 +88,16 @@ module Lrama
       @lane_items = {}
     end
 
+    # Clear caches that depend on item lookahead sets.
+    # PSLR split propagation can merge additional lookaheads into an
+    # already-created split state.  Any memoized data derived from
+    # item_lookahead_set must be discarded before propagating further.
+    # @rbs () -> void
+    def invalidate_lookahead_caches
+      @lhs_contributions = {}
+      @inadequacy_list = nil
+    end
+
     # @rbs (State other) -> bool
     def ==(other)
       self.id == other.id
