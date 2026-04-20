@@ -1095,36 +1095,17 @@ parser_pslr_lparen_arg_fallback_p(struct parser_params *p, int space_seen)
 static inline int
 parser_pslr_lparen_token(struct parser_params *p)
 {
-    int accepts_plain = parser_pslr_accepts_token(p, '(');
-    int accepts_paren = parser_pslr_accepts_token(p, tLPAREN);
-    int accepts_arg = parser_pslr_accepts_token(p, tLPAREN_ARG);
+    /* Direct acceptance check — pseudo-scan for '(' returns wrong token
+       in some contexts because tLPAREN/tLPAREN_ARG have the same spelling
+       and the current parser state may accept multiple variants. */
+    int a_plain = parser_pslr_accepts_token(p, '(');
+    int a_paren = parser_pslr_accepts_token(p, tLPAREN);
+    int a_arg = parser_pslr_accepts_token(p, tLPAREN_ARG);
 
-    if (accepts_plain + accepts_paren + accepts_arg == 1) {
-        if (accepts_plain) return '(';
-        if (accepts_paren) return tLPAREN;
+    if (a_plain + a_paren + a_arg == 1) {
+        if (a_plain) return '(';
+        if (a_paren) return tLPAREN;
         return tLPAREN_ARG;
-    }
-    /* Deep PSLR (empty reductions) */
-    {
-        int deep_plain = parser_pslr_eventually_accepts_token(p, '(');
-        int deep_paren = parser_pslr_eventually_accepts_token(p, tLPAREN);
-        int deep_arg = parser_pslr_eventually_accepts_token(p, tLPAREN_ARG);
-        if (deep_plain + deep_paren + deep_arg == 1) {
-            if (deep_plain) return '(';
-            if (deep_paren) return tLPAREN;
-            return tLPAREN_ARG;
-        }
-    }
-    /* Stack-aware deep PSLR */
-    {
-        int stack_plain = parser_pslr_deep_accepts_token(p, '(');
-        int stack_paren = parser_pslr_deep_accepts_token(p, tLPAREN);
-        int stack_arg = parser_pslr_deep_accepts_token(p, tLPAREN_ARG);
-        if (stack_plain + stack_paren + stack_arg == 1) {
-            if (stack_plain) return '(';
-            if (stack_paren) return tLPAREN;
-            return tLPAREN_ARG;
-        }
     }
     return 0;
 }
@@ -1132,23 +1113,12 @@ parser_pslr_lparen_token(struct parser_params *p)
 static inline int
 parser_pslr_lbrack_arg_fallback_p(struct parser_params *p, int space_seen)
 {
-    int accepts_plain = parser_pslr_accepts_token(p, '[');
-    int accepts_lbrack = parser_pslr_accepts_token(p, tLBRACK);
-
     if (!space_seen) return FALSE;
     if (parser_pslr_arg_state_fallback_p(p)) return TRUE;
-    if (accepts_plain + accepts_lbrack == 1) return accepts_lbrack;
-    /* Deep PSLR: check after lex_state fallback to avoid overriding it */
     {
-        int deep_plain = parser_pslr_eventually_accepts_token(p, '[');
-        int deep_lbrack = parser_pslr_eventually_accepts_token(p, tLBRACK);
-        if (deep_plain + deep_lbrack == 1) return deep_lbrack;
-    }
-    /* Stack-aware deep PSLR */
-    {
-        int stack_plain = parser_pslr_deep_accepts_token(p, '[');
-        int stack_lbrack = parser_pslr_deep_accepts_token(p, tLBRACK);
-        if (stack_plain + stack_lbrack == 1) return stack_lbrack;
+        ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+        if (scan.token == tLBRACK) return TRUE;
+        if (scan.token == '[') return FALSE;
     }
     return FALSE;
 }
@@ -1156,39 +1126,15 @@ parser_pslr_lbrack_arg_fallback_p(struct parser_params *p, int space_seen)
 static inline int
 parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
 {
-    int accepts_hash = parser_pslr_accepts_token(p, tLBRACE);
-    int accepts_primary_block = parser_pslr_accepts_token(p, '{');
-    int accepts_expr_block = parser_pslr_accepts_token(p, tLBRACE_ARG);
-
+    ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+    if (scan.token == '{') return TRUE;
+    if (scan.token == tLBRACE) return FALSE;
+    if (scan.token == tLBRACE_ARG) return FALSE;
+    /* Fallback heuristics */
     if (parser_pslr_arg_state_fallback_p(p) ||
         parser_pslr_end_state_fallback_p(p) ||
         parser_pslr_expects_fname_p(p)) {
         return TRUE;
-    }
-    if (accepts_hash + accepts_primary_block + accepts_expr_block == 1) {
-        return accepts_primary_block;
-    }
-    /* When hash is not accepted, both block forms indicate a block context */
-    if (!accepts_hash && (accepts_primary_block || accepts_expr_block)) {
-        return TRUE;
-    }
-    /* Deep PSLR: check if primary block uniquely reachable via empty reductions */
-    {
-        int deep_hash = parser_pslr_eventually_accepts_token(p, tLBRACE);
-        int deep_primary = parser_pslr_eventually_accepts_token(p, '{');
-        int deep_expr = parser_pslr_eventually_accepts_token(p, tLBRACE_ARG);
-        if (deep_hash + deep_primary + deep_expr == 1) {
-            return deep_primary;
-        }
-    }
-    /* Stack-aware deep PSLR */
-    {
-        int stack_hash = parser_pslr_deep_accepts_token(p, tLBRACE);
-        int stack_primary = parser_pslr_deep_accepts_token(p, '{');
-        int stack_expr = parser_pslr_deep_accepts_token(p, tLBRACE_ARG);
-        if (stack_hash + stack_primary + stack_expr == 1) {
-            return stack_primary;
-        }
     }
     return FALSE;
 }
@@ -1196,40 +1142,22 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
 static inline enum yytokentype
 parser_pslr_do_token(struct parser_params *p)
 {
-    int accepts_lambda = parser_pslr_accepts_token(p, keyword_do_LAMBDA);
-    int accepts_cond = parser_pslr_accepts_token(p, keyword_do_cond);
-    int accepts_block = parser_pslr_accepts_token(p, keyword_do_block);
-    int accepts_plain = parser_pslr_accepts_token(p, keyword_do);
-
-    if (accepts_lambda + accepts_cond + accepts_block + accepts_plain == 1) {
-        if (accepts_lambda) return keyword_do_LAMBDA;
-        if (accepts_cond) return keyword_do_cond;
-        if (accepts_block) return keyword_do_block;
-        return keyword_do;
-    }
-    /* Deep PSLR */
+    /* Pseudo-scan picks the correct do variant from parser state. */
+    ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+    if (scan.token == keyword_do_LAMBDA) return keyword_do_LAMBDA;
+    if (scan.token == keyword_do_cond) return keyword_do_cond;
+    if (scan.token == keyword_do_block) return keyword_do_block;
+    if (scan.token == keyword_do) return keyword_do;
+    /* Fallback: direct acceptance */
     {
-        int deep_lambda = parser_pslr_eventually_accepts_token(p, keyword_do_LAMBDA);
-        int deep_cond = parser_pslr_eventually_accepts_token(p, keyword_do_cond);
-        int deep_block = parser_pslr_eventually_accepts_token(p, keyword_do_block);
-        int deep_plain = parser_pslr_eventually_accepts_token(p, keyword_do);
-        if (deep_lambda + deep_cond + deep_block + deep_plain == 1) {
-            if (deep_lambda) return keyword_do_LAMBDA;
-            if (deep_cond) return keyword_do_cond;
-            if (deep_block) return keyword_do_block;
-            return keyword_do;
-        }
-    }
-    /* Stack-aware deep PSLR */
-    {
-        int stack_lambda = parser_pslr_deep_accepts_token(p, keyword_do_LAMBDA);
-        int stack_cond = parser_pslr_deep_accepts_token(p, keyword_do_cond);
-        int stack_block = parser_pslr_deep_accepts_token(p, keyword_do_block);
-        int stack_plain = parser_pslr_deep_accepts_token(p, keyword_do);
-        if (stack_lambda + stack_cond + stack_block + stack_plain == 1) {
-            if (stack_lambda) return keyword_do_LAMBDA;
-            if (stack_cond) return keyword_do_cond;
-            if (stack_block) return keyword_do_block;
+        int a_l = parser_pslr_accepts_token(p, keyword_do_LAMBDA);
+        int a_c = parser_pslr_accepts_token(p, keyword_do_cond);
+        int a_b = parser_pslr_accepts_token(p, keyword_do_block);
+        int a_p = parser_pslr_accepts_token(p, keyword_do);
+        if (a_l + a_c + a_b + a_p == 1) {
+            if (a_l) return keyword_do_LAMBDA;
+            if (a_c) return keyword_do_cond;
+            if (a_b) return keyword_do_block;
             return keyword_do;
         }
     }
@@ -1239,45 +1167,20 @@ parser_pslr_do_token(struct parser_params *p)
 static inline enum yytokentype
 parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_token, enum yytokentype modifier_token)
 {
-    int accepts_keyword = parser_pslr_accepts_token(p, keyword_token);
-    int accepts_modifier = parser_pslr_accepts_token(p, modifier_token);
-    int deep_keyword, deep_modifier, stack_keyword, stack_modifier;
-
-    if (accepts_keyword + accepts_modifier == 1) {
-        if (accepts_keyword) {
-            /* State directly accepts keyword form but not modifier.
-               Check if modifier is reachable through reductions (deep).
-               If so, prefer modifier form -- this handles states after
-               return/break/next where "return if cond" needs modifier_if.
-               States like after '(' do NOT have modifier deep-reachable
-               so keyword_if is correctly preserved there. */
-            if (parser_pslr_eventually_accepts_token(p, modifier_token) ||
-                parser_pslr_deep_accepts_token(p, modifier_token)) {
-                return modifier_token;
-            }
-            return keyword_token;
+    /* Pseudo-scan selects keyword vs modifier from parser state. */
+    ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+    if (scan.token == (int)keyword_token) return keyword_token;
+    if (scan.token == (int)modifier_token) return modifier_token;
+    /* Fallback: direct acceptance */
+    {
+        int accepts_keyword = parser_pslr_accepts_token(p, keyword_token);
+        int accepts_modifier = parser_pslr_accepts_token(p, modifier_token);
+        if (accepts_keyword + accepts_modifier == 1) {
+            return accepts_keyword ? keyword_token : modifier_token;
         }
-        return modifier_token;
     }
-    /* Deep PSLR (empty reductions only) */
-    deep_keyword = parser_pslr_eventually_accepts_token(p, keyword_token);
-    deep_modifier = parser_pslr_eventually_accepts_token(p, modifier_token);
-    if (deep_keyword + deep_modifier == 1) {
-        return deep_keyword ? keyword_token : modifier_token;
-    }
-    /* Stack-aware deep PSLR (follows non-empty reductions using actual stack) */
-    stack_keyword = parser_pslr_deep_accepts_token(p, keyword_token);
-    stack_modifier = parser_pslr_deep_accepts_token(p, modifier_token);
-    if (stack_keyword + stack_modifier == 1) {
-        return stack_keyword ? keyword_token : modifier_token;
-    }
-    /* When both forms are reachable only through stack-aware reductions
-       (no direct or empty-reduction paths accept either), the state is
-       post-expression (e.g., "undef =~ .", "arg ."). In such states the
-       modifier form is the shorter reduction path and the expected parse. */
-    if (stack_keyword && stack_modifier &&
-        !accepts_keyword && !accepts_modifier &&
-        !deep_keyword && !deep_modifier) {
+    /* Post-expression fallback: prefer modifier form. */
+    if (parser_pslr_end_state_fallback_p(p)) {
         return modifier_token;
     }
     return 0;
@@ -11362,45 +11265,23 @@ warn_cr(struct parser_params *p)
 static enum yytokentype
 parser_pslr_lbrace_token(struct parser_params *p)
 {
-    int accepts_hash = parser_pslr_accepts_token(p, tLBRACE);
-    int accepts_primary_block = parser_pslr_accepts_token(p, '{');
-    int accepts_expr_block = parser_pslr_accepts_token(p, tLBRACE_ARG);
-
-    if (accepts_expr_block && !accepts_hash && !accepts_primary_block) {
-        return tLBRACE_ARG;
-    }
-    if (accepts_primary_block && !accepts_hash && !accepts_expr_block) {
-        return '{';
-    }
-    if (accepts_hash && !accepts_primary_block && !accepts_expr_block) {
-        return tLBRACE;
-    }
-    /* When hash is not accepted but both block forms are, it's a block.
-     * e.g., after keyword_super: primary block and expr block are both
-     * accepted, but hash is not. Prefer primary block. */
-    if (!accepts_hash && (accepts_primary_block || accepts_expr_block)) {
-        return accepts_primary_block ? '{' : tLBRACE_ARG;
-    }
-    /* Deep PSLR: trace empty reductions for unique brace determination */
+    /* Pseudo-scan picks the correct brace token from parser state. */
+    ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+    if (scan.token == tLBRACE_ARG) return tLBRACE_ARG;
+    if (scan.token == '{') return '{';
+    if (scan.token == tLBRACE) return tLBRACE;
+    /* Fallback: direct acceptance */
     {
-        int deep_hash = parser_pslr_eventually_accepts_token(p, tLBRACE);
-        int deep_primary = parser_pslr_eventually_accepts_token(p, '{');
-        int deep_expr = parser_pslr_eventually_accepts_token(p, tLBRACE_ARG);
-        if (deep_hash + deep_primary + deep_expr == 1) {
-            if (deep_expr) return tLBRACE_ARG;
-            if (deep_primary) return '{';
+        int a_hash = parser_pslr_accepts_token(p, tLBRACE);
+        int a_prim = parser_pslr_accepts_token(p, '{');
+        int a_expr = parser_pslr_accepts_token(p, tLBRACE_ARG);
+        if (a_hash + a_prim + a_expr == 1) {
+            if (a_expr) return tLBRACE_ARG;
+            if (a_prim) return '{';
             return tLBRACE;
         }
-    }
-    /* Stack-aware deep PSLR */
-    {
-        int stack_hash = parser_pslr_deep_accepts_token(p, tLBRACE);
-        int stack_primary = parser_pslr_deep_accepts_token(p, '{');
-        int stack_expr = parser_pslr_deep_accepts_token(p, tLBRACE_ARG);
-        if (stack_hash + stack_primary + stack_expr == 1) {
-            if (stack_expr) return tLBRACE_ARG;
-            if (stack_primary) return '{';
-            return tLBRACE;
+        if (!a_hash && (a_prim || a_expr)) {
+            return a_prim ? '{' : tLBRACE_ARG;
         }
     }
     return 0;
@@ -11697,20 +11578,6 @@ parser_yylex(struct parser_params *p)
       case '<':
         c = nextc(p);
         if (c == '<' && parser_pslr_prefers_heredoc_p(p)) {
-            enum  yytokentype token = heredoc_identifier(p);
-            if (token) return token < 0 ? 0 : token;
-        }
-        if (c == '<' &&
-            (parser_pslr_eventually_accepts_token(p, tSTRING_BEG) ||
-             parser_pslr_eventually_accepts_token(p, tXSTRING_BEG)) &&
-            !parser_pslr_eventually_accepts_token(p, tLSHFT)) {
-            enum  yytokentype token = heredoc_identifier(p);
-            if (token) return token < 0 ? 0 : token;
-        }
-        if (c == '<' &&
-            (parser_pslr_deep_accepts_token(p, tSTRING_BEG) ||
-             parser_pslr_deep_accepts_token(p, tXSTRING_BEG)) &&
-            !parser_pslr_deep_accepts_token(p, tLSHFT)) {
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
         }
