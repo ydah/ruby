@@ -1059,18 +1059,15 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
     if (scan.token == tLBRACE_ARG) return FALSE;
     /* After a value or method-like token, '{' should be a block.
        PSLR may return tLBRACE (hash) because the grammar accepts both
-       hash and block in some post-expression parser states. */
+       hash and block in some post-expression parser states.
+       In Ruby, '{' is block by default; hash is the exception (only in
+       literal context like `{a: 1}` or after labels). */
     if (scan.token == tLBRACE &&
-        (LAST_TOKEN_IS_METHOD(p) || parser_pslr_end_state_fallback_p(p)))
+        (LAST_TOKEN_IS_METHOD(p) || LAST_TOKEN_IS_VALUE(p)))
         return TRUE;
     if (scan.token == tLBRACE) return FALSE;
-    /* Fallback heuristics */
-    if (parser_pslr_arg_state_fallback_p(p) ||
-        parser_pslr_end_state_fallback_p(p) ||
-        parser_pslr_expects_fname_p(p)) {
-        return TRUE;
-    }
-    return FALSE;
+    /* Default: prefer block in post-expression contexts. */
+    return LAST_TOKEN_IS_METHOD(p) || LAST_TOKEN_IS_VALUE(p);
 }
 
 static inline enum yytokentype
@@ -11193,10 +11190,9 @@ parser_pslr_lbrace_token(struct parser_params *p)
     if (scan.token == tLBRACE_ARG) return tLBRACE_ARG;
     if (scan.token == '{') return '{';
     /* After value/method-like token, prefer block over hash when PSLR
-       chooses tLBRACE — the grammar accepts both hash and block in
-       post-expression states. */
+       chooses tLBRACE — in Ruby, '{' after a value is almost always a block. */
     if (scan.token == tLBRACE &&
-        (LAST_TOKEN_IS_METHOD(p) || parser_pslr_end_state_fallback_p(p)))
+        (LAST_TOKEN_IS_METHOD(p) || LAST_TOKEN_IS_VALUE(p)))
         return '{';
     if (scan.token == tLBRACE) return tLBRACE;
     /* Fallback: direct acceptance */
