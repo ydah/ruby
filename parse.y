@@ -1056,8 +1056,12 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
 {
     ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
     if (scan.token == '{') return TRUE;
-    if (scan.token == tLBRACE) return FALSE;
     if (scan.token == tLBRACE_ARG) return FALSE;
+    /* After a method-like identifier (not lvar), '{' should be a block.
+       PSLR may return tLBRACE (hash) because the grammar accepts both
+       hash and block in some parser states after command calls. */
+    if (scan.token == tLBRACE && LAST_TOKEN_IS_METHOD(p)) return TRUE;
+    if (scan.token == tLBRACE) return FALSE;
     /* Fallback heuristics */
     if (parser_pslr_arg_state_fallback_p(p) ||
         parser_pslr_end_state_fallback_p(p) ||
@@ -11186,6 +11190,10 @@ parser_pslr_lbrace_token(struct parser_params *p)
     ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
     if (scan.token == tLBRACE_ARG) return tLBRACE_ARG;
     if (scan.token == '{') return '{';
+    /* After method-like identifier, prefer block over hash when PSLR
+       chooses tLBRACE — the grammar accepts both hash and block in
+       command-call states. */
+    if (scan.token == tLBRACE && LAST_TOKEN_IS_METHOD(p)) return '{';
     if (scan.token == tLBRACE) return tLBRACE;
     /* Fallback: direct acceptance */
     {
