@@ -1024,6 +1024,17 @@ module Lrama
       return if state.kernels.all? {|item| (pslr_lookaheads[item] - state.pslr_item_lookahead_set[item]).empty? }
 
       state.pslr_item_lookahead_set = state.pslr_item_lookahead_set.merge(pslr_lookaheads) {|_, v1, v2| v1 | v2 }
+
+      # Invalidate signature cache for this state since lookaheads changed
+      if @_pslr_sig_cache
+        @_pslr_sig_cache.delete_if {|k, _| k[0] == state.id }
+      end
+
+      # Forward propagation: re-evaluate successor transitions with
+      # updated lookaheads, like merge_lookaheads does for IELR.
+      state.transitions.each do |transition|
+        compute_state(state, transition, transition.to_state)
+      end
     end
 
     # @rbs (State state, State::Action::Shift | State::Action::Goto transition, State next_state) -> void
