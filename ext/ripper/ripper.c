@@ -39907,9 +39907,12 @@ parser_yylex(struct parser_params *p)
         if (lambda_beginning_p()) {
             /* lambda parameter list always starts with the plain '(' token */
         }
-        else if (space_seen && parser_pslr_expects_fname_p(p) &&
-                 (c = parser_pslr_lparen_token(p)) == '(') {
-            /* singleton literal diagnostics still need plain '(' after ENDFN */
+        else if (space_seen && parser_pslr_expects_fname_p(p)) {
+            /* In fname context (after def/alias), plain '(' is needed for
+               singleton_expr: '(' expr rparen.  Default to '(' when PSLR
+               cannot uniquely disambiguate. */
+            c = parser_pslr_lparen_token(p);
+            if (c == 0 || c == '(') c = '(';
         }
         else if (!space_seen) {
             /* No space: use PSLR action-table to pick the right paren token.

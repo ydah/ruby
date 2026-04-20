@@ -308,6 +308,7 @@ ast_node_node_id(rb_execution_context_t *ec, VALUE self)
 {
     struct ASTNodeData *data;
     TypedData_Get_Struct(self, struct ASTNodeData, &rb_node_type, data);
+    if (!data->node) return INT2FIX(0);
 
     return INT2FIX(nd_node_id(data->node));
 }
@@ -1004,6 +1005,7 @@ ast_node_locations(rb_execution_context_t *ec, VALUE self)
     struct ASTNodeData *data;
     TypedData_Get_Struct(self, struct ASTNodeData, &rb_node_type, data);
 
+    if (!data->node) return rb_ary_new();
     return node_locations(data->ast_value, data->node);
 }
 
@@ -1012,6 +1014,7 @@ ast_node_first_lineno(rb_execution_context_t *ec, VALUE self)
 {
     struct ASTNodeData *data;
     TypedData_Get_Struct(self, struct ASTNodeData, &rb_node_type, data);
+    if (!data->node) return INT2NUM(0);
 
     return INT2NUM(nd_first_lineno(data->node));
 }
@@ -1021,6 +1024,7 @@ ast_node_first_column(rb_execution_context_t *ec, VALUE self)
 {
     struct ASTNodeData *data;
     TypedData_Get_Struct(self, struct ASTNodeData, &rb_node_type, data);
+    if (!data->node) return INT2NUM(0);
 
     return INT2NUM(nd_first_column(data->node));
 }
@@ -1030,6 +1034,7 @@ ast_node_last_lineno(rb_execution_context_t *ec, VALUE self)
 {
     struct ASTNodeData *data;
     TypedData_Get_Struct(self, struct ASTNodeData, &rb_node_type, data);
+    if (!data->node) return INT2NUM(0);
 
     return INT2NUM(nd_last_lineno(data->node));
 }
@@ -1039,6 +1044,7 @@ ast_node_last_column(rb_execution_context_t *ec, VALUE self)
 {
     struct ASTNodeData *data;
     TypedData_Get_Struct(self, struct ASTNodeData, &rb_node_type, data);
+    if (!data->node) return INT2NUM(0);
 
     return INT2NUM(nd_last_column(data->node));
 }
