@@ -996,13 +996,20 @@ parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
 static inline int
 parser_pslr_colon_symbol_literal_p(struct parser_params *p, int c)
 {
+    /* ':' followed by a digit/space/comment cannot be a symbol literal. */
+    if (ISSPACE(c) || c == '#' || ISDIGIT(c)) return TRUE;
+    /* ':' followed by an operator character (& | ^ ~ + - * / % < > = !)
+       is always a symbol literal (:& :| :^ etc.) */
+    if (c == '&' || c == '|' || c == '^' || c == '~' ||
+        c == '+' || c == '-' || c == '*' || c == '/' ||
+        c == '%' || c == '<' || c == '>' || c == '=' ||
+        c == '!' || c == '[' || c == '`')
+        return FALSE;
     {
         ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
         if (scan.token == ':') return TRUE;
         if (scan.token == tSYMBEG) return FALSE;
     }
-    /* ':' followed by a digit/space/comment cannot be a symbol literal. */
-    if (ISSPACE(c) || c == '#' || ISDIGIT(c)) return TRUE;
     return FALSE;
 }
 
@@ -11596,6 +11603,9 @@ parser_yylex(struct parser_params *p)
             return tANDDOT;
         }
         pushback(p, c);
+        if (parser_pslr_expects_fname_p(p) || parser_pslr_after_dot_p(p)) {
+            return '&';
+        }
         if (LAST_TOKEN_IS_VALUE(p)) {
             c = warn_balanced('&', "&", "argument prefix");
             return c;
