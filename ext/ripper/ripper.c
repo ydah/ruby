@@ -1121,12 +1121,13 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
 {
     ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
     if (scan.token == '{') return TRUE;
+    /* Inside parenthesized arguments, tLBRACE_ARG is not valid —
+       use primary block '{' instead.  tLBRACE_ARG is only for
+       command-style calls without parentheses. */
+    if (scan.token == tLBRACE_ARG && p->lex.paren_nest > p->lex.brace_nest)
+        return TRUE;
     if (scan.token == tLBRACE_ARG) return FALSE;
-    /* After a value or method-like token, '{' should be a block.
-       PSLR may return tLBRACE (hash) because the grammar accepts both
-       hash and block in some post-expression parser states.
-       In Ruby, '{' is block by default; hash is the exception (only in
-       literal context like `{a: 1}` or after labels). */
+    /* After a value or method-like token, '{' should be a block. */
     if (scan.token == tLBRACE &&
         (LAST_TOKEN_IS_METHOD(p) || LAST_TOKEN_IS_VALUE(p)))
         return TRUE;
@@ -3199,7 +3200,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 
 #endif /* !RIPPER */
 
-#line 3203 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 3204 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -4114,92 +4115,92 @@ static const yytype_uint8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,  3852,  3847,  3852,  3852,  3852,  3852,  3872,  3877,  3882,
-    3889,  3894,  3901,  3903,  3921,  3917,  3922,  3921,  3933,  3930,
-    3943,  3948,  3953,  3960,  3962,  3961,  3971,  3973,  3981,  3980,
-    3989,  3994,  4002,  4011,  4018,  4024,  4030,  4041,  4052,  4061,
-    4075,  4076,  4081,  4081,  4082,  4093,  4098,  4099,  4106,  4106,
-    4107,  4107,  4107,  4107,  4107,  4107,  4107,  4107,  4107,  4108,
-    4108,  4108,  4111,  4112,  4118,  4118,  4118,  4125,  4126,  4133,
-    4136,  4137,  4142,  4147,  4152,  4158,  4157,  4173,  4172,  4187,
-    4190,  4201,  4210,  4221,  4221,  4222,  4228,  4228,  4228,  4235,
-    4236,  4239,  4239,  4242,  4243,  4250,  4258,  4258,  4258,  4265,
-    4272,  4281,  4286,  4291,  4296,  4301,  4307,  4313,  4319,  4324,
-    4331,  4340,  4341,  4348,  4349,  4356,  4361,  4366,  4371,  4371,
-    4371,  4376,  4381,  4386,  4391,  4396,  4401,  4408,  4409,  4416,
-    4421,  4429,  4429,  4434,  4439,  4439,  4445,  4450,  4455,  4460,
-    4468,  4468,  4473,  4478,  4478,  4483,  4488,  4493,  4498,  4506,
-    4514,  4517,  4522,  4527,  4534,  4534,  4534,  4535,  4539,  4542,
-    4547,  4550,  4556,  4555,  4567,  4568,  4569,  4570,  4571,  4572,
-    4573,  4574,  4575,  4576,  4577,  4578,  4579,  4580,  4581,  4582,
-    4583,  4584,  4585,  4586,  4587,  4588,  4589,  4590,  4591,  4592,
-    4593,  4594,  4595,  4596,  4599,  4599,  4599,  4600,  4600,  4601,
-    4601,  4601,  4602,  4602,  4602,  4602,  4603,  4603,  4603,  4603,
-    4604,  4604,  4604,  4605,  4605,  4605,  4605,  4606,  4606,  4606,
-    4606,  4607,  4607,  4607,  4607,  4608,  4608,  4608,  4608,  4609,
-    4609,  4609,  4609,  4610,  4610,  4613,  4613,  4614,  4614,  4614,
-    4614,  4614,  4614,  4614,  4614,  4614,  4615,  4615,  4615,  4615,
-    4615,  4615,  4615,  4616,  4621,  4626,  4631,  4636,  4641,  4646,
-    4651,  4656,  4661,  4666,  4671,  4676,  4681,  4682,  4687,  4692,
-    4697,  4702,  4707,  4712,  4717,  4722,  4727,  4732,  4737,  4744,
-    4744,  4744,  4745,  4746,  4749,  4758,  4759,  4765,  4772,  4773,
-    4774,  4775,  4778,  4783,  4791,  4797,  4804,  4811,  4811,  4814,
-    4815,  4816,  4821,  4828,  4833,  4842,  4847,  4857,  4869,  4870,
-    4876,  4877,  4878,  4879,  4884,  4891,  4891,  4896,  4901,  4906,
-    4912,  4918,  4922,  4922,  4960,  4965,  4973,  4978,  4986,  4991,
-    4996,  5001,  5009,  5014,  5023,  5024,  5028,  5033,  5038,  5056,
-    5056,  5056,  5056,  5056,  5056,  5056,  5056,  5057,  5058,  5059,
-    5065,  5064,  5080,  5079,  5088,  5094,  5099,  5104,  5109,  5115,
-    5120,  5125,  5130,  5135,  5142,  5147,  5152,  5157,  5158,  5164,
-    5166,  5178,  5187,  5196,  5205,  5204,  5219,  5218,  5231,  5239,
-    5239,  5240,  5285,  5284,  5307,  5306,  5326,  5325,  5344,  5342,
-    5359,  5357,  5372,  5377,  5382,  5387,  5402,  5402,  5405,  5412,
-    5430,  5437,  5445,  5453,  5460,  5468,  5477,  5486,  5494,  5502,
-    5510,  5518,  5525,  5531,  5546,  5553,  5558,  5564,  5571,  5578,
-    5579,  5580,  5583,  5584,  5587,  5589,  5598,  5599,  5606,  5607,
-    5610,  5615,  5623,  5623,  5623,  5628,  5633,  5638,  5643,  5650,
-    5656,  5663,  5664,  5671,  5671,  5673,  5673,  5673,  5673,  5673,
-    5673,  5673,  5673,  5673,  5673,  5673,  5676,  5684,  5684,  5684,
-    5684,  5684,  5684,  5684,  5684,  5684,  5684,  5684,  5684,  5684,
-    5684,  5684,  5684,  5684,  5684,  5685,  5691,  5696,  5696,  5699,
-    5700,  5707,  5706,  5721,  5725,  5728,  5733,  5740,  5742,  5746,
-    5751,  5754,  5760,  5765,  5772,  5778,  5771,  5805,  5812,  5821,
-    5828,  5827,  5838,  5847,  5859,  5869,  5875,  5880,  5888,  5895,
-    5906,  5912,  5917,  5923,  5933,  5938,  5946,  5952,  5961,  5963,
-    5978,  5978,  5999,  6005,  6010,  6016,  6024,  6033,  6034,  6037,
-    6038,  6040,  6053,  6060,  6068,  6069,  6072,  6073,  6079,  6087,
-    6088,  6094,  6100,  6105,  6110,  6117,  6120,  6127,  6131,  6130,
-    6143,  6147,  6146,  6158,  6157,  6168,  6169,  6170,  6177,  6184,
-    6191,  6197,  6204,  6211,  6218,  6224,  6229,  6234,  6241,  6240,
-    6251,  6257,  6265,  6271,  6276,  6281,  6286,  6291,  6294,  6295,
-    6302,  6307,  6314,  6322,  6328,  6335,  6336,  6343,  6350,  6355,
-    6360,  6365,  6372,  6374,  6381,  6387,  6399,  6400,  6415,  6420,
-    6427,  6433,  6434,  6441,  6442,  6442,  6442,  6442,  6442,  6442,
-    6442,  6443,  6444,  6445,  6448,  6448,  6448,  6448,  6448,  6448,
-    6448,  6448,  6449,  6454,  6457,  6465,  6477,  6484,  6491,  6496,
-    6501,  6509,  6529,  6532,  6537,  6541,  6544,  6549,  6552,  6559,
-    6562,  6563,  6566,  6578,  6579,  6580,  6587,  6600,  6612,  6619,
-    6619,  6619,  6619,  6623,  6627,  6634,  6636,  6643,  6643,  6647,
-    6651,  6658,  6658,  6661,  6661,  6665,  6669,  6677,  6681,  6689,
-    6693,  6701,  6705,  6713,  6717,  6743,  6746,  6745,  6759,  6766,
-    6770,  6774,  6788,  6789,  6792,  6797,  6800,  6801,  6804,  6820,
-    6821,  6824,  6831,  6832,  6840,  6841,  6842,  6843,  6846,  6847,
-    6848,  6851,  6851,  6852,  6855,  6856,  6857,  6858,  6859,  6860,
-    6861,  6864,  6874,  6881,  6881,  6888,  6889,  6893,  6892,  6901,
-    6904,  6905,  6912,  6919,  6928,  6929,  6929,  6944,  6944,  6944,
-    6944,  6944,  6944,  6944,  6944,  6944,  6944,  6944,  6945,  6954,
-    6954,  6954,  6954,  6954,  6955,  7046,  7046,  7046,  7046,  7046,
-    7046,  7046,  7046,  7046,  7046,  7046,  7046,  7046,  7046,  7046,
-    7046,  7046,  7046,  7046,  7046,  7046,  7046,  7046,  7049,  7049,
-    7049,  7049,  7049,  7049,  7049,  7049,  7049,  7049,  7049,  7049,
-    7049,  7049,  7049,  7049,  7049,  7049,  7049,  7049,  7052,  7059,
-    7068,  7077,  7086,  7097,  7098,  7108,  7115,  7120,  7139,  7141,
-    7152,  7172,  7173,  7176,  7182,  7188,  7196,  7197,  7200,  7206,
-    7214,  7215,  7218,  7224,  7229,  7237,  7237,  7237,  7245,  7245,
-    7275,  7277,  7276,  7288,  7289,  7296,  7298,  7323,  7328,  7333,
-    7340,  7346,  7351,  7364,  7364,  7364,  7365,  7368,  7369,  7370,
-    7373,  7374,  7377,  7378,  7381,  7382,  7385,  7388,  7391,  7394,
-    7395,  7398,  7406,  7413,  7414,  7415,  7419
+       0,  3853,  3848,  3853,  3853,  3853,  3853,  3873,  3878,  3883,
+    3890,  3895,  3902,  3904,  3922,  3918,  3923,  3922,  3934,  3931,
+    3944,  3949,  3954,  3961,  3963,  3962,  3972,  3974,  3982,  3981,
+    3990,  3995,  4003,  4012,  4019,  4025,  4031,  4042,  4053,  4062,
+    4076,  4077,  4082,  4082,  4083,  4094,  4099,  4100,  4107,  4107,
+    4108,  4108,  4108,  4108,  4108,  4108,  4108,  4108,  4108,  4109,
+    4109,  4109,  4112,  4113,  4119,  4119,  4119,  4126,  4127,  4134,
+    4137,  4138,  4143,  4148,  4153,  4159,  4158,  4174,  4173,  4188,
+    4191,  4202,  4211,  4222,  4222,  4223,  4229,  4229,  4229,  4236,
+    4237,  4240,  4240,  4243,  4244,  4251,  4259,  4259,  4259,  4266,
+    4273,  4282,  4287,  4292,  4297,  4302,  4308,  4314,  4320,  4325,
+    4332,  4341,  4342,  4349,  4350,  4357,  4362,  4367,  4372,  4372,
+    4372,  4377,  4382,  4387,  4392,  4397,  4402,  4409,  4410,  4417,
+    4422,  4430,  4430,  4435,  4440,  4440,  4446,  4451,  4456,  4461,
+    4469,  4469,  4474,  4479,  4479,  4484,  4489,  4494,  4499,  4507,
+    4515,  4518,  4523,  4528,  4535,  4535,  4535,  4536,  4540,  4543,
+    4548,  4551,  4557,  4556,  4568,  4569,  4570,  4571,  4572,  4573,
+    4574,  4575,  4576,  4577,  4578,  4579,  4580,  4581,  4582,  4583,
+    4584,  4585,  4586,  4587,  4588,  4589,  4590,  4591,  4592,  4593,
+    4594,  4595,  4596,  4597,  4600,  4600,  4600,  4601,  4601,  4602,
+    4602,  4602,  4603,  4603,  4603,  4603,  4604,  4604,  4604,  4604,
+    4605,  4605,  4605,  4606,  4606,  4606,  4606,  4607,  4607,  4607,
+    4607,  4608,  4608,  4608,  4608,  4609,  4609,  4609,  4609,  4610,
+    4610,  4610,  4610,  4611,  4611,  4614,  4614,  4615,  4615,  4615,
+    4615,  4615,  4615,  4615,  4615,  4615,  4616,  4616,  4616,  4616,
+    4616,  4616,  4616,  4617,  4622,  4627,  4632,  4637,  4642,  4647,
+    4652,  4657,  4662,  4667,  4672,  4677,  4682,  4683,  4688,  4693,
+    4698,  4703,  4708,  4713,  4718,  4723,  4728,  4733,  4738,  4745,
+    4745,  4745,  4746,  4747,  4750,  4759,  4760,  4766,  4773,  4774,
+    4775,  4776,  4779,  4784,  4792,  4798,  4805,  4812,  4812,  4815,
+    4816,  4817,  4822,  4829,  4834,  4843,  4848,  4858,  4870,  4871,
+    4877,  4878,  4879,  4880,  4885,  4892,  4892,  4897,  4902,  4907,
+    4913,  4919,  4923,  4923,  4961,  4966,  4974,  4979,  4987,  4992,
+    4997,  5002,  5010,  5015,  5024,  5025,  5029,  5034,  5039,  5057,
+    5057,  5057,  5057,  5057,  5057,  5057,  5057,  5058,  5059,  5060,
+    5066,  5065,  5081,  5080,  5089,  5095,  5100,  5105,  5110,  5116,
+    5121,  5126,  5131,  5136,  5143,  5148,  5153,  5158,  5159,  5165,
+    5167,  5179,  5188,  5197,  5206,  5205,  5220,  5219,  5232,  5240,
+    5240,  5241,  5286,  5285,  5308,  5307,  5327,  5326,  5345,  5343,
+    5360,  5358,  5373,  5378,  5383,  5388,  5403,  5403,  5406,  5413,
+    5431,  5438,  5446,  5454,  5461,  5469,  5478,  5487,  5495,  5503,
+    5511,  5519,  5526,  5532,  5547,  5554,  5559,  5565,  5572,  5579,
+    5580,  5581,  5584,  5585,  5588,  5590,  5599,  5600,  5607,  5608,
+    5611,  5616,  5624,  5624,  5624,  5629,  5634,  5639,  5644,  5651,
+    5657,  5664,  5665,  5672,  5672,  5674,  5674,  5674,  5674,  5674,
+    5674,  5674,  5674,  5674,  5674,  5674,  5677,  5685,  5685,  5685,
+    5685,  5685,  5685,  5685,  5685,  5685,  5685,  5685,  5685,  5685,
+    5685,  5685,  5685,  5685,  5685,  5686,  5692,  5697,  5697,  5700,
+    5701,  5708,  5707,  5722,  5726,  5729,  5734,  5741,  5743,  5747,
+    5752,  5755,  5761,  5766,  5773,  5779,  5772,  5806,  5813,  5822,
+    5829,  5828,  5839,  5848,  5860,  5870,  5876,  5881,  5889,  5896,
+    5907,  5913,  5918,  5924,  5934,  5939,  5947,  5953,  5962,  5964,
+    5979,  5979,  6000,  6006,  6011,  6017,  6025,  6034,  6035,  6038,
+    6039,  6041,  6054,  6061,  6069,  6070,  6073,  6074,  6080,  6088,
+    6089,  6095,  6101,  6106,  6111,  6118,  6121,  6128,  6132,  6131,
+    6144,  6148,  6147,  6159,  6158,  6169,  6170,  6171,  6178,  6185,
+    6192,  6198,  6205,  6212,  6219,  6225,  6230,  6235,  6242,  6241,
+    6252,  6258,  6266,  6272,  6277,  6282,  6287,  6292,  6295,  6296,
+    6303,  6308,  6315,  6323,  6329,  6336,  6337,  6344,  6351,  6356,
+    6361,  6366,  6373,  6375,  6382,  6388,  6400,  6401,  6416,  6421,
+    6428,  6434,  6435,  6442,  6443,  6443,  6443,  6443,  6443,  6443,
+    6443,  6444,  6445,  6446,  6449,  6449,  6449,  6449,  6449,  6449,
+    6449,  6449,  6450,  6455,  6458,  6466,  6478,  6485,  6492,  6497,
+    6502,  6510,  6530,  6533,  6538,  6542,  6545,  6550,  6553,  6560,
+    6563,  6564,  6567,  6579,  6580,  6581,  6588,  6601,  6613,  6620,
+    6620,  6620,  6620,  6624,  6628,  6635,  6637,  6644,  6644,  6648,
+    6652,  6659,  6659,  6662,  6662,  6666,  6670,  6678,  6682,  6690,
+    6694,  6702,  6706,  6714,  6718,  6744,  6747,  6746,  6760,  6767,
+    6771,  6775,  6789,  6790,  6793,  6798,  6801,  6802,  6805,  6821,
+    6822,  6825,  6832,  6833,  6841,  6842,  6843,  6844,  6847,  6848,
+    6849,  6852,  6852,  6853,  6856,  6857,  6858,  6859,  6860,  6861,
+    6862,  6865,  6875,  6882,  6882,  6889,  6890,  6894,  6893,  6902,
+    6905,  6906,  6913,  6920,  6929,  6930,  6930,  6945,  6945,  6945,
+    6945,  6945,  6945,  6945,  6945,  6945,  6945,  6945,  6946,  6955,
+    6955,  6955,  6955,  6955,  6956,  7047,  7047,  7047,  7047,  7047,
+    7047,  7047,  7047,  7047,  7047,  7047,  7047,  7047,  7047,  7047,
+    7047,  7047,  7047,  7047,  7047,  7047,  7047,  7047,  7050,  7050,
+    7050,  7050,  7050,  7050,  7050,  7050,  7050,  7050,  7050,  7050,
+    7050,  7050,  7050,  7050,  7050,  7050,  7050,  7050,  7053,  7060,
+    7069,  7078,  7087,  7098,  7099,  7109,  7116,  7121,  7140,  7142,
+    7153,  7173,  7174,  7177,  7183,  7189,  7197,  7198,  7201,  7207,
+    7215,  7216,  7219,  7225,  7230,  7238,  7238,  7238,  7246,  7246,
+    7276,  7278,  7277,  7289,  7290,  7297,  7299,  7324,  7329,  7334,
+    7341,  7347,  7352,  7365,  7365,  7365,  7366,  7369,  7370,  7371,
+    7374,  7375,  7378,  7379,  7382,  7383,  7386,  7389,  7392,  7395,
+    7396,  7399,  7407,  7414,  7415,  7416,  7420
 };
 #endif
 
@@ -23937,471 +23938,471 @@ yy_symbol_value_print (FILE *yyo,
 switch (yykind)
     {
     case YYSYMBOL_tIDENTIFIER: /* "local variable or method"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 23945 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 23946 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tLABEL: /* "label"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 23953 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 23954 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tCOLON2: /* "::"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 23961 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 23962 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tANDDOT: /* "&."  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 23969 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 23970 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_class: /* "'class'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 23977 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 23978 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_module: /* "'module'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 23985 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 23986 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_def: /* "'def'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 23993 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 23994 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_undef: /* "'undef'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24001 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24002 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_begin: /* "'begin'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24009 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24010 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_rescue: /* "'rescue'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24017 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24018 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_ensure: /* "'ensure'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24025 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24026 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_end: /* "'end'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24033 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24034 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_if: /* "'if'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24041 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24042 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_unless: /* "'unless'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24049 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24050 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_then: /* "'then'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24057 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24058 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_elsif: /* "'elsif'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24065 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24066 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_else: /* "'else'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24073 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24074 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_case: /* "'case'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24081 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24082 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_when: /* "'when'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24089 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24090 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_while: /* "'while'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24097 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24098 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_until: /* "'until'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24105 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24106 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_for: /* "'for'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24113 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24114 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_break: /* "'break'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24121 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24122 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_next: /* "'next'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24129 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24130 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_redo: /* "'redo'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24137 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24138 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_retry: /* "'retry'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24145 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24146 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_in: /* "'in'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24153 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24154 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_do: /* "'do'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24161 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24162 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_return: /* "'return'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24169 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24170 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_yield: /* "'yield'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24177 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24178 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_super: /* "'super'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24185 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24186 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_self: /* "'self'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24193 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24194 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_nil: /* "'nil'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24201 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24202 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_true: /* "'true'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24209 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24210 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_false: /* "'false'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24217 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24218 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_and: /* "'and'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24225 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24226 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_or: /* "'or'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24233 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24234 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_not: /* "'not'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24241 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24242 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_alias: /* "'alias'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24249 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24250 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_defined: /* "'defined?'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24257 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24258 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_BEGIN: /* "'BEGIN'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24265 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24266 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_END: /* "'END'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24273 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24274 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword__LINE__: /* "'__LINE__'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24281 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24282 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword__FILE__: /* "'__FILE__'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24289 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24290 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword__ENCODING__: /* "'__ENCODING__'"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24297 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24298 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_modifier_if: /* "'if' modifier"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24305 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24306 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_modifier_unless: /* "'unless' modifier"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24313 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24314 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_modifier_while: /* "'while' modifier"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24321 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24322 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_modifier_until: /* "'until' modifier"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24329 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24330 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_modifier_rescue: /* "'rescue' modifier"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24337 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24338 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_do_cond: /* "'do' for condition"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24345 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24346 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_do_block: /* "'do' for block"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24353 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24354 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_do_LAMBDA: /* "'do' for lambda"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24361 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24362 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tFID: /* "method"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24369 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24370 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tGVAR: /* "global variable"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24377 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24378 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tIVAR: /* "instance variable"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24385 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24386 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tCONSTANT: /* "constant"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24393 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24394 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tCVAR: /* "class variable"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24401 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24402 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tINTEGER: /* "integer literal"  */
-#line 3308 "/tmp/ripper_tokenized.y"
+#line 3309 "/tmp/ripper_tokenized.y"
          {
     switch (nd_type(RNODE(((*yyvaluep).node)))) {
       case NODE_INTEGER:
@@ -24420,11 +24421,11 @@ switch (yykind)
         break;
     }
 }
-#line 24424 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24425 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tFLOAT: /* "float literal"  */
-#line 3308 "/tmp/ripper_tokenized.y"
+#line 3309 "/tmp/ripper_tokenized.y"
          {
     switch (nd_type(RNODE(((*yyvaluep).node)))) {
       case NODE_INTEGER:
@@ -24443,11 +24444,11 @@ switch (yykind)
         break;
     }
 }
-#line 24447 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24448 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tRATIONAL: /* "rational literal"  */
-#line 3308 "/tmp/ripper_tokenized.y"
+#line 3309 "/tmp/ripper_tokenized.y"
          {
     switch (nd_type(RNODE(((*yyvaluep).node)))) {
       case NODE_INTEGER:
@@ -24466,11 +24467,11 @@ switch (yykind)
         break;
     }
 }
-#line 24470 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24471 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tIMAGINARY: /* "imaginary literal"  */
-#line 3308 "/tmp/ripper_tokenized.y"
+#line 3309 "/tmp/ripper_tokenized.y"
          {
     switch (nd_type(RNODE(((*yyvaluep).node)))) {
       case NODE_INTEGER:
@@ -24489,11 +24490,11 @@ switch (yykind)
         break;
     }
 }
-#line 24493 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24494 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tCHAR: /* "char literal"  */
-#line 3308 "/tmp/ripper_tokenized.y"
+#line 3309 "/tmp/ripper_tokenized.y"
          {
     switch (nd_type(RNODE(((*yyvaluep).node)))) {
       case NODE_INTEGER:
@@ -24512,27 +24513,27 @@ switch (yykind)
         break;
     }
 }
-#line 24516 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24517 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tNTH_REF: /* "numbered reference"  */
-#line 3326 "/tmp/ripper_tokenized.y"
+#line 3327 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "$%ld", RNODE_NTH_REF(((*yyvaluep).node))->nd_nth);
 }
-#line 24524 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24525 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tBACK_REF: /* "back reference"  */
-#line 3329 "/tmp/ripper_tokenized.y"
+#line 3330 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "$%c", (int)RNODE_BACK_REF(((*yyvaluep).node))->nd_nth);
 }
-#line 24532 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24533 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tSTRING_CONTENT: /* "literal content"  */
-#line 3308 "/tmp/ripper_tokenized.y"
+#line 3309 "/tmp/ripper_tokenized.y"
          {
     switch (nd_type(RNODE(((*yyvaluep).node)))) {
       case NODE_INTEGER:
@@ -24551,67 +24552,67 @@ switch (yykind)
         break;
     }
 }
-#line 24555 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24556 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_108_: /* '.'  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24563 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24564 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_109_backslash_: /* "backslash"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24571 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24572 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_111_escaped_horizontal_tab_: /* "escaped horizontal tab"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24579 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24580 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_112_escaped_form_feed_: /* "escaped form feed"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24587 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24588 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_113_escaped_carriage_return_: /* "escaped carriage return"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24595 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24596 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_114_escaped_vertical_tab_: /* "escaped vertical tab"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24603 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24604 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tOP_ASGN: /* "operator-assignment"  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24611 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24612 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_compstmt_top_stmts: /* compstmt_top_stmts  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24620,11 +24621,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24624 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24625 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_top_stmts: /* top_stmts  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24633,11 +24634,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24637 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24638 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_top_stmt: /* top_stmt  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24646,11 +24647,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24650 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24651 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_block_open: /* block_open  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_exits) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24659,11 +24660,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_exits)))));
     }
 }
-#line 24663 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24664 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_begin_block: /* begin_block  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24672,11 +24673,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24676 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24677 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_compstmt_stmts: /* compstmt_stmts  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24685,11 +24686,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24689 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24690 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_bodystmt: /* bodystmt  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24698,11 +24699,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24702 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24703 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_stmts: /* stmts  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24711,11 +24712,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24715 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24716 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_stmt_or_begin: /* stmt_or_begin  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24724,11 +24725,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24728 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24729 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_allow_exits: /* allow_exits  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_exits) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24737,11 +24738,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_exits)))));
     }
 }
-#line 24741 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24742 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_stmt: /* stmt  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24750,11 +24751,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24754 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24755 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_asgn_mrhs: /* asgn_mrhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24763,11 +24764,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24767 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24768 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_asgn_command_rhs: /* asgn_command_rhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24776,11 +24777,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24780 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24781 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_command_asgn: /* command_asgn  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24789,11 +24790,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24793 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24794 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_op_asgn_command_rhs: /* op_asgn_command_rhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24802,11 +24803,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24806 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24807 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_def_endless_method_endless_command: /* def_endless_method_endless_command  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24815,11 +24816,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24819 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24820 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_endless_command: /* endless_command  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24828,11 +24829,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24832 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24833 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_command_rhs: /* command_rhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24841,11 +24842,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24845 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24846 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_expr: /* expr  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24854,19 +24855,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24858 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24859 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_def_name: /* def_name  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 24866 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24867 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_defn_head: /* defn_head  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_def_temp) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24875,11 +24876,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_def_temp)))));
     }
 }
-#line 24879 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24880 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_defs_head: /* defs_head  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_def_temp) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24888,11 +24889,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_def_temp)))));
     }
 }
-#line 24892 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24893 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_value_expr_expr: /* value_expr_expr  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24901,11 +24902,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24905 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24906 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_expr_value: /* expr_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24914,11 +24915,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24918 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24919 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_expr_value_do: /* expr_value_do  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24927,11 +24928,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24931 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24932 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_command_call: /* command_call  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24940,11 +24941,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24944 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24945 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_value_expr_command_call: /* value_expr_command_call  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24953,11 +24954,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24957 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24958 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_command_call_value: /* command_call_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24966,11 +24967,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24970 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24971 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_block_command: /* block_command  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24979,11 +24980,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24983 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24984 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_cmd_brace_block: /* cmd_brace_block  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -24992,11 +24993,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 24996 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 24997 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_fcall: /* fcall  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_fcall) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25005,11 +25006,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_fcall)))));
     }
 }
-#line 25009 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25010 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_command: /* command  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25018,11 +25019,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25022 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25023 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_mlhs: /* mlhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_masgn) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25031,11 +25032,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_masgn)))));
     }
 }
-#line 25035 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25036 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_mlhs_inner: /* mlhs_inner  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_masgn) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25044,11 +25045,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_masgn)))));
     }
 }
-#line 25048 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25049 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_mlhs_basic: /* mlhs_basic  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_masgn) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25057,11 +25058,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_masgn)))));
     }
 }
-#line 25061 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25062 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_mlhs_items_mlhs_item: /* mlhs_items_mlhs_item  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25070,11 +25071,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25074 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25075 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_mlhs_item: /* mlhs_item  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25083,11 +25084,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25087 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25088 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_mlhs_head: /* mlhs_head  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25096,11 +25097,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25100 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25101 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_mlhs_node: /* mlhs_node  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25109,11 +25110,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25113 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25114 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_lhs: /* lhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25122,19 +25123,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25126 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25127 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_cname: /* cname  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25134 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25135 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_cpath: /* cpath  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25143,19 +25144,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25147 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25148 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_fname: /* fname  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25155 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25156 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_fitem: /* fitem  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25164,11 +25165,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25168 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25169 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_undef_list: /* undef_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25177,27 +25178,27 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25181 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25182 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_op: /* op  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25189 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25190 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_reswords: /* reswords  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25197 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25198 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_asgn_arg_rhs: /* asgn_arg_rhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25206,11 +25207,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25210 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25211 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_arg: /* arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25219,11 +25220,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25223 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25224 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_op_asgn_arg_rhs: /* op_asgn_arg_rhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25232,11 +25233,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25236 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25237 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_range_expr_arg: /* range_expr_arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25245,11 +25246,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25249 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25250 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_def_endless_method_endless_arg: /* def_endless_method_endless_arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25258,11 +25259,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25262 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25263 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_ternary: /* ternary  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25271,11 +25272,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25275 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25276 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_endless_arg: /* endless_arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25284,19 +25285,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25288 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25289 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_relop: /* relop  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25296 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25297 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_rel_expr: /* rel_expr  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25305,11 +25306,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25309 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25310 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_value_expr_arg: /* value_expr_arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25318,11 +25319,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25322 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25323 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_arg_value: /* arg_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25331,11 +25332,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25335 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25336 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_aref_args: /* aref_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25344,11 +25345,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25348 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25349 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_arg_rhs: /* arg_rhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25357,11 +25358,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25361 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25362 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_paren_args: /* paren_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25370,11 +25371,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25374 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25375 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_paren_args: /* opt_paren_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25383,11 +25384,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25387 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25388 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_call_args: /* opt_call_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25396,11 +25397,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25400 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25401 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_value_expr_command: /* value_expr_command  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25409,11 +25410,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25413 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25414 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_call_args: /* call_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25422,11 +25423,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25426 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25427 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_command_args: /* command_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25435,11 +25436,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25439 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25440 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_block_arg: /* block_arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_block_pass) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25448,11 +25449,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_block_pass)))));
     }
 }
-#line 25452 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25453 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_block_arg: /* opt_block_arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_block_pass) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25461,11 +25462,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_block_pass)))));
     }
 }
-#line 25465 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25466 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_args: /* args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25474,11 +25475,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25478 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25479 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_arg_splat: /* arg_splat  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25487,11 +25488,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25491 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25492 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_mrhs_arg: /* mrhs_arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25500,11 +25501,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25504 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25505 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_mrhs: /* mrhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25513,11 +25514,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25517 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25518 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_primary: /* primary  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25526,11 +25527,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25530 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25531 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_value_expr_primary: /* value_expr_primary  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25539,11 +25540,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25543 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25544 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_primary_value: /* primary_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25552,11 +25553,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25556 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25557 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_k_while: /* k_while  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_exits) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25565,11 +25566,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_exits)))));
     }
 }
-#line 25569 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25570 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_k_until: /* k_until  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_exits) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25578,11 +25579,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_exits)))));
     }
 }
-#line 25582 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25583 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_k_for: /* k_for  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_exits) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25591,11 +25592,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_exits)))));
     }
 }
-#line 25595 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25596 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_k_def: /* k_def  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_def_temp) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25604,19 +25605,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_def_temp)))));
     }
 }
-#line 25608 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25609 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_do: /* do  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25616 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25617 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_if_tail: /* if_tail  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25625,11 +25626,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25629 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25630 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_else: /* opt_else  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25638,11 +25639,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25642 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25643 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_for_var: /* for_var  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25651,11 +25652,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25655 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25656 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_marg: /* f_marg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25664,11 +25665,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25668 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25669 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_mlhs_items_f_marg: /* mlhs_items_f_marg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25677,11 +25678,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25681 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25682 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_margs: /* f_margs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_masgn) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25690,11 +25691,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_masgn)))));
     }
 }
-#line 25694 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25695 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_rest_marg: /* f_rest_marg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25703,19 +25704,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25707 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25708 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_any_kwrest: /* f_any_kwrest  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25715 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25716 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_kw_primary_value: /* f_kw_primary_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_kw_arg) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25724,11 +25725,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_kw_arg)))));
     }
 }
-#line 25728 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25729 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_kwarg_primary_value: /* f_kwarg_primary_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_kw_arg) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25737,19 +25738,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_kw_arg)))));
     }
 }
-#line 25741 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25742 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_f_block_arg_none: /* opt_f_block_arg_none  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25749 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25750 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_args_tail_basic_primary_value_none: /* args_tail_basic_primary_value_none  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25758,11 +25759,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 25762 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25763 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_block_args_tail: /* block_args_tail  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25771,19 +25772,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 25775 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25776 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_excessed_comma: /* excessed_comma  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25783 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25784 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_opt_primary_value: /* f_opt_primary_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_opt_arg) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25792,11 +25793,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_opt_arg)))));
     }
 }
-#line 25796 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25797 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_opt_arg_primary_value: /* f_opt_arg_primary_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_opt_arg) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25805,11 +25806,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_opt_arg)))));
     }
 }
-#line 25809 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25810 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_args_tail_block_args_tail_none: /* opt_args_tail_block_args_tail_none  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25818,11 +25819,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 25822 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25823 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_args_list_primary_value_opt_args_tail_block_args_tail_none: /* args-list_primary_value_opt_args_tail_block_args_tail_none  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25831,11 +25832,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 25835 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25836 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_block_param: /* block_param  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25844,11 +25845,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 25848 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25849 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tail_only_args_block_args_tail: /* tail-only-args_block_args_tail  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25857,11 +25858,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 25861 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25862 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_block_param_def: /* opt_block_param_def  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25870,11 +25871,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 25874 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25875 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_block_param_def: /* block_param_def  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25883,11 +25884,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 25887 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25888 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_block_param: /* opt_block_param  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25896,35 +25897,35 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 25900 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25901 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_bv_decl: /* opt_bv_decl  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25908 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25909 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_bv_decls: /* bv_decls  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25916 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25917 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_bvar: /* bvar  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25924 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25925 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_numparam: /* numparam  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25933,19 +25934,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25937 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25938 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_it_id: /* it_id  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 25945 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25946 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_lambda: /* lambda  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25954,11 +25955,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25958 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25959 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_larglist: /* f_larglist  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25967,11 +25968,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 25971 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25972 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_do_block: /* do_block  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25980,11 +25981,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25984 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25985 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_block_call: /* block_call  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -25993,11 +25994,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 25997 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 25998 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_method_call: /* method_call  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26006,11 +26007,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26010 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26011 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_brace_block: /* brace_block  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26019,11 +26020,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26023 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26024 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_brace_body: /* brace_body  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26032,11 +26033,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26036 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26037 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_do_body: /* do_body  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26045,11 +26046,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26049 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26050 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_case_args: /* case_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26058,11 +26059,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26062 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26063 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_case_body: /* case_body  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26071,11 +26072,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26075 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26076 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_cases: /* cases  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26084,11 +26085,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26088 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26089 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_case_body: /* p_case_body  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26097,11 +26098,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26101 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26102 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_cases: /* p_cases  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26110,11 +26111,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26114 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26115 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_top_expr: /* p_top_expr  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26123,11 +26124,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26127 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26128 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_top_expr_body: /* p_top_expr_body  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26136,11 +26137,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26140 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26141 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_expr: /* p_expr  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26149,11 +26150,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26153 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26154 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_as: /* p_as  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26162,11 +26163,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26166 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26167 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_alt: /* p_alt  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26175,11 +26176,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26179 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26180 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_expr_basic: /* p_expr_basic  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26188,11 +26189,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26192 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26193 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_args: /* p_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26201,11 +26202,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26205 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26206 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_args_head: /* p_args_head  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26214,11 +26215,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26218 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26219 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_args_tail: /* p_args_tail  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26227,11 +26228,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26231 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26232 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_find: /* p_find  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26240,11 +26241,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26244 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26245 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_rest: /* p_rest  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26253,11 +26254,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26257 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26258 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_args_post: /* p_args_post  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26266,11 +26267,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26270 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26271 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_arg: /* p_arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26279,11 +26280,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26283 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26284 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_kwargs: /* p_kwargs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26292,11 +26293,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26296 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26297 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_kwarg: /* p_kwarg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26305,11 +26306,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26309 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26310 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_kw: /* p_kw  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26318,43 +26319,43 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26322 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26323 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_kw_label: /* p_kw_label  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 26330 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26331 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_kwrest: /* p_kwrest  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 26338 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26339 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_kwnorest: /* p_kwnorest  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 26346 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26347 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_any_kwrest: /* p_any_kwrest  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 26354 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26355 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_value: /* p_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26363,11 +26364,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26367 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26368 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_range_expr_p_primitive: /* range_expr_p_primitive  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26376,11 +26377,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26380 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26381 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_primitive: /* p_primitive  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26389,11 +26390,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26393 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26394 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_variable: /* p_variable  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26402,11 +26403,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26406 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26407 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_var_ref: /* p_var_ref  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26415,11 +26416,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26419 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26420 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_expr_ref: /* p_expr_ref  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26428,11 +26429,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26432 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26433 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_p_const: /* p_const  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26441,11 +26442,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26445 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26446 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_rescue: /* opt_rescue  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26454,11 +26455,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26458 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26459 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_exc_list: /* exc_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26467,11 +26468,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26471 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26472 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_exc_var: /* exc_var  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26480,11 +26481,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26484 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26485 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_ensure: /* opt_ensure  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26493,11 +26494,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26497 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26498 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_literal: /* literal  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26506,11 +26507,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26510 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26511 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_strings: /* strings  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26519,11 +26520,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26523 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26524 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_string: /* string  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26532,11 +26533,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26536 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26537 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_string1: /* string1  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26545,11 +26546,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26549 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26550 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_xstring: /* xstring  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26558,11 +26559,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26562 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26563 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_regexp: /* regexp  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26571,11 +26572,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26575 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26576 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_words_tWORDS_BEG_word_list: /* words_tWORDS_BEG_word_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26584,11 +26585,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26588 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26589 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_words: /* words  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26597,11 +26598,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26601 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26602 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_word_list: /* word_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26610,11 +26611,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26614 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26615 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_word: /* word  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26623,11 +26624,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26627 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26628 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_words_tSYMBOLS_BEG_symbol_list: /* words_tSYMBOLS_BEG_symbol_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26636,11 +26637,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26640 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26641 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_symbols: /* symbols  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26649,11 +26650,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26653 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26654 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_symbol_list: /* symbol_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26662,11 +26663,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26666 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26667 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_words_tQWORDS_BEG_qword_list: /* words_tQWORDS_BEG_qword_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26675,11 +26676,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26679 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26680 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_qwords: /* qwords  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26688,11 +26689,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26692 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26693 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_words_tQSYMBOLS_BEG_qsym_list: /* words_tQSYMBOLS_BEG_qsym_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26701,11 +26702,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26705 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26706 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_qsymbols: /* qsymbols  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26714,11 +26715,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26718 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26719 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_qword_list: /* qword_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26727,11 +26728,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26731 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26732 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_qsym_list: /* qsym_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26740,11 +26741,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26744 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26745 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_string_contents: /* string_contents  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26753,11 +26754,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26757 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26758 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_xstring_contents: /* xstring_contents  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26766,11 +26767,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26770 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26771 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_regexp_contents: /* regexp_contents  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26779,11 +26780,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26783 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26784 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_string_content: /* string_content  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26792,11 +26793,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26796 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26797 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_string_dvar: /* string_dvar  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26805,11 +26806,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26809 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26810 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_symbol: /* symbol  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26818,11 +26819,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26822 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26823 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_ssym: /* ssym  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26831,19 +26832,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26835 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26836 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_sym: /* sym  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 26843 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26844 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_dsym: /* dsym  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26852,11 +26853,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26856 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26857 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_numeric: /* numeric  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26865,11 +26866,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26869 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26870 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_simple_numeric: /* simple_numeric  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26878,35 +26879,35 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26882 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26883 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_nonlocal_var: /* nonlocal_var  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 26890 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26891 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_user_variable: /* user_variable  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 26898 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26899 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_keyword_variable: /* keyword_variable  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 26906 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26907 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_var_ref: /* var_ref  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26915,11 +26916,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26919 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26920 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_var_lhs: /* var_lhs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26928,11 +26929,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26932 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26933 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_backref: /* backref  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26941,11 +26942,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26945 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26946 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_superclass: /* superclass  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26954,11 +26955,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 26958 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26959 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_opt_paren_args: /* f_opt_paren_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26967,11 +26968,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 26971 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26972 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_empty_arg: /* f_empty_arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26980,11 +26981,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 26984 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26985 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_paren_args: /* f_paren_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -26993,11 +26994,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 26997 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 26998 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_arglist: /* f_arglist  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27006,11 +27007,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27010 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27011 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_kw_arg_value: /* f_kw_arg_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_kw_arg) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27019,11 +27020,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_kw_arg)))));
     }
 }
-#line 27023 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27024 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_kwarg_arg_value: /* f_kwarg_arg_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_kw_arg) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27032,19 +27033,19 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_kw_arg)))));
     }
 }
-#line 27036 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27037 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_f_block_arg_opt_comma: /* opt_f_block_arg_opt_comma  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27044 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27045 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_args_tail_basic_arg_value_opt_comma: /* args_tail_basic_arg_value_opt_comma  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27053,11 +27054,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27057 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27058 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_args_tail: /* args_tail  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27066,11 +27067,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27070 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27071 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_args_tail_basic_arg_value_none: /* args_tail_basic_arg_value_none  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27079,11 +27080,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27083 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27084 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_largs_tail: /* largs_tail  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27092,11 +27093,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27096 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27097 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_opt_arg_value: /* f_opt_arg_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_opt_arg) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27105,11 +27106,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_opt_arg)))));
     }
 }
-#line 27109 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27110 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_opt_arg_arg_value: /* f_opt_arg_arg_value  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_opt_arg) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27118,11 +27119,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_opt_arg)))));
     }
 }
-#line 27122 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27123 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_args_tail_args_tail_opt_comma: /* opt_args_tail_args_tail_opt_comma  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27131,11 +27132,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27135 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27136 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_args_list_arg_value_opt_args_tail_args_tail_opt_comma: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27144,11 +27145,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27148 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27149 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_args_list_args_tail_opt_comma: /* f_args-list_args_tail_opt_comma  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27157,11 +27158,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27161 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27162 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tail_only_args_args_tail: /* tail-only-args_args_tail  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27170,11 +27171,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27174 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27175 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_args: /* f_args  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27183,11 +27184,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27187 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27188 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_args_tail_largs_tail_none: /* opt_args_tail_largs_tail_none  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27196,11 +27197,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27200 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27201 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_args_list_arg_value_opt_args_tail_largs_tail_none: /* args-list_arg_value_opt_args_tail_largs_tail_none  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27209,11 +27210,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27213 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27214 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_args_list_largs_tail_none: /* f_args-list_largs_tail_none  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27222,11 +27223,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27226 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27227 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_tail_only_args_largs_tail: /* tail-only-args_largs_tail  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27235,11 +27236,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27239 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27240 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_largs: /* f_largs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27248,43 +27249,43 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args)))));
     }
 }
-#line 27252 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27253 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_args_forward: /* args_forward  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27260 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27261 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_bad_arg: /* f_bad_arg  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27268 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27269 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_norm_arg: /* f_norm_arg  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27276 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27277 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_arg_asgn: /* f_arg_asgn  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27284 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27285 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_arg_item: /* f_arg_item  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args_aux) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27293,11 +27294,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args_aux)))));
     }
 }
-#line 27297 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27298 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_arg: /* f_arg  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node_args_aux) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27306,59 +27307,59 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node_args_aux)))));
     }
 }
-#line 27310 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27311 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_label: /* f_label  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27318 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27319 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_no_kwarg: /* f_no_kwarg  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27326 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27327 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_kwrest: /* f_kwrest  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27334 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27335 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_rest_arg: /* f_rest_arg  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27342 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27343 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_f_block_arg: /* f_block_arg  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27350 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27351 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_opt_comma: /* opt_comma  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27358 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27359 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_value_expr_singleton_expr: /* value_expr_singleton_expr  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27367,11 +27368,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 27371 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27372 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_singleton: /* singleton  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27380,11 +27381,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 27384 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27385 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_singleton_expr: /* singleton_expr  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27393,11 +27394,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 27397 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27398 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_assoc_list: /* assoc_list  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27406,11 +27407,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 27410 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27411 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_assocs: /* assocs  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27419,11 +27420,11 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 27423 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27424 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_assoc: /* assoc  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27432,51 +27433,51 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 27436 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27437 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_operation2: /* operation2  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27444 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27445 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_operation3: /* operation3  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27452 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27453 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_dot_or_colon: /* dot_or_colon  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27460 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27461 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_call_op: /* call_op  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27468 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27469 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_call_op2: /* call_op2  */
-#line 3305 "/tmp/ripper_tokenized.y"
+#line 3306 "/tmp/ripper_tokenized.y"
          {
     rb_parser_printf(p, "%"PRIsVALUE, rb_id2str(((*yyvaluep).id)));
 }
-#line 27476 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27477 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_none: /* none  */
-#line 3296 "/tmp/ripper_tokenized.y"
+#line 3297 "/tmp/ripper_tokenized.y"
          {
     if ((NODE *)((*yyvaluep).node) == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -27485,7 +27486,7 @@ switch (yykind)
         rb_parser_printf(p, "%s", parser_node_name(nd_type(RNODE(((*yyvaluep).node)))));
     }
 }
-#line 27489 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27490 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
       default:
@@ -27888,19 +27889,19 @@ yydestruct (const char *yymsg,
   switch (yykind)
     {
     case YYSYMBOL_260_15: /* @15  */
-#line 3333 "/tmp/ripper_tokenized.y"
+#line 3334 "/tmp/ripper_tokenized.y"
          {
     if (CASE_LABELS_ENABLED_P(((*yyvaluep).labels))) st_free_table(((*yyvaluep).labels));
 }
-#line 27896 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27897 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
     case YYSYMBOL_261_16: /* @16  */
-#line 3333 "/tmp/ripper_tokenized.y"
+#line 3334 "/tmp/ripper_tokenized.y"
          {
     if (CASE_LABELS_ENABLED_P(((*yyvaluep).labels))) st_free_table(((*yyvaluep).labels));
 }
-#line 27904 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 27905 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
         break;
 
       default:
@@ -28003,12 +28004,12 @@ YYLTYPE yylloc = yyloc_default;
 
 
         /* User initialization code.  */
-#line 3340 "/tmp/ripper_tokenized.y"
+#line 3341 "/tmp/ripper_tokenized.y"
         {
     RUBY_SET_YYLLOC_OF_NONE(yylloc);
 }
 
-#line 28012 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28013 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
 
   yylsp[0] = yylloc;
   goto yysetstate;
@@ -28181,9 +28182,9 @@ yybackup:
   YY_IGNORE_MAYBE_UNINITIALIZED_END
   *++yylsp = yylloc;
         /* %after-shift code. */
-#line 3343 "/tmp/ripper_tokenized.y"
+#line 3344 "/tmp/ripper_tokenized.y"
         {after_shift(p);}
-#line 28187 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28188 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
 
 
   /* Discard the shifted token.  */
@@ -28218,9 +28219,9 @@ yyreduce:
      GCC warning that YYVAL may be used uninitialized.  */
   yyval = yyvsp[1-yylen];
         /* %before-reduce function. */
-#line 3344 "/tmp/ripper_tokenized.y"
+#line 3345 "/tmp/ripper_tokenized.y"
         {before_reduce(yylen, p);}
-#line 28224 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28225 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
 
 
   /* Default location. */
@@ -28230,25 +28231,25 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* $@1: %empty  */
-#line 3847 "/tmp/ripper_tokenized.y"
+#line 3848 "/tmp/ripper_tokenized.y"
             {
                         local_push(p, ifndef_ripper(1)+0);
                         /* jumps are possible in the top-level loop. */
                         if (!ifndef_ripper(p->do_loop) + 0) init_block_exit(p);
                     }
-#line 28240 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28241 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 5: /* compstmt_top_stmts: top_stmts option_terms  */
-#line 3662 "/tmp/ripper_tokenized.y"
+#line 3663 "/tmp/ripper_tokenized.y"
                         {
                             void_stmts(p, (yyval.node) = (yyvsp[-1].node));
                         }
-#line 28248 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28249 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 6: /* program: $@1 compstmt_top_stmts  */
-#line 3853 "/tmp/ripper_tokenized.y"
+#line 3854 "/tmp/ripper_tokenized.y"
                     {
                         if ((yyvsp[0].node) && !compile_for_eval) {
                             NODE *node = (yyvsp[0].node);
@@ -28266,62 +28267,62 @@ yyreduce:
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(program,v1); p->result=v2;}
                         local_pop(p);
                     }
-#line 28270 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28271 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 7: /* top_stmts: none  */
-#line 3873 "/tmp/ripper_tokenized.y"
+#line 3874 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_BEGIN(0, &(yyloc));
                     {VALUE v1=dispatch0(stmts_new), v2=dispatch0(void_stmt), v3=dispatch2(stmts_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28279 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28280 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 8: /* top_stmts: top_stmt  */
-#line 3878 "/tmp/ripper_tokenized.y"
+#line 3879 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = newline_node((yyvsp[0].node));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(stmts_new), v3=dispatch2(stmts_add,v2,v1); p->s_lvalue=v3;}
                     }
-#line 28288 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28289 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 9: /* top_stmts: top_stmts terms top_stmt  */
-#line 3883 "/tmp/ripper_tokenized.y"
+#line 3884 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = block_append(p, (yyvsp[-2].node), newline_node((yyvsp[0].node)));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(stmts_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28297 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28298 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 10: /* top_stmt: stmt  */
-#line 3890 "/tmp/ripper_tokenized.y"
+#line 3891 "/tmp/ripper_tokenized.y"
                     {
                         clear_block_exit(p, true);
                         (yyval.node) = (yyvsp[0].node);
                     }
-#line 28306 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28307 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 11: /* top_stmt: "'BEGIN'" begin_block  */
-#line 3895 "/tmp/ripper_tokenized.y"
+#line 3896 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[0].node);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 28315 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28316 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 12: /* block_open: '{'  */
-#line 3901 "/tmp/ripper_tokenized.y"
+#line 3902 "/tmp/ripper_tokenized.y"
                  {(yyval.node_exits) = init_block_exit(p);}
-#line 28321 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28322 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 13: /* begin_block: block_open compstmt_top_stmts '}'  */
-#line 3904 "/tmp/ripper_tokenized.y"
+#line 3905 "/tmp/ripper_tokenized.y"
                     {
                         restore_block_exit(p, (yyvsp[-2].node_exits));
                         p->eval_tree_begin = block_append(p, p->eval_tree_begin,
@@ -28329,147 +28330,147 @@ yyreduce:
                         (yyval.node) = NEW_BEGIN(0, &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(BEGIN,v1); p->s_lvalue=v2;}
                     }
-#line 28333 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28334 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 14: /* compstmt_stmts: stmts option_terms  */
-#line 3662 "/tmp/ripper_tokenized.y"
+#line 3663 "/tmp/ripper_tokenized.y"
                         {
                             void_stmts(p, (yyval.node) = (yyvsp[-1].node));
                         }
-#line 28341 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28342 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 15: /* $@2: %empty  */
-#line 3917 "/tmp/ripper_tokenized.y"
+#line 3918 "/tmp/ripper_tokenized.y"
                     {
                         if (!(yyvsp[-1].node)) yyerror1(&(yylsp[0]), "else without rescue is useless");
                         next_rescue_context(&p->ctxt, &(yyvsp[-2].ctxt), after_else);
                     }
-#line 28350 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28351 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 16: /* $@3: %empty  */
-#line 3922 "/tmp/ripper_tokenized.y"
+#line 3923 "/tmp/ripper_tokenized.y"
                     {
                         next_rescue_context(&p->ctxt, &(yyvsp[-4].ctxt), after_ensure);
                     }
-#line 28358 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28359 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 17: /* bodystmt: compstmt_stmts lex_ctxt opt_rescue k_else $@2 compstmt_stmts $@3 opt_ensure  */
-#line 3926 "/tmp/ripper_tokenized.y"
+#line 3927 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_bodystmt(p, (yyvsp[-7].node), (yyvsp[-5].node), (yyvsp[-2].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-7 - 1)), v2=get_value((-5 - 1)), v3=get_value((-2 - 1)), v4=get_value((0 - 1)), v5=dispatch4(bodystmt,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
-#line 28367 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28368 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 18: /* $@4: %empty  */
-#line 3933 "/tmp/ripper_tokenized.y"
+#line 3934 "/tmp/ripper_tokenized.y"
                     {
                         next_rescue_context(&p->ctxt, &(yyvsp[-1].ctxt), after_ensure);
                     }
-#line 28375 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28376 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 19: /* bodystmt: compstmt_stmts lex_ctxt opt_rescue $@4 opt_ensure  */
-#line 3937 "/tmp/ripper_tokenized.y"
+#line 3938 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_bodystmt(p, (yyvsp[-4].node), (yyvsp[-2].node), 0, (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-4 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)), v4=Qnil, v5=dispatch4(bodystmt,v1,v2,v4,v3); p->s_lvalue=v5;}
                     }
-#line 28384 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28385 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 20: /* stmts: none  */
-#line 3944 "/tmp/ripper_tokenized.y"
+#line 3945 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_BEGIN(0, &(yyloc));
                     {VALUE v1=dispatch0(stmts_new), v2=dispatch0(void_stmt), v3=dispatch2(stmts_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28393 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28394 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 21: /* stmts: stmt_or_begin  */
-#line 3949 "/tmp/ripper_tokenized.y"
+#line 3950 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = newline_node((yyvsp[0].node));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(stmts_new), v3=dispatch2(stmts_add,v2,v1); p->s_lvalue=v3;}
                     }
-#line 28402 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28403 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 22: /* stmts: stmts terms stmt_or_begin  */
-#line 3954 "/tmp/ripper_tokenized.y"
+#line 3955 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = block_append(p, (yyvsp[-2].node), newline_node((yyvsp[0].node)));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(stmts_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28411 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28412 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 24: /* $@5: %empty  */
-#line 3962 "/tmp/ripper_tokenized.y"
+#line 3963 "/tmp/ripper_tokenized.y"
                     {
                         yyerror1(&(yylsp[0]), "BEGIN is permitted only at toplevel");
                     }
-#line 28419 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28420 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 25: /* stmt_or_begin: "'BEGIN'" $@5 begin_block  */
-#line 3966 "/tmp/ripper_tokenized.y"
+#line 3967 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[0].node);
                     }
-#line 28427 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28428 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 26: /* allow_exits: %empty  */
-#line 3971 "/tmp/ripper_tokenized.y"
+#line 3972 "/tmp/ripper_tokenized.y"
               {(yyval.node_exits) = allow_block_exit(p);}
-#line 28433 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28434 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 27: /* k_END: "'END'" lex_ctxt  */
-#line 3974 "/tmp/ripper_tokenized.y"
+#line 3975 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.ctxt) = (yyvsp[0].ctxt);
                         p->ctxt.in_rescue = before_rescue;
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 28443 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28444 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 28: /* $@6: %empty  */
-#line 3981 "/tmp/ripper_tokenized.y"
+#line 3982 "/tmp/ripper_tokenized.y"
                     {
                         /* next alias target is readable by lexer default transition */
                     }
-#line 28451 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28452 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 29: /* stmt: "'alias'" fitem $@6 fitem  */
-#line 3985 "/tmp/ripper_tokenized.y"
+#line 3986 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_ALIAS((yyvsp[-2].node), (yyvsp[0].node), &(yyloc), &(yylsp[-3]));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(alias,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28460 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28461 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 30: /* stmt: "'alias'" "global variable" "global variable"  */
-#line 3990 "/tmp/ripper_tokenized.y"
+#line 3991 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_VALIAS((yyvsp[-1].id), (yyvsp[0].id), &(yyloc), &(yylsp[-2]));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(var_alias,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28469 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28470 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 31: /* stmt: "'alias'" "global variable" "back reference"  */
-#line 3995 "/tmp/ripper_tokenized.y"
+#line 3996 "/tmp/ripper_tokenized.y"
                     {
                         char buf[2];
                         buf[0] = '$';
@@ -28477,11 +28478,11 @@ yyreduce:
                         (yyval.node) = NEW_VALIAS((yyvsp[-1].id), rb_intern2(buf, 2), &(yyloc), &(yylsp[-2]));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(var_alias,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28481 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28482 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 32: /* stmt: "'alias'" "global variable" "numbered reference"  */
-#line 4003 "/tmp/ripper_tokenized.y"
+#line 4004 "/tmp/ripper_tokenized.y"
                     {
                         static const char mesg[] = "can't make alias for the number variables";
 #if 0
@@ -28490,42 +28491,42 @@ yyreduce:
                         (yyval.node) = NEW_ERROR(&(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=ERR_MESG(), v3=dispatch2(alias_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
-#line 28494 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28495 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 33: /* stmt: "'undef'" undef_list  */
-#line 4012 "/tmp/ripper_tokenized.y"
+#line 4013 "/tmp/ripper_tokenized.y"
                     {
                         nd_set_first_loc((yyvsp[0].node), (yylsp[-1]).beg_pos);
                         RNODE_UNDEF((yyvsp[0].node))->keyword_loc = (yylsp[-1]);
                         (yyval.node) = (yyvsp[0].node);
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(undef,v1); p->s_lvalue=v2;}
                     }
-#line 28505 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28506 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 34: /* stmt: stmt "'if' modifier" expr_value  */
-#line 4019 "/tmp/ripper_tokenized.y"
+#line 4020 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_if(p, (yyvsp[0].node), remove_begin((yyvsp[-2].node)), 0, &(yyloc), &(yylsp[-1]), &NULL_LOC, &NULL_LOC);
                         fixpos((yyval.node), (yyvsp[0].node));
                     {VALUE v1=get_value((0 - 1)), v2=get_value((-2 - 1)), v3=dispatch2(if_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28515 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28516 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 35: /* stmt: stmt "'unless' modifier" expr_value  */
-#line 4025 "/tmp/ripper_tokenized.y"
+#line 4026 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_unless(p, (yyvsp[0].node), remove_begin((yyvsp[-2].node)), 0, &(yyloc), &(yylsp[-1]), &NULL_LOC, &NULL_LOC);
                         fixpos((yyval.node), (yyvsp[0].node));
                     {VALUE v1=get_value((0 - 1)), v2=get_value((-2 - 1)), v3=dispatch2(unless_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28525 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28526 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 36: /* stmt: stmt "'while' modifier" expr_value  */
-#line 4031 "/tmp/ripper_tokenized.y"
+#line 4032 "/tmp/ripper_tokenized.y"
                     {
                         clear_block_exit(p, false);
                         if ((yyvsp[-2].node) && nd_type_p((yyvsp[-2].node), NODE_BEGIN)) {
@@ -28536,11 +28537,11 @@ yyreduce:
                         }
                     {VALUE v1=get_value((0 - 1)), v2=get_value((-2 - 1)), v3=dispatch2(while_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28540 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28541 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 37: /* stmt: stmt "'until' modifier" expr_value  */
-#line 4042 "/tmp/ripper_tokenized.y"
+#line 4043 "/tmp/ripper_tokenized.y"
                     {
                         clear_block_exit(p, false);
                         if ((yyvsp[-2].node) && nd_type_p((yyvsp[-2].node), NODE_BEGIN)) {
@@ -28551,11 +28552,11 @@ yyreduce:
                         }
                     {VALUE v1=get_value((0 - 1)), v2=get_value((-2 - 1)), v3=dispatch2(until_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28555 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28556 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 38: /* stmt: stmt "'rescue' modifier" after_rescue stmt  */
-#line 4053 "/tmp/ripper_tokenized.y"
+#line 4054 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_rescue = (yyvsp[-1].ctxt).in_rescue;
                         NODE *resq;
@@ -28564,11 +28565,11 @@ yyreduce:
                         (yyval.node) = NEW_RESCUE(remove_begin((yyvsp[-3].node)), resq, 0, &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(rescue_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28568 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28569 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 39: /* stmt: k_END allow_exits '{' compstmt_stmts '}'  */
-#line 4062 "/tmp/ripper_tokenized.y"
+#line 4063 "/tmp/ripper_tokenized.y"
                     {
                         if (p->ctxt.in_def) {
                             rb_warn0("END in method; use at_exit");
@@ -28582,29 +28583,29 @@ yyreduce:
                         }
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(END,v1); p->s_lvalue=v2;}
                     }
-#line 28586 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28587 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 41: /* stmt: mlhs '=' lex_ctxt command_call_value  */
-#line 4077 "/tmp/ripper_tokenized.y"
+#line 4078 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = node_assign(p, (NODE *)(yyvsp[-3].node_masgn), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(massign,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28595 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28596 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 42: /* asgn_mrhs: lhs '=' lex_ctxt mrhs  */
-#line 3597 "/tmp/ripper_tokenized.y"
+#line 3598 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = node_assign(p, (NODE *)(yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(assign,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28604 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28605 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 44: /* stmt: mlhs '=' lex_ctxt mrhs_arg "'rescue' modifier" after_rescue stmt  */
-#line 4084 "/tmp/ripper_tokenized.y"
+#line 4085 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_rescue = (yyvsp[-1].ctxt).in_rescue;
                         YYLTYPE loc = code_loc_gen(&(yylsp[-2]), &(yylsp[0]));
@@ -28614,113 +28615,113 @@ yyreduce:
                         (yyval.node) = node_assign(p, (NODE *)(yyvsp[-6].node_masgn), (yyvsp[-3].node), (yyvsp[-4].ctxt), &(yyloc));
                     {VALUE v1=get_value((-6 - 1)), v2=get_value((-3 - 1)), v3=get_value((0 - 1)), v4=dispatch2(rescue_mod,v2,v3), v5=dispatch2(massign,v1,v4); p->s_lvalue=v5;}
                     }
-#line 28618 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28619 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 45: /* stmt: mlhs '=' lex_ctxt mrhs_arg  */
-#line 4094 "/tmp/ripper_tokenized.y"
+#line 4095 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = node_assign(p, (NODE *)(yyvsp[-3].node_masgn), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(massign,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28627 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28628 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 47: /* stmt: error  */
-#line 4100 "/tmp/ripper_tokenized.y"
+#line 4101 "/tmp/ripper_tokenized.y"
                     {
                         (void)yynerrs;
                         (yyval.node) = NEW_ERROR(&(yyloc));
                     }
-#line 28636 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28637 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 48: /* asgn_command_rhs: lhs '=' lex_ctxt command_rhs  */
-#line 3597 "/tmp/ripper_tokenized.y"
+#line 3598 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = node_assign(p, (NODE *)(yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(assign,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28645 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28646 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 50: /* op_asgn_command_rhs: var_lhs "operator-assignment" lex_ctxt command_rhs  */
-#line 3732 "/tmp/ripper_tokenized.y"
+#line 3733 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_op_assign(p, (yyvsp[-3].node), (yyvsp[-2].id), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)), v4=dispatch3(opassign,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 28654 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28655 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 51: /* op_asgn_command_rhs: primary_value '[' opt_call_args rbracket "operator-assignment" lex_ctxt command_rhs  */
-#line 3737 "/tmp/ripper_tokenized.y"
+#line 3738 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_ary_op_assign(p, (yyvsp[-6].node), (yyvsp[-4].node), (yyvsp[-2].id), (yyvsp[0].node), &(yylsp[-4]), &(yyloc), &NULL_LOC, &(yylsp[-5]), &(yylsp[-3]), &(yylsp[-2]));
                     {VALUE v1=get_value((-6 - 1)), v2=get_value((-4 - 1)), v3=get_value((-2 - 1)), v4=get_value((0 - 1)), v5=dispatch2(aref_field,v1,v2), v6=dispatch3(opassign,v5,v3,v4); p->s_lvalue=v6;}
                     }
-#line 28663 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28664 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 52: /* op_asgn_command_rhs: primary_value call_op "local variable or method" "operator-assignment" lex_ctxt command_rhs  */
-#line 3742 "/tmp/ripper_tokenized.y"
+#line 3743 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_attr_op_assign(p, (yyvsp[-5].node), (yyvsp[-4].id), (yyvsp[-3].id), (yyvsp[-2].id), (yyvsp[0].node), &(yyloc), &(yylsp[-4]), &(yylsp[-3]), &(yylsp[-2]));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-4 - 1)), v3=get_value((-3 - 1)), v4=get_value((-2 - 1)), v5=get_value((0 - 1)), v6=dispatch3(field,v1,v2,v3), v7=dispatch3(opassign,v6,v4,v5); p->s_lvalue=v7;}
                     }
-#line 28672 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28673 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 53: /* op_asgn_command_rhs: primary_value call_op "constant" "operator-assignment" lex_ctxt command_rhs  */
-#line 3747 "/tmp/ripper_tokenized.y"
+#line 3748 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_attr_op_assign(p, (yyvsp[-5].node), (yyvsp[-4].id), (yyvsp[-3].id), (yyvsp[-2].id), (yyvsp[0].node), &(yyloc), &(yylsp[-4]), &(yylsp[-3]), &(yylsp[-2]));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-4 - 1)), v3=get_value((-3 - 1)), v4=get_value((-2 - 1)), v5=get_value((0 - 1)), v6=dispatch3(field,v1,v2,v3), v7=dispatch3(opassign,v6,v4,v5); p->s_lvalue=v7;}
                     }
-#line 28681 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28682 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 54: /* op_asgn_command_rhs: primary_value "::" "local variable or method" "operator-assignment" lex_ctxt command_rhs  */
-#line 3752 "/tmp/ripper_tokenized.y"
+#line 3753 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_attr_op_assign(p, (yyvsp[-5].node), idCOLON2, (yyvsp[-3].id), (yyvsp[-2].id), (yyvsp[0].node), &(yyloc), &(yylsp[-4]), &(yylsp[-3]), &(yylsp[-2]));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-4 - 1)), v3=get_value((-3 - 1)), v4=get_value((-2 - 1)), v5=get_value((0 - 1)), v6=dispatch3(field,v1,v2,v3), v7=dispatch3(opassign,v6,v4,v5); p->s_lvalue=v7;}
                     }
-#line 28690 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28691 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 55: /* op_asgn_command_rhs: primary_value "::" "constant" "operator-assignment" lex_ctxt command_rhs  */
-#line 3757 "/tmp/ripper_tokenized.y"
+#line 3758 "/tmp/ripper_tokenized.y"
                     {
                         YYLTYPE loc = code_loc_gen(&(yylsp[-5]), &(yylsp[-3]));
                         (yyval.node) = new_const_op_assign(p, NEW_COLON2((yyvsp[-5].node), (yyvsp[-3].id), &loc, &(yylsp[-4]), &(yylsp[-3])), (yyvsp[-2].id), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-2 - 1)), v4=get_value((0 - 1)), v5=dispatch2(const_path_field,v1,v2), v6=dispatch3(opassign,v5,v3,v4); p->s_lvalue=v6;}
                     }
-#line 28700 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28701 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 56: /* op_asgn_command_rhs: ":: at EXPR_BEG" "constant" "operator-assignment" lex_ctxt command_rhs  */
-#line 3763 "/tmp/ripper_tokenized.y"
+#line 3764 "/tmp/ripper_tokenized.y"
                     {
                         YYLTYPE loc = code_loc_gen(&(yylsp[-4]), &(yylsp[-3]));
                         (yyval.node) = new_const_op_assign(p, NEW_COLON3((yyvsp[-3].id), &loc, &(yylsp[-4]), &(yylsp[-3])), (yyvsp[-2].id), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)), v4=dispatch1(top_const_field,v1), v5=dispatch3(opassign,v4,v2,v3); p->s_lvalue=v5;}
                     }
-#line 28710 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28711 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 57: /* op_asgn_command_rhs: backref "operator-assignment" lex_ctxt command_rhs  */
-#line 3769 "/tmp/ripper_tokenized.y"
+#line 3770 "/tmp/ripper_tokenized.y"
                     {
                         VALUE MAYBE_UNUSED(e) = rb_backref_error(p, (yyvsp[-3].node));
                         (yyval.node) = NEW_ERROR(&(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)), v4=dispatch1(var_field,v1), v5=dispatch3(opassign,v4,v2,v3), v6=e, v7=dispatch2(assign_error,v6,v5); p->s_lvalue=v7;ripper_error(p);}
                     }
-#line 28720 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28721 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 59: /* def_endless_method_endless_command: defn_head f_opt_paren_args '=' endless_command  */
-#line 3637 "/tmp/ripper_tokenized.y"
+#line 3638 "/tmp/ripper_tokenized.y"
                     {
                         endless_method_name(p, (yyvsp[-3].node_def_temp)->nd_mid, &(yylsp[-3]));
                         restore_defun(p, (yyvsp[-3].node_def_temp));
@@ -28731,11 +28732,11 @@ yyreduce:
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=p->s_lvalue, v4=dispatch3(def,v1,v2,v3); p->s_lvalue=v4;}
                         local_pop(p);
                     }
-#line 28735 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28736 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 60: /* def_endless_method_endless_command: defs_head f_opt_paren_args '=' endless_command  */
-#line 3648 "/tmp/ripper_tokenized.y"
+#line 3649 "/tmp/ripper_tokenized.y"
                     {
                         endless_method_name(p, (yyvsp[-3].node_def_temp)->nd_mid, &(yylsp[-3]));
                         restore_defun(p, (yyvsp[-3].node_def_temp));
@@ -28746,85 +28747,85 @@ yyreduce:
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=rb_ary_entry(v1, 0), v4=rb_ary_entry(v1, 1), v5=rb_ary_entry(v1, 2), v6=p->s_lvalue, v7=dispatch5(defs,v3,v4,v5,v2,v6); p->s_lvalue=v7;}
                         local_pop(p);
                     }
-#line 28750 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28751 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 63: /* endless_command: endless_command "'rescue' modifier" after_rescue arg  */
-#line 4113 "/tmp/ripper_tokenized.y"
+#line 4114 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_rescue = (yyvsp[-1].ctxt).in_rescue;
                         (yyval.node) = rescued_expr(p, (yyvsp[-3].node), (yyvsp[0].node), &(yylsp[-3]), &(yylsp[-2]), &(yylsp[0]));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(rescue_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28760 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28761 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 66: /* endless_command: "'not'" option_'\n' endless_command  */
-#line 4119 "/tmp/ripper_tokenized.y"
+#line 4120 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_uni_op(p, method_cond(p, (yyvsp[0].node), &(yylsp[0])), METHOD_NOT, &(yylsp[-2]), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=ID2VAL(idNOT), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
-#line 28769 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28770 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 68: /* command_rhs: command_call_value "'rescue' modifier" after_rescue stmt  */
-#line 4127 "/tmp/ripper_tokenized.y"
+#line 4128 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_rescue = (yyvsp[-1].ctxt).in_rescue;
                         YYLTYPE loc = code_loc_gen(&(yylsp[-2]), &(yylsp[0]));
                         (yyval.node) = NEW_RESCUE((yyvsp[-3].node), NEW_RESBODY(0, 0, remove_begin((yyvsp[0].node)), 0, &loc), 0, &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(rescue_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 28780 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28781 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 71: /* expr: expr "'and'" expr  */
-#line 4138 "/tmp/ripper_tokenized.y"
+#line 4139 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = logop(p, idAND, (yyvsp[-2].node), (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idAND), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 28789 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28790 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 72: /* expr: expr "'or'" expr  */
-#line 4143 "/tmp/ripper_tokenized.y"
+#line 4144 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = logop(p, idOR, (yyvsp[-2].node), (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idOR), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 28798 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28799 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 73: /* expr: "'not'" option_'\n' expr  */
-#line 4148 "/tmp/ripper_tokenized.y"
+#line 4149 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_uni_op(p, method_cond(p, (yyvsp[0].node), &(yylsp[0])), METHOD_NOT, &(yylsp[-2]), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=ID2VAL(idNOT), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
-#line 28807 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28808 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 74: /* expr: '!' command_call  */
-#line 4153 "/tmp/ripper_tokenized.y"
+#line 4154 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_uni_op(p, method_cond(p, (yyvsp[0].node), &(yylsp[0])), '!', &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=ID2VAL('!'), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
-#line 28816 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28817 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 75: /* $@7: %empty  */
-#line 4158 "/tmp/ripper_tokenized.y"
+#line 4159 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-1].node));
                     }
-#line 28824 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28825 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 76: /* expr: arg "=>" $@7 p_in_kwarg p_pvtbl p_pktbl p_top_expr_body  */
-#line 4163 "/tmp/ripper_tokenized.y"
+#line 4164 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-1].tbl));
                         pop_pvtbl(p, (yyvsp[-2].tbl));
@@ -28834,19 +28835,19 @@ yyreduce:
                         (yyval.node) = NEW_CASE3((yyvsp[-6].node), NEW_IN((yyvsp[0].node), 0, 0, &(yylsp[0]), &NULL_LOC, &NULL_LOC, &(yylsp[-5])), &(yyloc), &NULL_LOC, &NULL_LOC);
                     {VALUE v1=get_value((-6 - 1)), v2=get_value((0 - 1)), v3=Qnil, v4=Qnil, v5=dispatch3(in,v2,v3,v4), v6=dispatch2(case,v1,v5); p->s_lvalue=v6;}
                     }
-#line 28838 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28839 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 77: /* $@8: %empty  */
-#line 4173 "/tmp/ripper_tokenized.y"
+#line 4174 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-1].node));
                     }
-#line 28846 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28847 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 78: /* expr: arg "'in'" $@8 p_in_kwarg p_pvtbl p_pktbl p_top_expr_body  */
-#line 4178 "/tmp/ripper_tokenized.y"
+#line 4179 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-1].tbl));
                         pop_pvtbl(p, (yyvsp[-2].tbl));
@@ -28856,11 +28857,11 @@ yyreduce:
                         (yyval.node) = NEW_CASE3((yyvsp[-6].node), NEW_IN((yyvsp[0].node), NEW_TRUE(&(yylsp[0])), NEW_FALSE(&(yylsp[0])), &(yylsp[0]), &(yylsp[-5]), &NULL_LOC, &NULL_LOC), &(yyloc), &NULL_LOC, &NULL_LOC);
                     {VALUE v1=get_value((-6 - 1)), v2=get_value((0 - 1)), v3=Qnil, v4=Qnil, v5=dispatch3(in,v2,v3,v4), v6=dispatch2(case,v1,v5); p->s_lvalue=v6;}
                     }
-#line 28860 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28861 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 80: /* def_name: fname  */
-#line 4191 "/tmp/ripper_tokenized.y"
+#line 4192 "/tmp/ripper_tokenized.y"
                     {
                         numparam_name(p, (yyvsp[0].id));
                         local_push(p, 0);
@@ -28869,22 +28870,22 @@ yyreduce:
                         p->ctxt.cant_return = 0;
                         (yyval.id) = (yyvsp[0].id);
                     }
-#line 28873 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28874 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 81: /* defn_head: k_def def_name  */
-#line 4202 "/tmp/ripper_tokenized.y"
+#line 4203 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_def_temp) = def_head_save(p, (yyvsp[-1].node_def_temp));
                         (yyval.node_def_temp)->nd_mid = (yyvsp[0].id);
                         (yyval.node_def_temp)->nd_def = NEW_DEFN((yyvsp[0].id), 0, &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 28884 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28885 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 82: /* defs_head: k_def singleton dot_or_colon def_name  */
-#line 4212 "/tmp/ripper_tokenized.y"
+#line 4213 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_def_temp) = def_head_save(p, (yyvsp[-3].node_def_temp));
                         (yyval.node_def_temp)->nd_mid = (yyvsp[0].id);
@@ -28892,115 +28893,115 @@ yyreduce:
                         /* ENDFN is already set when `def_name` is lexed */
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, v3);}
                     }
-#line 28896 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28897 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 83: /* value_expr_expr: expr  */
-#line 3832 "/tmp/ripper_tokenized.y"
+#line 3833 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = (yyvsp[0].node);
                     }
-#line 28905 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28906 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 85: /* expr_value: error  */
-#line 4223 "/tmp/ripper_tokenized.y"
+#line 4224 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_ERROR(&(yyloc));
                     }
-#line 28913 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28914 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 86: /* $@9: %empty  */
-#line 4228 "/tmp/ripper_tokenized.y"
+#line 4229 "/tmp/ripper_tokenized.y"
                 {COND_PUSH(1);}
-#line 28919 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28920 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 87: /* $@10: %empty  */
-#line 4228 "/tmp/ripper_tokenized.y"
+#line 4229 "/tmp/ripper_tokenized.y"
                                               {COND_POP();}
-#line 28925 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28926 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 88: /* expr_value_do: $@9 expr_value do $@10  */
-#line 4229 "/tmp/ripper_tokenized.y"
+#line 4230 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-2].node);
                     {VALUE v1=get_value((-2 - 1)); p->s_lvalue=v1;}
                     }
-#line 28934 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28935 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 91: /* value_expr_command_call: command_call  */
-#line 3832 "/tmp/ripper_tokenized.y"
+#line 3833 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = (yyvsp[0].node);
                     }
-#line 28943 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28944 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 94: /* block_command: block_call call_op2 operation2 command_args  */
-#line 4244 "/tmp/ripper_tokenized.y"
+#line 4245 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_qcall(p, (yyvsp[-2].id), (yyvsp[-3].node), (yyvsp[-1].id), (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=dispatch3(call,v1,v2,v3), v6=dispatch2(method_add_arg,v5,v4); p->s_lvalue=v6;}
                     }
-#line 28952 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28953 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 95: /* cmd_brace_block: "{ arg" brace_body '}'  */
-#line 4251 "/tmp/ripper_tokenized.y"
+#line 4252 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node);
                         set_embraced_location((yyval.node), &(yylsp[-2]), &(yylsp[0]));
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 28962 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28963 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 96: /* fcall: "local variable or method"  */
-#line 4259 "/tmp/ripper_tokenized.y"
+#line 4260 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_fcall) = NEW_FCALL((yyvsp[0].id), 0, &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 28971 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28972 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 97: /* fcall: "constant"  */
-#line 4259 "/tmp/ripper_tokenized.y"
+#line 4260 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_fcall) = NEW_FCALL((yyvsp[0].id), 0, &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 28980 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28981 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 98: /* fcall: "method"  */
-#line 4259 "/tmp/ripper_tokenized.y"
+#line 4260 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_fcall) = NEW_FCALL((yyvsp[0].id), 0, &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 28989 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 28990 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 99: /* command: fcall command_args  */
-#line 4266 "/tmp/ripper_tokenized.y"
+#line 4267 "/tmp/ripper_tokenized.y"
                     {
                         (yyvsp[-1].node_fcall)->nd_args = (yyvsp[0].node);
                         nd_set_last_loc((yyvsp[-1].node_fcall), (yylsp[0]).end_pos);
                         (yyval.node) = (NODE *)(yyvsp[-1].node_fcall);
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(command,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29000 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29001 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 100: /* command: fcall command_args cmd_brace_block  */
-#line 4273 "/tmp/ripper_tokenized.y"
+#line 4274 "/tmp/ripper_tokenized.y"
                     {
                         block_dup_check(p, (yyvsp[-1].node), (yyvsp[0].node));
                         (yyvsp[-2].node_fcall)->nd_args = (yyvsp[-1].node);
@@ -29009,427 +29010,427 @@ yyreduce:
                         nd_set_last_loc((yyvsp[-2].node_fcall), (yylsp[-1]).end_pos);
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch2(command,v1,v2), v5=dispatch2(method_add_block,v4,v3); p->s_lvalue=v5;}
                     }
-#line 29013 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29014 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 101: /* command: primary_value call_op operation2 command_args  */
-#line 4282 "/tmp/ripper_tokenized.y"
+#line 4283 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_command_qcall(p, (yyvsp[-2].id), (yyvsp[-3].node), (yyvsp[-1].id), (yyvsp[0].node), 0, &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=dispatch4(command_call,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
-#line 29022 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29023 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 102: /* command: primary_value call_op operation2 command_args cmd_brace_block  */
-#line 4287 "/tmp/ripper_tokenized.y"
+#line 4288 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_command_qcall(p, (yyvsp[-3].id), (yyvsp[-4].node), (yyvsp[-2].id), (yyvsp[-1].node), (yyvsp[0].node), &(yylsp[-2]), &(yyloc));
                     {VALUE v1=get_value((-4 - 1)), v2=get_value((-3 - 1)), v3=get_value((-2 - 1)), v4=get_value((-1 - 1)), v5=get_value((0 - 1)), v6=dispatch4(command_call,v1,v2,v3,v4), v7=dispatch2(method_add_block,v6,v5); p->s_lvalue=v7;}
                     }
-#line 29031 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29032 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 103: /* command: primary_value "::" operation2 command_args  */
-#line 4292 "/tmp/ripper_tokenized.y"
+#line 4293 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_command_qcall(p, idCOLON2, (yyvsp[-3].node), (yyvsp[-1].id), (yyvsp[0].node), 0, &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=dispatch4(command_call,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
-#line 29040 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29041 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 104: /* command: primary_value "::" operation2 command_args cmd_brace_block  */
-#line 4297 "/tmp/ripper_tokenized.y"
+#line 4298 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_command_qcall(p, idCOLON2, (yyvsp[-4].node), (yyvsp[-2].id), (yyvsp[-1].node), (yyvsp[0].node), &(yylsp[-2]), &(yyloc));
                     {VALUE v1=get_value((-4 - 1)), v2=get_value((-3 - 1)), v3=get_value((-2 - 1)), v4=get_value((-1 - 1)), v5=get_value((0 - 1)), v6=dispatch4(command_call,v1,v2,v3,v4), v7=dispatch2(method_add_block,v6,v5); p->s_lvalue=v7;}
                    }
-#line 29049 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29050 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 105: /* command: primary_value "::" "constant" '{' brace_body '}'  */
-#line 4302 "/tmp/ripper_tokenized.y"
+#line 4303 "/tmp/ripper_tokenized.y"
                     {
                         set_embraced_location((yyvsp[-1].node), &(yylsp[-2]), &(yylsp[0]));
                         (yyval.node) = new_command_qcall(p, idCOLON2, (yyvsp[-5].node), (yyvsp[-3].id), 0, (yyvsp[-1].node), &(yylsp[-3]), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-4 - 1)), v3=get_value((-3 - 1)), v4=get_value((-1 - 1)), v5=Qnil, v6=dispatch4(command_call,v1,v2,v3,v5), v7=dispatch2(method_add_block,v6,v4); p->s_lvalue=v7;}
                    }
-#line 29059 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29060 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 106: /* command: "'super'" command_args  */
-#line 4308 "/tmp/ripper_tokenized.y"
+#line 4309 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_SUPER((yyvsp[0].node), &(yyloc), &(yylsp[-1]), &NULL_LOC, &NULL_LOC);
                         fixpos((yyval.node), (yyvsp[0].node));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(super,v1); p->s_lvalue=v2;}
                     }
-#line 29069 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29070 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 107: /* command: k_yield command_args  */
-#line 4314 "/tmp/ripper_tokenized.y"
+#line 4315 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_YIELD((yyvsp[0].node), &(yyloc), &(yylsp[-1]), &NULL_LOC, &NULL_LOC);
                         fixpos((yyval.node), (yyvsp[0].node));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(yield,v1); p->s_lvalue=v2;}
                     }
-#line 29079 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29080 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 108: /* command: k_return call_args  */
-#line 4320 "/tmp/ripper_tokenized.y"
+#line 4321 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_RETURN(ret_args(p, (yyvsp[0].node)), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(return,v1); p->s_lvalue=v2;}
                     }
-#line 29088 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29089 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 109: /* command: "'break'" call_args  */
-#line 4325 "/tmp/ripper_tokenized.y"
+#line 4326 "/tmp/ripper_tokenized.y"
                     {
                         NODE *args = 0;
                         args = ret_args(p, (yyvsp[0].node));
                         (yyval.node) = add_block_exit(p, NEW_BREAK(args, &(yyloc), &(yylsp[-1])));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(break,v1); p->s_lvalue=v2;}
                     }
-#line 29099 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29100 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 110: /* command: "'next'" call_args  */
-#line 4332 "/tmp/ripper_tokenized.y"
+#line 4333 "/tmp/ripper_tokenized.y"
                     {
                         NODE *args = 0;
                         args = ret_args(p, (yyvsp[0].node));
                         (yyval.node) = add_block_exit(p, NEW_NEXT(args, &(yyloc), &(yylsp[-1])));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(next,v1); p->s_lvalue=v2;}
                     }
-#line 29110 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29111 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 112: /* mlhs: "(" mlhs_inner rparen  */
-#line 4342 "/tmp/ripper_tokenized.y"
+#line 4343 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = (yyvsp[-1].node_masgn);
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(mlhs_paren,v1); p->s_lvalue=v2;}
                     }
-#line 29119 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29120 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 114: /* mlhs_inner: "(" mlhs_inner rparen  */
-#line 4350 "/tmp/ripper_tokenized.y"
+#line 4351 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN(NEW_LIST((NODE *)(yyvsp[-1].node_masgn), &(yyloc)), 0, &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(mlhs_paren,v1); p->s_lvalue=v2;}
                     }
-#line 29128 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29129 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 115: /* mlhs_basic: mlhs_head  */
-#line 4357 "/tmp/ripper_tokenized.y"
+#line 4358 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN((yyvsp[0].node), 0, &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 29137 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29138 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 116: /* mlhs_basic: mlhs_head mlhs_item  */
-#line 4362 "/tmp/ripper_tokenized.y"
+#line 4363 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN(list_append(p, (yyvsp[-1].node), (yyvsp[0].node)), 0, &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(mlhs_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29146 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29147 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 117: /* mlhs_basic: mlhs_head "*" mlhs_node  */
-#line 4367 "/tmp/ripper_tokenized.y"
+#line 4368 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN((yyvsp[-2].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(mlhs_add_star,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29155 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29156 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 118: /* mlhs_items_mlhs_item: mlhs_item  */
-#line 3719 "/tmp/ripper_tokenized.y"
+#line 3720 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_LIST((yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(mlhs_new), v3=dispatch2(mlhs_add,v2,v1); p->s_lvalue=v3;}
                     }
-#line 29164 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29165 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 119: /* mlhs_items_mlhs_item: mlhs_items_mlhs_item ',' mlhs_item  */
-#line 3724 "/tmp/ripper_tokenized.y"
+#line 3725 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_append(p, (yyvsp[-2].node), (yyvsp[0].node));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(mlhs_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29173 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29174 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 120: /* mlhs_basic: mlhs_head "*" mlhs_node ',' mlhs_items_mlhs_item  */
-#line 4372 "/tmp/ripper_tokenized.y"
+#line 4373 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN((yyvsp[-4].node), NEW_POSTARG((yyvsp[-2].node),(yyvsp[0].node),&(yyloc)), &(yyloc));
                     {VALUE v1=get_value((-4 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)), v4=dispatch2(mlhs_add_star,v1,v2), v5=dispatch2(mlhs_add_post,v4,v3); p->s_lvalue=v5;}
                     }
-#line 29182 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29183 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 121: /* mlhs_basic: mlhs_head "*"  */
-#line 4377 "/tmp/ripper_tokenized.y"
+#line 4378 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN((yyvsp[-1].node), NODE_SPECIAL_NO_NAME_REST, &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=Qnil, v3=dispatch2(mlhs_add_star,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29191 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29192 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 122: /* mlhs_basic: mlhs_head "*" ',' mlhs_items_mlhs_item  */
-#line 4382 "/tmp/ripper_tokenized.y"
+#line 4383 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN((yyvsp[-3].node), NEW_POSTARG(NODE_SPECIAL_NO_NAME_REST, (yyvsp[0].node), &(yyloc)), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=Qnil, v4=dispatch2(mlhs_add_star,v1,v3), v5=dispatch2(mlhs_add_post,v4,v2); p->s_lvalue=v5;}
                     }
-#line 29200 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29201 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 123: /* mlhs_basic: "*" mlhs_node  */
-#line 4387 "/tmp/ripper_tokenized.y"
+#line 4388 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN(0, (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(mlhs_new), v3=dispatch2(mlhs_add_star,v2,v1); p->s_lvalue=v3;}
                     }
-#line 29209 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29210 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 124: /* mlhs_basic: "*" mlhs_node ',' mlhs_items_mlhs_item  */
-#line 4392 "/tmp/ripper_tokenized.y"
+#line 4393 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN(0, NEW_POSTARG((yyvsp[-2].node),(yyvsp[0].node),&(yyloc)), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch0(mlhs_new), v4=dispatch2(mlhs_add_star,v3,v1), v5=dispatch2(mlhs_add_post,v4,v2); p->s_lvalue=v5;}
                     }
-#line 29218 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29219 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 125: /* mlhs_basic: "*"  */
-#line 4397 "/tmp/ripper_tokenized.y"
+#line 4398 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN(0, NODE_SPECIAL_NO_NAME_REST, &(yyloc));
                     {VALUE v1=dispatch0(mlhs_new), v2=Qnil, v3=dispatch2(mlhs_add_star,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29227 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29228 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 126: /* mlhs_basic: "*" ',' mlhs_items_mlhs_item  */
-#line 4402 "/tmp/ripper_tokenized.y"
+#line 4403 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN(0, NEW_POSTARG(NODE_SPECIAL_NO_NAME_REST, (yyvsp[0].node), &(yyloc)), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(mlhs_new), v3=Qnil, v4=dispatch2(mlhs_add_star,v2,v3), v5=dispatch2(mlhs_add_post,v4,v1); p->s_lvalue=v5;}
                     }
-#line 29236 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29237 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 128: /* mlhs_item: "(" mlhs_inner rparen  */
-#line 4410 "/tmp/ripper_tokenized.y"
+#line 4411 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (NODE *)(yyvsp[-1].node_masgn);
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(mlhs_paren,v1); p->s_lvalue=v2;}
                     }
-#line 29245 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29246 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 129: /* mlhs_head: mlhs_item ','  */
-#line 4417 "/tmp/ripper_tokenized.y"
+#line 4418 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_LIST((yyvsp[-1].node), &(yylsp[-1]));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch0(mlhs_new), v3=dispatch2(mlhs_add,v2,v1); p->s_lvalue=v3;}
                     }
-#line 29254 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29255 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 130: /* mlhs_head: mlhs_head mlhs_item ','  */
-#line 4422 "/tmp/ripper_tokenized.y"
+#line 4423 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_append(p, (yyvsp[-2].node), (yyvsp[-1].node));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(mlhs_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29263 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29264 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 131: /* mlhs_node: user_variable  */
-#line 4430 "/tmp/ripper_tokenized.y"
+#line 4431 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         (yyval.node) = assignable(p, (yyvsp[0].id), 0, &(yyloc));
                     }
-#line 29272 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29273 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 132: /* mlhs_node: keyword_variable  */
-#line 4430 "/tmp/ripper_tokenized.y"
+#line 4431 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         (yyval.node) = assignable(p, (yyvsp[0].id), 0, &(yyloc));
                     }
-#line 29281 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29282 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 133: /* mlhs_node: primary_value '[' opt_call_args rbracket  */
-#line 4435 "/tmp/ripper_tokenized.y"
+#line 4436 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = aryset(p, (yyvsp[-3].node), (yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(aref_field,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29290 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29291 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 134: /* mlhs_node: primary_value call_op "local variable or method"  */
-#line 4440 "/tmp/ripper_tokenized.y"
+#line 4441 "/tmp/ripper_tokenized.y"
                     {
                         anddot_multiple_assignment_check(p, &(yylsp[-1]), (yyvsp[-1].id));
                         (yyval.node) = attrset(p, (yyvsp[-2].node), (yyvsp[-1].id), (yyvsp[0].id), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch3(field,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 29300 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29301 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 135: /* mlhs_node: primary_value call_op "constant"  */
-#line 4440 "/tmp/ripper_tokenized.y"
+#line 4441 "/tmp/ripper_tokenized.y"
                     {
                         anddot_multiple_assignment_check(p, &(yylsp[-1]), (yyvsp[-1].id));
                         (yyval.node) = attrset(p, (yyvsp[-2].node), (yyvsp[-1].id), (yyvsp[0].id), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch3(field,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 29310 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29311 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 136: /* mlhs_node: primary_value "::" "local variable or method"  */
-#line 4446 "/tmp/ripper_tokenized.y"
+#line 4447 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = attrset(p, (yyvsp[-2].node), idCOLON2, (yyvsp[0].id), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(const_path_field,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29319 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29320 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 137: /* mlhs_node: primary_value "::" "constant"  */
-#line 4451 "/tmp/ripper_tokenized.y"
+#line 4452 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(const_path_field,v1,v2); p->s_lvalue=v3;}
                         (yyval.node) = const_decl(p, NEW_COLON2((yyvsp[-2].node), (yyvsp[0].id), &(yyloc), &(yylsp[-1]), &(yylsp[0])), &(yyloc));
                     }
-#line 29328 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29329 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 138: /* mlhs_node: ":: at EXPR_BEG" "constant"  */
-#line 4456 "/tmp/ripper_tokenized.y"
+#line 4457 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(top_const_field,v1); p->s_lvalue=v2;}
                         (yyval.node) = const_decl(p, NEW_COLON3((yyvsp[0].id), &(yyloc), &(yylsp[-1]), &(yylsp[0])), &(yyloc));
                     }
-#line 29337 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29338 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 139: /* mlhs_node: backref  */
-#line 4461 "/tmp/ripper_tokenized.y"
+#line 4462 "/tmp/ripper_tokenized.y"
                     {
                         VALUE MAYBE_UNUSED(e) = rb_backref_error(p, (yyvsp[0].node));
                         (yyval.node) = NEW_ERROR(&(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1), v3=e, v4=dispatch2(assign_error,v3,v2); p->s_lvalue=v4;ripper_error(p);}
                     }
-#line 29347 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29348 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 140: /* lhs: user_variable  */
-#line 4469 "/tmp/ripper_tokenized.y"
+#line 4470 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         (yyval.node) = assignable(p, (yyvsp[0].id), 0, &(yyloc));
                     }
-#line 29356 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29357 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 141: /* lhs: keyword_variable  */
-#line 4469 "/tmp/ripper_tokenized.y"
+#line 4470 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         (yyval.node) = assignable(p, (yyvsp[0].id), 0, &(yyloc));
                     }
-#line 29365 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29366 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 142: /* lhs: primary_value '[' opt_call_args rbracket  */
-#line 4474 "/tmp/ripper_tokenized.y"
+#line 4475 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = aryset(p, (yyvsp[-3].node), (yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(aref_field,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29374 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29375 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 143: /* lhs: primary_value call_op "local variable or method"  */
-#line 4479 "/tmp/ripper_tokenized.y"
+#line 4480 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = attrset(p, (yyvsp[-2].node), (yyvsp[-1].id), (yyvsp[0].id), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch3(field,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 29383 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29384 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 144: /* lhs: primary_value call_op "constant"  */
-#line 4479 "/tmp/ripper_tokenized.y"
+#line 4480 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = attrset(p, (yyvsp[-2].node), (yyvsp[-1].id), (yyvsp[0].id), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch3(field,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 29392 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29393 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 145: /* lhs: primary_value "::" "local variable or method"  */
-#line 4484 "/tmp/ripper_tokenized.y"
+#line 4485 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = attrset(p, (yyvsp[-2].node), idCOLON2, (yyvsp[0].id), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch3(field,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 29401 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29402 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 146: /* lhs: primary_value "::" "constant"  */
-#line 4489 "/tmp/ripper_tokenized.y"
+#line 4490 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(const_path_field,v1,v2); p->s_lvalue=v3;}
                         (yyval.node) = const_decl(p, NEW_COLON2((yyvsp[-2].node), (yyvsp[0].id), &(yyloc), &(yylsp[-1]), &(yylsp[0])), &(yyloc));
                     }
-#line 29410 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29411 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 147: /* lhs: ":: at EXPR_BEG" "constant"  */
-#line 4494 "/tmp/ripper_tokenized.y"
+#line 4495 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(top_const_field,v1); p->s_lvalue=v2;}
                         (yyval.node) = const_decl(p, NEW_COLON3((yyvsp[0].id), &(yyloc), &(yylsp[-1]), &(yylsp[0])), &(yyloc));
                     }
-#line 29419 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29420 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 148: /* lhs: backref  */
-#line 4499 "/tmp/ripper_tokenized.y"
+#line 4500 "/tmp/ripper_tokenized.y"
                     {
                         VALUE MAYBE_UNUSED(e) = rb_backref_error(p, (yyvsp[0].node));
                         (yyval.node) = NEW_ERROR(&(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1), v3=e, v4=dispatch2(assign_error,v3,v2); p->s_lvalue=v4;ripper_error(p);}
                     }
-#line 29429 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29430 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 149: /* cname: "local variable or method"  */
-#line 4507 "/tmp/ripper_tokenized.y"
+#line 4508 "/tmp/ripper_tokenized.y"
                     {
                         static const char mesg[] = "class/module name must be CONSTANT";
 #if 0
@@ -29437,635 +29438,635 @@ yyreduce:
 #endif
                     {VALUE v1=get_value((0 - 1)), v2=ERR_MESG(), v3=dispatch2(class_name_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
-#line 29441 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29442 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 151: /* cpath: ":: at EXPR_BEG" cname  */
-#line 4518 "/tmp/ripper_tokenized.y"
+#line 4519 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_COLON3((yyvsp[0].id), &(yyloc), &(yylsp[-1]), &(yylsp[0]));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(top_const_ref,v1); p->s_lvalue=v2;}
                     }
-#line 29450 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29451 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 152: /* cpath: cname  */
-#line 4523 "/tmp/ripper_tokenized.y"
+#line 4524 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_COLON2(0, (yyvsp[0].id), &(yyloc), &NULL_LOC, &(yylsp[0]));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(const_ref,v1); p->s_lvalue=v2;}
                     }
-#line 29459 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29460 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 153: /* cpath: primary_value "::" cname  */
-#line 4528 "/tmp/ripper_tokenized.y"
+#line 4529 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_COLON2((yyvsp[-2].node), (yyvsp[0].id), &(yyloc), &(yylsp[-1]), &(yylsp[0]));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(const_path_ref,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29468 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29469 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 157: /* fname: op  */
-#line 4536 "/tmp/ripper_tokenized.y"
+#line 4537 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = (yyvsp[0].id);
                     }
-#line 29476 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29477 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 159: /* fitem: fname  */
-#line 4543 "/tmp/ripper_tokenized.y"
+#line 4544 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_SYM(rb_id2str((yyvsp[0].id)), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(symbol_literal,v1); p->s_lvalue=v2;}
                     }
-#line 29485 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29486 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 161: /* undef_list: fitem  */
-#line 4551 "/tmp/ripper_tokenized.y"
+#line 4552 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_UNDEF((yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new3(1, v1);}
                     }
-#line 29494 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29495 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 162: /* $@11: %empty  */
-#line 4556 "/tmp/ripper_tokenized.y"
+#line 4557 "/tmp/ripper_tokenized.y"
                     {
                         /* next fitem in undef list is also readable by lexer default transition */
                     }
-#line 29502 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29503 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 163: /* undef_list: undef_list ',' $@11 fitem  */
-#line 4560 "/tmp/ripper_tokenized.y"
+#line 4561 "/tmp/ripper_tokenized.y"
                     {
                         nd_set_last_loc((yyvsp[-3].node), (yylsp[0]).end_pos);
                         rb_parser_ary_push_node(p, RNODE_UNDEF((yyvsp[-3].node))->nd_undefs, (yyvsp[0].node));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
-#line 29512 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29513 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 164: /* op: '|'  */
-#line 4567 "/tmp/ripper_tokenized.y"
+#line 4568 "/tmp/ripper_tokenized.y"
            { (yyval.id) = '|'; }
-#line 29518 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29519 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 165: /* op: '^'  */
-#line 4568 "/tmp/ripper_tokenized.y"
+#line 4569 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '^'; }
-#line 29524 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29525 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 166: /* op: '&'  */
-#line 4569 "/tmp/ripper_tokenized.y"
+#line 4570 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '&'; }
-#line 29530 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29531 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 167: /* op: "<=>"  */
-#line 4570 "/tmp/ripper_tokenized.y"
+#line 4571 "/tmp/ripper_tokenized.y"
                         { (yyval.id) = tCMP; }
-#line 29536 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29537 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 168: /* op: "=="  */
-#line 4571 "/tmp/ripper_tokenized.y"
+#line 4572 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = tEQ; }
-#line 29542 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29543 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 169: /* op: "==="  */
-#line 4572 "/tmp/ripper_tokenized.y"
+#line 4573 "/tmp/ripper_tokenized.y"
                         { (yyval.id) = tEQQ; }
-#line 29548 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29549 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 170: /* op: "=~"  */
-#line 4573 "/tmp/ripper_tokenized.y"
+#line 4574 "/tmp/ripper_tokenized.y"
                          { (yyval.id) = tMATCH; }
-#line 29554 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29555 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 171: /* op: "!~"  */
-#line 4574 "/tmp/ripper_tokenized.y"
+#line 4575 "/tmp/ripper_tokenized.y"
                           { (yyval.id) = tNMATCH; }
-#line 29560 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29561 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 172: /* op: '>'  */
-#line 4575 "/tmp/ripper_tokenized.y"
+#line 4576 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '>'; }
-#line 29566 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29567 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 173: /* op: ">="  */
-#line 4576 "/tmp/ripper_tokenized.y"
+#line 4577 "/tmp/ripper_tokenized.y"
                         { (yyval.id) = tGEQ; }
-#line 29572 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29573 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 174: /* op: '<'  */
-#line 4577 "/tmp/ripper_tokenized.y"
+#line 4578 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '<'; }
-#line 29578 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29579 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 175: /* op: "<="  */
-#line 4578 "/tmp/ripper_tokenized.y"
+#line 4579 "/tmp/ripper_tokenized.y"
                         { (yyval.id) = tLEQ; }
-#line 29584 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29585 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 176: /* op: "!="  */
-#line 4579 "/tmp/ripper_tokenized.y"
+#line 4580 "/tmp/ripper_tokenized.y"
                         { (yyval.id) = tNEQ; }
-#line 29590 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29591 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 177: /* op: "<<"  */
-#line 4580 "/tmp/ripper_tokenized.y"
+#line 4581 "/tmp/ripper_tokenized.y"
                          { (yyval.id) = tLSHFT; }
-#line 29596 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29597 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 178: /* op: ">>"  */
-#line 4581 "/tmp/ripper_tokenized.y"
+#line 4582 "/tmp/ripper_tokenized.y"
                          { (yyval.id) = tRSHFT; }
-#line 29602 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29603 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 179: /* op: '+'  */
-#line 4582 "/tmp/ripper_tokenized.y"
+#line 4583 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '+'; }
-#line 29608 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29609 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 180: /* op: '-'  */
-#line 4583 "/tmp/ripper_tokenized.y"
+#line 4584 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '-'; }
-#line 29614 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29615 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 181: /* op: '*'  */
-#line 4584 "/tmp/ripper_tokenized.y"
+#line 4585 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '*'; }
-#line 29620 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29621 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 182: /* op: "*"  */
-#line 4585 "/tmp/ripper_tokenized.y"
+#line 4586 "/tmp/ripper_tokenized.y"
                          { (yyval.id) = '*'; }
-#line 29626 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29627 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 183: /* op: '/'  */
-#line 4586 "/tmp/ripper_tokenized.y"
+#line 4587 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '/'; }
-#line 29632 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29633 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 184: /* op: '%'  */
-#line 4587 "/tmp/ripper_tokenized.y"
+#line 4588 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '%'; }
-#line 29638 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29639 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 185: /* op: "**"  */
-#line 4588 "/tmp/ripper_tokenized.y"
+#line 4589 "/tmp/ripper_tokenized.y"
                         { (yyval.id) = tPOW; }
-#line 29644 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29645 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 186: /* op: "**arg"  */
-#line 4589 "/tmp/ripper_tokenized.y"
+#line 4590 "/tmp/ripper_tokenized.y"
                          { (yyval.id) = tDSTAR; }
-#line 29650 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29651 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 187: /* op: '!'  */
-#line 4590 "/tmp/ripper_tokenized.y"
+#line 4591 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '!'; }
-#line 29656 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29657 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 188: /* op: '~'  */
-#line 4591 "/tmp/ripper_tokenized.y"
+#line 4592 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '~'; }
-#line 29662 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29663 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 189: /* op: "unary+"  */
-#line 4592 "/tmp/ripper_tokenized.y"
+#line 4593 "/tmp/ripper_tokenized.y"
                          { (yyval.id) = tUPLUS; }
-#line 29668 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29669 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 190: /* op: "unary-"  */
-#line 4593 "/tmp/ripper_tokenized.y"
+#line 4594 "/tmp/ripper_tokenized.y"
                           { (yyval.id) = tUMINUS; }
-#line 29674 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29675 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 191: /* op: "[]"  */
-#line 4594 "/tmp/ripper_tokenized.y"
+#line 4595 "/tmp/ripper_tokenized.y"
                          { (yyval.id) = tAREF; }
-#line 29680 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29681 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 192: /* op: "[]="  */
-#line 4595 "/tmp/ripper_tokenized.y"
+#line 4596 "/tmp/ripper_tokenized.y"
                          { (yyval.id) = tASET; }
-#line 29686 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29687 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 193: /* op: '`'  */
-#line 4596 "/tmp/ripper_tokenized.y"
+#line 4597 "/tmp/ripper_tokenized.y"
                        { (yyval.id) = '`'; }
-#line 29692 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29693 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 235: /* asgn_arg_rhs: lhs '=' lex_ctxt arg_rhs  */
-#line 3597 "/tmp/ripper_tokenized.y"
+#line 3598 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = node_assign(p, (NODE *)(yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(assign,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29701 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29702 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 237: /* op_asgn_arg_rhs: var_lhs "operator-assignment" lex_ctxt arg_rhs  */
-#line 3732 "/tmp/ripper_tokenized.y"
+#line 3733 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_op_assign(p, (yyvsp[-3].node), (yyvsp[-2].id), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)), v4=dispatch3(opassign,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 29710 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29711 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 238: /* op_asgn_arg_rhs: primary_value '[' opt_call_args rbracket "operator-assignment" lex_ctxt arg_rhs  */
-#line 3737 "/tmp/ripper_tokenized.y"
+#line 3738 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_ary_op_assign(p, (yyvsp[-6].node), (yyvsp[-4].node), (yyvsp[-2].id), (yyvsp[0].node), &(yylsp[-4]), &(yyloc), &NULL_LOC, &(yylsp[-5]), &(yylsp[-3]), &(yylsp[-2]));
                     {VALUE v1=get_value((-6 - 1)), v2=get_value((-4 - 1)), v3=get_value((-2 - 1)), v4=get_value((0 - 1)), v5=dispatch2(aref_field,v1,v2), v6=dispatch3(opassign,v5,v3,v4); p->s_lvalue=v6;}
                     }
-#line 29719 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29720 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 239: /* op_asgn_arg_rhs: primary_value call_op "local variable or method" "operator-assignment" lex_ctxt arg_rhs  */
-#line 3742 "/tmp/ripper_tokenized.y"
+#line 3743 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_attr_op_assign(p, (yyvsp[-5].node), (yyvsp[-4].id), (yyvsp[-3].id), (yyvsp[-2].id), (yyvsp[0].node), &(yyloc), &(yylsp[-4]), &(yylsp[-3]), &(yylsp[-2]));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-4 - 1)), v3=get_value((-3 - 1)), v4=get_value((-2 - 1)), v5=get_value((0 - 1)), v6=dispatch3(field,v1,v2,v3), v7=dispatch3(opassign,v6,v4,v5); p->s_lvalue=v7;}
                     }
-#line 29728 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29729 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 240: /* op_asgn_arg_rhs: primary_value call_op "constant" "operator-assignment" lex_ctxt arg_rhs  */
-#line 3747 "/tmp/ripper_tokenized.y"
+#line 3748 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_attr_op_assign(p, (yyvsp[-5].node), (yyvsp[-4].id), (yyvsp[-3].id), (yyvsp[-2].id), (yyvsp[0].node), &(yyloc), &(yylsp[-4]), &(yylsp[-3]), &(yylsp[-2]));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-4 - 1)), v3=get_value((-3 - 1)), v4=get_value((-2 - 1)), v5=get_value((0 - 1)), v6=dispatch3(field,v1,v2,v3), v7=dispatch3(opassign,v6,v4,v5); p->s_lvalue=v7;}
                     }
-#line 29737 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29738 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 241: /* op_asgn_arg_rhs: primary_value "::" "local variable or method" "operator-assignment" lex_ctxt arg_rhs  */
-#line 3752 "/tmp/ripper_tokenized.y"
+#line 3753 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_attr_op_assign(p, (yyvsp[-5].node), idCOLON2, (yyvsp[-3].id), (yyvsp[-2].id), (yyvsp[0].node), &(yyloc), &(yylsp[-4]), &(yylsp[-3]), &(yylsp[-2]));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-4 - 1)), v3=get_value((-3 - 1)), v4=get_value((-2 - 1)), v5=get_value((0 - 1)), v6=dispatch3(field,v1,v2,v3), v7=dispatch3(opassign,v6,v4,v5); p->s_lvalue=v7;}
                     }
-#line 29746 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29747 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 242: /* op_asgn_arg_rhs: primary_value "::" "constant" "operator-assignment" lex_ctxt arg_rhs  */
-#line 3757 "/tmp/ripper_tokenized.y"
+#line 3758 "/tmp/ripper_tokenized.y"
                     {
                         YYLTYPE loc = code_loc_gen(&(yylsp[-5]), &(yylsp[-3]));
                         (yyval.node) = new_const_op_assign(p, NEW_COLON2((yyvsp[-5].node), (yyvsp[-3].id), &loc, &(yylsp[-4]), &(yylsp[-3])), (yyvsp[-2].id), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-2 - 1)), v4=get_value((0 - 1)), v5=dispatch2(const_path_field,v1,v2), v6=dispatch3(opassign,v5,v3,v4); p->s_lvalue=v6;}
                     }
-#line 29756 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29757 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 243: /* op_asgn_arg_rhs: ":: at EXPR_BEG" "constant" "operator-assignment" lex_ctxt arg_rhs  */
-#line 3763 "/tmp/ripper_tokenized.y"
+#line 3764 "/tmp/ripper_tokenized.y"
                     {
                         YYLTYPE loc = code_loc_gen(&(yylsp[-4]), &(yylsp[-3]));
                         (yyval.node) = new_const_op_assign(p, NEW_COLON3((yyvsp[-3].id), &loc, &(yylsp[-4]), &(yylsp[-3])), (yyvsp[-2].id), (yyvsp[0].node), (yyvsp[-1].ctxt), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)), v4=dispatch1(top_const_field,v1), v5=dispatch3(opassign,v4,v2,v3); p->s_lvalue=v5;}
                     }
-#line 29766 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29767 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 244: /* op_asgn_arg_rhs: backref "operator-assignment" lex_ctxt arg_rhs  */
-#line 3769 "/tmp/ripper_tokenized.y"
+#line 3770 "/tmp/ripper_tokenized.y"
                     {
                         VALUE MAYBE_UNUSED(e) = rb_backref_error(p, (yyvsp[-3].node));
                         (yyval.node) = NEW_ERROR(&(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)), v4=dispatch1(var_field,v1), v5=dispatch3(opassign,v4,v2,v3), v6=e, v7=dispatch2(assign_error,v6,v5); p->s_lvalue=v7;ripper_error(p);}
                     }
-#line 29776 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29777 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 246: /* range_expr_arg: arg ".." arg  */
-#line 3791 "/tmp/ripper_tokenized.y"
+#line 3792 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-2].node));
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = NEW_DOT2((yyvsp[-2].node), (yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(dot2,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29787 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29788 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 247: /* range_expr_arg: arg "..." arg  */
-#line 3798 "/tmp/ripper_tokenized.y"
+#line 3799 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-2].node));
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = NEW_DOT3((yyvsp[-2].node), (yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(dot3,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29798 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29799 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 248: /* range_expr_arg: arg ".."  */
-#line 3805 "/tmp/ripper_tokenized.y"
+#line 3806 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-1].node));
                         (yyval.node) = NEW_DOT2((yyvsp[-1].node), new_nil_at(p, &(yylsp[0]).end_pos), &(yyloc), &(yylsp[0]));
                     {VALUE v1=get_value((-1 - 1)), v2=Qnil, v3=dispatch2(dot2,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29808 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29809 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 249: /* range_expr_arg: arg "..."  */
-#line 3811 "/tmp/ripper_tokenized.y"
+#line 3812 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-1].node));
                         (yyval.node) = NEW_DOT3((yyvsp[-1].node), new_nil_at(p, &(yylsp[0]).end_pos), &(yyloc), &(yylsp[0]));
                     {VALUE v1=get_value((-1 - 1)), v2=Qnil, v3=dispatch2(dot3,v1,v2); p->s_lvalue=v3;}
                     }
-#line 29818 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29819 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 250: /* range_expr_arg: "(.." arg  */
-#line 3817 "/tmp/ripper_tokenized.y"
+#line 3818 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = NEW_DOT2(new_nil_at(p, &(yylsp[-1]).beg_pos), (yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((0 - 1)), v2=Qnil, v3=dispatch2(dot2,v2,v1); p->s_lvalue=v3;}
                     }
-#line 29828 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29829 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 251: /* range_expr_arg: "(..." arg  */
-#line 3823 "/tmp/ripper_tokenized.y"
+#line 3824 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = NEW_DOT3(new_nil_at(p, &(yylsp[-1]).beg_pos), (yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((0 - 1)), v2=Qnil, v3=dispatch2(dot3,v2,v1); p->s_lvalue=v3;}
                     }
-#line 29838 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29839 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 253: /* arg: arg '+' arg  */
-#line 4617 "/tmp/ripper_tokenized.y"
+#line 4618 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), '+', (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL('+'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29847 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29848 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 254: /* arg: arg '-' arg  */
-#line 4622 "/tmp/ripper_tokenized.y"
+#line 4623 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), '-', (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL('-'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29856 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29857 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 255: /* arg: arg '*' arg  */
-#line 4627 "/tmp/ripper_tokenized.y"
+#line 4628 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), '*', (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL('*'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29865 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29866 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 256: /* arg: arg '/' arg  */
-#line 4632 "/tmp/ripper_tokenized.y"
+#line 4633 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), '/', (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL('/'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29874 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29875 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 257: /* arg: arg '%' arg  */
-#line 4637 "/tmp/ripper_tokenized.y"
+#line 4638 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), '%', (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL('%'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29883 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29884 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 258: /* arg: arg "**" arg  */
-#line 4642 "/tmp/ripper_tokenized.y"
+#line 4643 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), idPow, (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idPow), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29892 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29893 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 259: /* arg: tUMINUS_NUM simple_numeric "**" arg  */
-#line 4647 "/tmp/ripper_tokenized.y"
+#line 4648 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_uni_op(p, call_bin_op(p, (yyvsp[-2].node), idPow, (yyvsp[0].node), &(yylsp[-2]), &(yyloc)), idUMinus, &(yylsp[-3]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idPow), v4=dispatch3(binary,v1,v3,v2), v5=ID2VAL(idUMinus), v6=dispatch2(unary,v5,v4); p->s_lvalue=v6;}
                     }
-#line 29901 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29902 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 260: /* arg: "unary+" arg  */
-#line 4652 "/tmp/ripper_tokenized.y"
+#line 4653 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_uni_op(p, (yyvsp[0].node), idUPlus, &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=ID2VAL(idUPlus), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
-#line 29910 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29911 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 261: /* arg: "unary-" arg  */
-#line 4657 "/tmp/ripper_tokenized.y"
+#line 4658 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_uni_op(p, (yyvsp[0].node), idUMinus, &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=ID2VAL(idUMinus), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
-#line 29919 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29920 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 262: /* arg: arg '|' arg  */
-#line 4662 "/tmp/ripper_tokenized.y"
+#line 4663 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), '|', (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL('|'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29928 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29929 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 263: /* arg: arg '^' arg  */
-#line 4667 "/tmp/ripper_tokenized.y"
+#line 4668 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), '^', (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL('^'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29937 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29938 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 264: /* arg: arg '&' arg  */
-#line 4672 "/tmp/ripper_tokenized.y"
+#line 4673 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), '&', (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL('&'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29946 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29947 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 265: /* arg: arg "<=>" arg  */
-#line 4677 "/tmp/ripper_tokenized.y"
+#line 4678 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), idCmp, (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idCmp), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29955 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29956 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 267: /* arg: arg "==" arg  */
-#line 4683 "/tmp/ripper_tokenized.y"
+#line 4684 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), idEq, (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idEq), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29964 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29965 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 268: /* arg: arg "===" arg  */
-#line 4688 "/tmp/ripper_tokenized.y"
+#line 4689 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), idEqq, (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idEqq), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29973 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29974 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 269: /* arg: arg "!=" arg  */
-#line 4693 "/tmp/ripper_tokenized.y"
+#line 4694 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), idNeq, (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idNeq), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29982 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29983 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 270: /* arg: arg "=~" arg  */
-#line 4698 "/tmp/ripper_tokenized.y"
+#line 4699 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = match_op(p, (yyvsp[-2].node), (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idEqTilde), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 29991 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 29992 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 271: /* arg: arg "!~" arg  */
-#line 4703 "/tmp/ripper_tokenized.y"
+#line 4704 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), idNeqTilde, (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idNeqTilde), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 30000 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30001 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 272: /* arg: '!' arg  */
-#line 4708 "/tmp/ripper_tokenized.y"
+#line 4709 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_uni_op(p, method_cond(p, (yyvsp[0].node), &(yylsp[0])), '!', &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=ID2VAL('!'), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
-#line 30009 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30010 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 273: /* arg: '~' arg  */
-#line 4713 "/tmp/ripper_tokenized.y"
+#line 4714 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_uni_op(p, (yyvsp[0].node), '~', &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=ID2VAL('~'), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
-#line 30018 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30019 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 274: /* arg: arg "<<" arg  */
-#line 4718 "/tmp/ripper_tokenized.y"
+#line 4719 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), idLTLT, (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idLTLT), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 30027 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30028 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 275: /* arg: arg ">>" arg  */
-#line 4723 "/tmp/ripper_tokenized.y"
+#line 4724 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), idGTGT, (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idGTGT), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 30036 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30037 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 276: /* arg: arg "&&" arg  */
-#line 4728 "/tmp/ripper_tokenized.y"
+#line 4729 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = logop(p, idANDOP, (yyvsp[-2].node), (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idANDOP), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 30045 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30046 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 277: /* arg: arg "||" arg  */
-#line 4733 "/tmp/ripper_tokenized.y"
+#line 4734 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = logop(p, idOROP, (yyvsp[-2].node), (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idOROP), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 30054 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30055 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 278: /* arg: "'defined?'" option_'\n' begin_defined arg  */
-#line 4738 "/tmp/ripper_tokenized.y"
+#line 4739 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_defined = (yyvsp[-1].ctxt).in_defined;
                         (yyval.node) = new_defined(p, (yyvsp[0].node), &(yyloc), &(yylsp[-3]));
                         p->ctxt.has_trailing_semicolon = (yyvsp[-1].ctxt).has_trailing_semicolon;
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(defined,v1); p->s_lvalue=v2;}
                     }
-#line 30065 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30066 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 279: /* def_endless_method_endless_arg: defn_head f_opt_paren_args '=' endless_arg  */
-#line 3637 "/tmp/ripper_tokenized.y"
+#line 3638 "/tmp/ripper_tokenized.y"
                     {
                         endless_method_name(p, (yyvsp[-3].node_def_temp)->nd_mid, &(yylsp[-3]));
                         restore_defun(p, (yyvsp[-3].node_def_temp));
@@ -30076,11 +30077,11 @@ yyreduce:
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=p->s_lvalue, v4=dispatch3(def,v1,v2,v3); p->s_lvalue=v4;}
                         local_pop(p);
                     }
-#line 30080 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30081 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 280: /* def_endless_method_endless_arg: defs_head f_opt_paren_args '=' endless_arg  */
-#line 3648 "/tmp/ripper_tokenized.y"
+#line 3649 "/tmp/ripper_tokenized.y"
                     {
                         endless_method_name(p, (yyvsp[-3].node_def_temp)->nd_mid, &(yylsp[-3]));
                         restore_defun(p, (yyvsp[-3].node_def_temp));
@@ -30091,166 +30092,166 @@ yyreduce:
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=rb_ary_entry(v1, 0), v4=rb_ary_entry(v1, 1), v5=rb_ary_entry(v1, 2), v6=p->s_lvalue, v7=dispatch5(defs,v3,v4,v5,v2,v6); p->s_lvalue=v7;}
                         local_pop(p);
                     }
-#line 30095 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30096 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 284: /* ternary: arg '?' arg option_'\n' ':' arg  */
-#line 4750 "/tmp/ripper_tokenized.y"
+#line 4751 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-5].node));
                         (yyval.node) = new_if(p, (yyvsp[-5].node), (yyvsp[-3].node), (yyvsp[0].node), &(yyloc), &NULL_LOC, &(yylsp[-1]), &NULL_LOC);
                         fixpos((yyval.node), (yyvsp[-5].node));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((0 - 1)), v4=dispatch3(ifop,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 30106 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30107 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 286: /* endless_arg: endless_arg "'rescue' modifier" after_rescue arg  */
-#line 4760 "/tmp/ripper_tokenized.y"
+#line 4761 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_rescue = (yyvsp[-1].ctxt).in_rescue;
                         (yyval.node) = rescued_expr(p, (yyvsp[-3].node), (yyvsp[0].node), &(yylsp[-3]), &(yylsp[-2]), &(yylsp[0]));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(rescue_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 30116 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30117 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 287: /* endless_arg: "'not'" option_'\n' endless_arg  */
-#line 4766 "/tmp/ripper_tokenized.y"
+#line 4767 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_uni_op(p, method_cond(p, (yyvsp[0].node), &(yylsp[0])), METHOD_NOT, &(yylsp[-2]), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=ID2VAL(idNOT), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
-#line 30125 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30126 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 288: /* relop: '>'  */
-#line 4772 "/tmp/ripper_tokenized.y"
+#line 4773 "/tmp/ripper_tokenized.y"
               {(yyval.id) = '>';}
-#line 30131 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30132 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 289: /* relop: '<'  */
-#line 4773 "/tmp/ripper_tokenized.y"
+#line 4774 "/tmp/ripper_tokenized.y"
                        {(yyval.id) = '<';}
-#line 30137 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30138 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 290: /* relop: ">="  */
-#line 4774 "/tmp/ripper_tokenized.y"
+#line 4775 "/tmp/ripper_tokenized.y"
                        {(yyval.id) = idGE;}
-#line 30143 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30144 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 291: /* relop: "<="  */
-#line 4775 "/tmp/ripper_tokenized.y"
+#line 4776 "/tmp/ripper_tokenized.y"
                        {(yyval.id) = idLE;}
-#line 30149 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30150 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 292: /* rel_expr: arg relop arg  */
-#line 4779 "/tmp/ripper_tokenized.y"
+#line 4780 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), (yyvsp[-1].id), (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL((yyvsp[-1].id)), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 30158 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30159 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 293: /* rel_expr: rel_expr relop arg  */
-#line 4784 "/tmp/ripper_tokenized.y"
+#line 4785 "/tmp/ripper_tokenized.y"
                     {
                         rb_warning1("comparison '%s' after comparison", WARN_ID((yyvsp[-1].id)));
                         (yyval.node) = call_bin_op(p, (yyvsp[-2].node), (yyvsp[-1].id), (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL((yyvsp[-1].id)), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 30168 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30169 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 294: /* lex_ctxt: none  */
-#line 4792 "/tmp/ripper_tokenized.y"
+#line 4793 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.ctxt) = p->ctxt;
                     }
-#line 30176 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30177 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 295: /* begin_defined: lex_ctxt  */
-#line 4798 "/tmp/ripper_tokenized.y"
+#line 4799 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_defined = 1;
                         (yyval.ctxt) = (yyvsp[0].ctxt);
                     }
-#line 30185 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30186 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 296: /* after_rescue: lex_ctxt  */
-#line 4805 "/tmp/ripper_tokenized.y"
+#line 4806 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_rescue = after_rescue;
                         (yyval.ctxt) = (yyvsp[0].ctxt);
                     }
-#line 30194 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30195 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 297: /* value_expr_arg: arg  */
-#line 3832 "/tmp/ripper_tokenized.y"
+#line 3833 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = (yyvsp[0].node);
                     }
-#line 30203 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30204 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 301: /* aref_args: args ',' assocs trailer  */
-#line 4817 "/tmp/ripper_tokenized.y"
+#line 4818 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node) ? arg_append(p, (yyvsp[-3].node), new_hash(p, (yyvsp[-1].node), &(yylsp[-1])), &(yyloc)) : (yyvsp[-3].node);
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=dispatch1(bare_assoc_hash,v2), v4=dispatch2(args_add,v1,v3); p->s_lvalue=v4;}
                     }
-#line 30212 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30213 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 302: /* aref_args: assocs trailer  */
-#line 4822 "/tmp/ripper_tokenized.y"
+#line 4823 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node) ? NEW_LIST(new_hash(p, (yyvsp[-1].node), &(yylsp[-1])), &(yyloc)) : 0;
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch0(args_new), v3=dispatch1(bare_assoc_hash,v1), v4=dispatch2(args_add,v2,v3); p->s_lvalue=v4;}
                     }
-#line 30221 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30222 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 303: /* arg_rhs: arg  */
-#line 4829 "/tmp/ripper_tokenized.y"
+#line 4830 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = (yyvsp[0].node);
                     }
-#line 30230 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30231 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 304: /* arg_rhs: arg "'rescue' modifier" after_rescue arg  */
-#line 4834 "/tmp/ripper_tokenized.y"
+#line 4835 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_rescue = (yyvsp[-1].ctxt).in_rescue;
                         value_expr(p, (yyvsp[-3].node));
                         (yyval.node) = rescued_expr(p, (yyvsp[-3].node), (yyvsp[0].node), &(yylsp[-3]), &(yylsp[-2]), &(yylsp[0]));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(rescue_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 30241 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30242 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 305: /* paren_args: '(' opt_call_args rparen  */
-#line 4843 "/tmp/ripper_tokenized.y"
+#line 4844 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node);
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(arg_paren,v1); p->s_lvalue=v2;}
                     }
-#line 30250 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30251 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 306: /* paren_args: '(' args ',' args_forward rparen  */
-#line 4848 "/tmp/ripper_tokenized.y"
+#line 4849 "/tmp/ripper_tokenized.y"
                     {
                         if (!check_forwarding_args(p)) {
                             (yyval.node) = 0;
@@ -30260,11 +30261,11 @@ yyreduce:
                         {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(args_add,v1,v2), v4=dispatch1(arg_paren,v3); p->s_lvalue=v4;}
                         }
                     }
-#line 30264 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30265 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 307: /* paren_args: '(' args_forward rparen  */
-#line 4858 "/tmp/ripper_tokenized.y"
+#line 4859 "/tmp/ripper_tokenized.y"
                     {
                         if (!check_forwarding_args(p)) {
                             (yyval.node) = 0;
@@ -30274,99 +30275,99 @@ yyreduce:
                         {VALUE v1=get_value((-1 - 1)), v2=dispatch1(arg_paren,v1); p->s_lvalue=v2;}
                         }
                     }
-#line 30278 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30279 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 309: /* opt_paren_args: paren_args  */
-#line 4871 "/tmp/ripper_tokenized.y"
+#line 4872 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[0].node) ? (yyvsp[0].node) : NODE_SPECIAL_EMPTY_ARGS;
                     }
-#line 30286 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30287 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 313: /* opt_call_args: args ',' assocs ','  */
-#line 4880 "/tmp/ripper_tokenized.y"
+#line 4881 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node) ? arg_append(p, (yyvsp[-3].node), new_hash(p, (yyvsp[-1].node), &(yylsp[-1])), &(yyloc)) : (yyvsp[-3].node);
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=dispatch1(bare_assoc_hash,v2), v4=dispatch2(args_add,v1,v3); p->s_lvalue=v4;}
                     }
-#line 30295 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30296 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 314: /* opt_call_args: assocs ','  */
-#line 4885 "/tmp/ripper_tokenized.y"
+#line 4886 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node) ? NEW_LIST(new_hash(p, (yyvsp[-1].node), &(yylsp[-1])), &(yylsp[-1])) : 0;
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch0(args_new), v3=dispatch1(bare_assoc_hash,v1), v4=dispatch2(args_add,v2,v3); p->s_lvalue=v4;}
                     }
-#line 30304 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30305 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 315: /* value_expr_command: command  */
-#line 3832 "/tmp/ripper_tokenized.y"
+#line 3833 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = (yyvsp[0].node);
                     }
-#line 30313 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30314 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 316: /* call_args: value_expr_command  */
-#line 4892 "/tmp/ripper_tokenized.y"
+#line 4893 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_LIST((yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(args_new), v3=dispatch2(args_add,v2,v1); p->s_lvalue=v3;}
                     }
-#line 30322 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30323 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 317: /* call_args: def_endless_method_endless_command  */
-#line 4897 "/tmp/ripper_tokenized.y"
+#line 4898 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_LIST((yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(args_new), v3=dispatch2(args_add,v2,v1); p->s_lvalue=v3;}
                     }
-#line 30331 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30332 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 318: /* call_args: args opt_block_arg  */
-#line 4902 "/tmp/ripper_tokenized.y"
+#line 4903 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = arg_blk_pass((yyvsp[-1].node), (yyvsp[0].node_block_pass));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(args_add_block,v1,v2); p->s_lvalue=v3;}
                     }
-#line 30340 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30341 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 319: /* call_args: assocs opt_block_arg  */
-#line 4907 "/tmp/ripper_tokenized.y"
+#line 4908 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node) ? NEW_LIST(new_hash(p, (yyvsp[-1].node), &(yylsp[-1])), &(yylsp[-1])) : 0;
                         (yyval.node) = arg_blk_pass((yyval.node), (yyvsp[0].node_block_pass));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch0(args_new), v4=dispatch1(bare_assoc_hash,v1), v5=dispatch2(args_add,v3,v4), v6=dispatch2(args_add_block,v5,v2); p->s_lvalue=v6;}
                     }
-#line 30350 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30351 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 320: /* call_args: args ',' assocs opt_block_arg  */
-#line 4913 "/tmp/ripper_tokenized.y"
+#line 4914 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node) ? arg_append(p, (yyvsp[-3].node), new_hash(p, (yyvsp[-1].node), &(yylsp[-1])), &(yyloc)) : (yyvsp[-3].node);
                         (yyval.node) = arg_blk_pass((yyval.node), (yyvsp[0].node_block_pass));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch1(bare_assoc_hash,v2), v5=dispatch2(args_add,v1,v4), v6=dispatch2(args_add_block,v5,v3); p->s_lvalue=v6;}
                     }
-#line 30360 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30361 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 321: /* call_args: block_arg  */
-#line 4919 "/tmp/ripper_tokenized.y"
+#line 4920 "/tmp/ripper_tokenized.y"
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(args_new), v3=dispatch2(args_add_block,v2,v1); p->s_lvalue=v3;}
-#line 30366 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30367 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 322: /* $@12: %empty  */
-#line 4922 "/tmp/ripper_tokenized.y"
+#line 4923 "/tmp/ripper_tokenized.y"
                  {
                         /* If call_args starts with a open paren '(' or '[',
                          * look-ahead reading of the letters calls CMDARG_PUSH(0),
@@ -30384,11 +30385,11 @@ yyreduce:
                         CMDARG_PUSH(1);
                         if (lookahead) CMDARG_PUSH(0);
                     }
-#line 30388 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30389 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 323: /* command_args: $@12 call_args  */
-#line 4940 "/tmp/ripper_tokenized.y"
+#line 4941 "/tmp/ripper_tokenized.y"
                     {
                         /* call_args can be followed by tLBRACE_ARG (that does CMDARG_PUSH(0) in the lexer)
                          * but the push must be done after CMDARG_POP() in the parser.
@@ -30407,148 +30408,148 @@ yyreduce:
                         (yyval.node) = (yyvsp[0].node);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 30411 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30412 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 324: /* block_arg: "&" arg_value  */
-#line 4961 "/tmp/ripper_tokenized.y"
+#line 4962 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_block_pass) = NEW_BLOCK_PASS((yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 30420 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30421 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 325: /* block_arg: "&"  */
-#line 4966 "/tmp/ripper_tokenized.y"
+#line 4967 "/tmp/ripper_tokenized.y"
                     {
                         forwarding_arg_check(p, idFWD_BLOCK, idFWD_ALL, "block");
                         (yyval.node_block_pass) = NEW_BLOCK_PASS(NEW_LVAR(idFWD_BLOCK, &(yylsp[0])), &(yyloc), &(yylsp[0]));
                     {p->s_lvalue=Qnil;}
                     }
-#line 30430 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30431 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 326: /* opt_block_arg: ',' block_arg  */
-#line 4974 "/tmp/ripper_tokenized.y"
+#line 4975 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_block_pass) = (yyvsp[0].node_block_pass);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 30439 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30440 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 327: /* opt_block_arg: none  */
-#line 4979 "/tmp/ripper_tokenized.y"
+#line 4980 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_block_pass) = 0;
                     {p->s_lvalue=Qfalse;}
                     }
-#line 30448 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30449 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 328: /* args: arg_value  */
-#line 4987 "/tmp/ripper_tokenized.y"
+#line 4988 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_LIST((yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(args_new), v3=dispatch2(args_add,v2,v1); p->s_lvalue=v3;}
                     }
-#line 30457 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30458 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 329: /* args: arg_splat  */
-#line 4992 "/tmp/ripper_tokenized.y"
+#line 4993 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[0].node);
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(args_new), v3=dispatch2(args_add_star,v2,v1); p->s_lvalue=v3;}
                     }
-#line 30466 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30467 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 330: /* args: args ',' arg_value  */
-#line 4997 "/tmp/ripper_tokenized.y"
+#line 4998 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = last_arg_append(p, (yyvsp[-2].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(args_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 30475 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30476 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 331: /* args: args ',' arg_splat  */
-#line 5002 "/tmp/ripper_tokenized.y"
+#line 5003 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = rest_arg_append(p, (yyvsp[-2].node), RNODE_SPLAT((yyvsp[0].node))->nd_head, &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(args_add_star,v1,v2); p->s_lvalue=v3;}
                     }
-#line 30484 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30485 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 332: /* arg_splat: "*" arg_value  */
-#line 5010 "/tmp/ripper_tokenized.y"
+#line 5011 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_SPLAT((yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 30493 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30494 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 333: /* arg_splat: "*"  */
-#line 5015 "/tmp/ripper_tokenized.y"
+#line 5016 "/tmp/ripper_tokenized.y"
                     {
                         forwarding_arg_check(p, idFWD_REST, idFWD_ALL, "rest");
                         (yyval.node) = NEW_SPLAT(NEW_LVAR(idFWD_REST, &(yylsp[0])), &(yyloc), &(yylsp[0]));
                     {p->s_lvalue=Qnil;}
                     }
-#line 30503 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30504 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 336: /* mrhs: args ',' arg_value  */
-#line 5029 "/tmp/ripper_tokenized.y"
+#line 5030 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = last_arg_append(p, (yyvsp[-2].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch1(mrhs_new_from_args,v1), v4=dispatch2(mrhs_add,v3,v2); p->s_lvalue=v4;}
                     }
-#line 30512 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30513 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 337: /* mrhs: args ',' "*" arg_value  */
-#line 5034 "/tmp/ripper_tokenized.y"
+#line 5035 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = rest_arg_append(p, (yyvsp[-3].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch1(mrhs_new_from_args,v1), v4=dispatch2(mrhs_add_star,v3,v2); p->s_lvalue=v4;}
                     }
-#line 30521 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30522 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 338: /* mrhs: "*" arg_value  */
-#line 5039 "/tmp/ripper_tokenized.y"
+#line 5040 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_SPLAT((yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(mrhs_new), v3=dispatch2(mrhs_add_star,v2,v1); p->s_lvalue=v3;}
                     }
-#line 30530 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30531 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 349: /* primary: "method"  */
-#line 5060 "/tmp/ripper_tokenized.y"
+#line 5061 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = (NODE *)NEW_FCALL((yyvsp[0].id), 0, &(yyloc));
                 {VALUE v1=get_value((0 - 1)), v2=dispatch1(fcall,v1), v3=dispatch0(args_new), v4=dispatch2(method_add_arg,v2,v3); p->s_lvalue=v4;}
                 }
-#line 30539 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30540 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 350: /* $@13: %empty  */
-#line 5065 "/tmp/ripper_tokenized.y"
+#line 5066 "/tmp/ripper_tokenized.y"
                 {
                     CMDARG_PUSH(0);
                     p->lex.lpar_nest++;
                 }
-#line 30548 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30549 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 351: /* primary: k_begin $@13 bodystmt k_end  */
-#line 5071 "/tmp/ripper_tokenized.y"
+#line 5072 "/tmp/ripper_tokenized.y"
                 {
                     CMDARG_POP();
                     if (p->lex.lpar_nest > 0) p->lex.lpar_nest--;
@@ -30557,159 +30558,159 @@ yyreduce:
                     nd_set_line((yyval.node), (yylsp[-3]).end_pos.lineno);
                 {VALUE v1=get_value((-1 - 1)), v2=dispatch1(begin,v1); p->s_lvalue=v2;}
                 }
-#line 30561 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30562 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 352: /* $@14: %empty  */
-#line 5080 "/tmp/ripper_tokenized.y"
+#line 5081 "/tmp/ripper_tokenized.y"
                 {
                 }
-#line 30568 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30569 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 353: /* primary: "( arg" compstmt_stmts $@14 ')'  */
-#line 5083 "/tmp/ripper_tokenized.y"
+#line 5084 "/tmp/ripper_tokenized.y"
                 {
                     if (nd_type_p((yyvsp[-2].node), NODE_SELF)) RNODE_SELF((yyvsp[-2].node))->nd_state = 0;
                     (yyval.node) = (yyvsp[-2].node);
                 {VALUE v1=get_value((-2 - 1)), v2=dispatch1(paren,v1); p->s_lvalue=v2;}
                 }
-#line 30578 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30579 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 354: /* primary: "(" compstmt_stmts ')'  */
-#line 5089 "/tmp/ripper_tokenized.y"
+#line 5090 "/tmp/ripper_tokenized.y"
                 {
                     if (nd_type_p((yyvsp[-1].node), NODE_SELF)) RNODE_SELF((yyvsp[-1].node))->nd_state = 0;
                     (yyval.node) = NEW_BLOCK((yyvsp[-1].node), &(yyloc));
                 {VALUE v1=get_value((-1 - 1)), v2=dispatch1(paren,v1); p->s_lvalue=v2;}
                 }
-#line 30588 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30589 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 355: /* primary: primary_value "::" "constant"  */
-#line 5095 "/tmp/ripper_tokenized.y"
+#line 5096 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = NEW_COLON2((yyvsp[-2].node), (yyvsp[0].id), &(yyloc), &(yylsp[-1]), &(yylsp[0]));
                 {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(const_path_ref,v1,v2); p->s_lvalue=v3;}
                 }
-#line 30597 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30598 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 356: /* primary: ":: at EXPR_BEG" "constant"  */
-#line 5100 "/tmp/ripper_tokenized.y"
+#line 5101 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = NEW_COLON3((yyvsp[0].id), &(yyloc), &(yylsp[-1]), &(yylsp[0]));
                 {VALUE v1=get_value((0 - 1)), v2=dispatch1(top_const_ref,v1); p->s_lvalue=v2;}
                 }
-#line 30606 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30607 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 357: /* primary: "[" aref_args ']'  */
-#line 5105 "/tmp/ripper_tokenized.y"
+#line 5106 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = make_list((yyvsp[-1].node), &(yyloc));
                 {VALUE v1=get_value((-1 - 1)), v2=dispatch1(array,v1); p->s_lvalue=v2;}
                 }
-#line 30615 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30616 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 358: /* primary: "{" assoc_list '}'  */
-#line 5110 "/tmp/ripper_tokenized.y"
+#line 5111 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = new_hash(p, (yyvsp[-1].node), &(yyloc));
                     RNODE_HASH((yyval.node))->nd_brace = TRUE;
                 {VALUE v1=get_value((-1 - 1)), v2=dispatch1(hash,v1); p->s_lvalue=v2;}
                 }
-#line 30625 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30626 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 359: /* primary: k_return  */
-#line 5116 "/tmp/ripper_tokenized.y"
+#line 5117 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = NEW_RETURN(0, &(yyloc), &(yylsp[0]));
                 {VALUE v1=dispatch0(return0); p->s_lvalue=v1;}
                 }
-#line 30634 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30635 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 360: /* primary: k_yield '(' call_args rparen  */
-#line 5121 "/tmp/ripper_tokenized.y"
+#line 5122 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = NEW_YIELD((yyvsp[-1].node), &(yyloc), &(yylsp[-3]), &(yylsp[-2]), &(yylsp[0]));
                 {VALUE v1=get_value((-1 - 1)), v2=dispatch1(paren,v1), v3=dispatch1(yield,v2); p->s_lvalue=v3;}
                 }
-#line 30643 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30644 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 361: /* primary: k_yield '(' rparen  */
-#line 5126 "/tmp/ripper_tokenized.y"
+#line 5127 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = NEW_YIELD(0, &(yyloc), &(yylsp[-2]), &(yylsp[-1]), &(yylsp[0]));
                 {VALUE v1=dispatch0(args_new), v2=dispatch1(paren,v1), v3=dispatch1(yield,v2); p->s_lvalue=v3;}
                 }
-#line 30652 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30653 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 362: /* primary: k_yield  */
-#line 5131 "/tmp/ripper_tokenized.y"
+#line 5132 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = NEW_YIELD(0, &(yyloc), &(yylsp[0]), &NULL_LOC, &NULL_LOC);
                 {VALUE v1=dispatch0(yield0); p->s_lvalue=v1;}
                 }
-#line 30661 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30662 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 363: /* primary: "'defined?'" option_'\n' '(' begin_defined expr rparen  */
-#line 5136 "/tmp/ripper_tokenized.y"
+#line 5137 "/tmp/ripper_tokenized.y"
                 {
                     p->ctxt.in_defined = (yyvsp[-2].ctxt).in_defined;
                     (yyval.node) = new_defined(p, (yyvsp[-1].node), &(yyloc), &(yylsp[-5]));
                     p->ctxt.has_trailing_semicolon = (yyvsp[-2].ctxt).has_trailing_semicolon;
                 {VALUE v1=get_value((-1 - 1)), v2=dispatch1(defined,v1); p->s_lvalue=v2;}
                 }
-#line 30672 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30673 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 364: /* primary: "'not'" '(' expr rparen  */
-#line 5143 "/tmp/ripper_tokenized.y"
+#line 5144 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = call_uni_op(p, method_cond(p, (yyvsp[-1].node), &(yylsp[-1])), METHOD_NOT, &(yylsp[-3]), &(yyloc));
                 {VALUE v1=get_value((-1 - 1)), v2=ID2VAL(idNOT), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                 }
-#line 30681 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30682 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 365: /* primary: "'not'" '(' rparen  */
-#line 5148 "/tmp/ripper_tokenized.y"
+#line 5149 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = call_uni_op(p, method_cond(p, NEW_NIL(&(yylsp[-1])), &(yylsp[-1])), METHOD_NOT, &(yylsp[-2]), &(yyloc));
                 {VALUE v1=ID2VAL(idNOT), v2=Qnil, v3=dispatch2(unary,v1,v2); p->s_lvalue=v3;}
                 }
-#line 30690 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30691 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 366: /* primary: fcall brace_block  */
-#line 5153 "/tmp/ripper_tokenized.y"
+#line 5154 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = method_add_block(p, (NODE *)(yyvsp[-1].node_fcall), (yyvsp[0].node), &(yyloc));
                 {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch1(fcall,v1), v4=dispatch0(args_new), v5=dispatch2(method_add_arg,v3,v4), v6=dispatch2(method_add_block,v5,v2); p->s_lvalue=v6;}
                 }
-#line 30699 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30700 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 368: /* primary: method_call brace_block  */
-#line 5159 "/tmp/ripper_tokenized.y"
+#line 5160 "/tmp/ripper_tokenized.y"
                 {
                     block_dup_check(p, get_nd_args(p, (yyvsp[-1].node)), (yyvsp[0].node));
                     (yyval.node) = method_add_block(p, (yyvsp[-1].node), (yyvsp[0].node), &(yyloc));
                 {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(method_add_block,v1,v2); p->s_lvalue=v3;}
                 }
-#line 30709 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30710 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 370: /* primary: k_if expr_value then compstmt_stmts if_tail k_end  */
-#line 5169 "/tmp/ripper_tokenized.y"
+#line 5170 "/tmp/ripper_tokenized.y"
                 {
                     if ((yyvsp[-1].node) && nd_type_p((yyvsp[-1].node), NODE_IF))
                         RNODE_IF((yyvsp[-1].node))->end_keyword_loc = (yylsp[0]);
@@ -30718,52 +30719,52 @@ yyreduce:
                     fixpos((yyval.node), (yyvsp[-4].node));
                 {VALUE v1=get_value((-4 - 1)), v2=get_value((-2 - 1)), v3=get_value((-1 - 1)), v4=dispatch3(if,v1,v2,v3); p->s_lvalue=v4;}
                 }
-#line 30722 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30723 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 371: /* primary: k_unless expr_value then compstmt_stmts opt_else k_end  */
-#line 5181 "/tmp/ripper_tokenized.y"
+#line 5182 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = new_unless(p, (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), &(yyloc), &(yylsp[-5]), &(yylsp[-3]), &(yylsp[0]));
                     fixpos((yyval.node), (yyvsp[-4].node));
                 {VALUE v1=get_value((-4 - 1)), v2=get_value((-2 - 1)), v3=get_value((-1 - 1)), v4=dispatch3(unless,v1,v2,v3); p->s_lvalue=v4;}
                 }
-#line 30732 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30733 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 372: /* primary: k_while expr_value_do compstmt_stmts k_end  */
-#line 5189 "/tmp/ripper_tokenized.y"
+#line 5190 "/tmp/ripper_tokenized.y"
                 {
                     restore_block_exit(p, (yyvsp[-3].node_exits));
                     (yyval.node) = NEW_WHILE(cond(p, (yyvsp[-2].node), &(yylsp[-2])), (yyvsp[-1].node), 1, &(yyloc), &(yylsp[-3]), &(yylsp[0]));
                     fixpos((yyval.node), (yyvsp[-2].node));
                 {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(while,v1,v2); p->s_lvalue=v3;}
                 }
-#line 30743 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30744 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 373: /* primary: k_until expr_value_do compstmt_stmts k_end  */
-#line 5198 "/tmp/ripper_tokenized.y"
+#line 5199 "/tmp/ripper_tokenized.y"
                 {
                     restore_block_exit(p, (yyvsp[-3].node_exits));
                     (yyval.node) = NEW_UNTIL(cond(p, (yyvsp[-2].node), &(yylsp[-2])), (yyvsp[-1].node), 1, &(yyloc), &(yylsp[-3]), &(yylsp[0]));
                     fixpos((yyval.node), (yyvsp[-2].node));
                 {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(until,v1,v2); p->s_lvalue=v3;}
                 }
-#line 30754 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30755 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 374: /* @15: %empty  */
-#line 5205 "/tmp/ripper_tokenized.y"
+#line 5206 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.labels) = p->case_labels;
                     p->case_labels = CHECK_LITERAL_WHEN;
                 }
-#line 30763 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30764 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 375: /* primary: k_case expr_value option_terms @15 case_body k_end  */
-#line 5211 "/tmp/ripper_tokenized.y"
+#line 5212 "/tmp/ripper_tokenized.y"
                 {
                     if (CASE_LABELS_ENABLED_P(p->case_labels)) st_free_table(p->case_labels);
                     p->case_labels = (yyvsp[-2].labels);
@@ -30771,52 +30772,52 @@ yyreduce:
                     fixpos((yyval.node), (yyvsp[-4].node));
                 {VALUE v1=get_value((-4 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(case,v1,v2); p->s_lvalue=v3;}
                 }
-#line 30775 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30776 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 376: /* @16: %empty  */
-#line 5219 "/tmp/ripper_tokenized.y"
+#line 5220 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.labels) = p->case_labels;
                     p->case_labels = 0;
                 }
-#line 30784 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30785 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 377: /* primary: k_case option_terms @16 case_body k_end  */
-#line 5225 "/tmp/ripper_tokenized.y"
+#line 5226 "/tmp/ripper_tokenized.y"
                 {
                     if (p->case_labels) st_free_table(p->case_labels);
                     p->case_labels = (yyvsp[-2].labels);
                     (yyval.node) = NEW_CASE2((yyvsp[-1].node), &(yyloc), &(yylsp[-4]), &(yylsp[0]));
                 {VALUE v1=get_value((-1 - 1)), v2=Qnil, v3=dispatch2(case,v2,v1); p->s_lvalue=v3;}
                 }
-#line 30795 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30796 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 378: /* primary: k_case expr_value option_terms p_case_body k_end  */
-#line 5234 "/tmp/ripper_tokenized.y"
+#line 5235 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = NEW_CASE3((yyvsp[-3].node), (yyvsp[-1].node), &(yyloc), &(yylsp[-4]), &(yylsp[0]));
                 {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(case,v1,v2); p->s_lvalue=v3;}
                 }
-#line 30804 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30805 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 379: /* $@17: %empty  */
-#line 5239 "/tmp/ripper_tokenized.y"
+#line 5240 "/tmp/ripper_tokenized.y"
               {COND_PUSH(1);}
-#line 30810 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30811 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 380: /* $@18: %empty  */
-#line 5239 "/tmp/ripper_tokenized.y"
+#line 5240 "/tmp/ripper_tokenized.y"
                                                             {COND_POP();}
-#line 30816 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30817 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 381: /* primary: k_for for_var "'in'" $@17 expr_value do $@18 compstmt_stmts k_end  */
-#line 5242 "/tmp/ripper_tokenized.y"
+#line 5243 "/tmp/ripper_tokenized.y"
                 {
                     restore_block_exit(p, (yyvsp[-8].node_exits));
                     /*
@@ -30859,19 +30860,19 @@ yyreduce:
                     if ((yyvsp[-3].id) == keyword_do_cond) p->lex.do_nest--;
                 {VALUE v1=get_value((-7 - 1)), v2=get_value((-4 - 1)), v3=get_value((-1 - 1)), v4=dispatch3(for,v1,v2,v3); p->s_lvalue=v4;}
                 }
-#line 30863 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30864 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 382: /* $@19: %empty  */
-#line 5285 "/tmp/ripper_tokenized.y"
+#line 5286 "/tmp/ripper_tokenized.y"
                 {
                     begin_definition("class", &(yylsp[-2]), &(yylsp[-1]));
                 }
-#line 30871 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30872 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 383: /* primary: k_class cpath superclass $@19 bodystmt k_end  */
-#line 5290 "/tmp/ripper_tokenized.y"
+#line 5291 "/tmp/ripper_tokenized.y"
                 {
                     YYLTYPE inheritance_operator_loc = NULL_LOC;
                     if ((yyvsp[-3].node)) {
@@ -30888,19 +30889,19 @@ yyreduce:
                     p->ctxt.cant_return = (yyvsp[-5].ctxt).cant_return;
                     p->ctxt.shareable_constant_value = (yyvsp[-5].ctxt).shareable_constant_value;
                 }
-#line 30892 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30893 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 384: /* $@20: %empty  */
-#line 5307 "/tmp/ripper_tokenized.y"
+#line 5308 "/tmp/ripper_tokenized.y"
                 {
                     begin_definition("", &(yylsp[-2]), &(yylsp[-1]));
                 }
-#line 30900 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30901 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 385: /* primary: k_class "<<" expr_value $@20 term bodystmt k_end  */
-#line 5313 "/tmp/ripper_tokenized.y"
+#line 5314 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = NEW_SCLASS((yyvsp[-4].node), (yyvsp[-1].node), &(yyloc), &(yylsp[-6]), &(yylsp[-5]), &(yylsp[0]));
                     nd_set_line(RNODE_SCLASS((yyval.node))->nd_body, (yylsp[0]).end_pos.lineno);
@@ -30913,19 +30914,19 @@ yyreduce:
                     p->ctxt.cant_return = (yyvsp[-6].ctxt).cant_return;
                     p->ctxt.shareable_constant_value = (yyvsp[-6].ctxt).shareable_constant_value;
                 }
-#line 30917 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30918 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 386: /* $@21: %empty  */
-#line 5326 "/tmp/ripper_tokenized.y"
+#line 5327 "/tmp/ripper_tokenized.y"
                 {
                     begin_definition("module", &(yylsp[-1]), &(yylsp[0]));
                 }
-#line 30925 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30926 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 387: /* primary: k_module cpath $@21 bodystmt k_end  */
-#line 5331 "/tmp/ripper_tokenized.y"
+#line 5332 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = NEW_MODULE((yyvsp[-3].node), (yyvsp[-1].node), &(yyloc), &(yylsp[-4]), &(yylsp[0]));
                     nd_set_line(RNODE_MODULE((yyval.node))->nd_body, (yylsp[0]).end_pos.lineno);
@@ -30937,19 +30938,19 @@ yyreduce:
                     p->ctxt.cant_return = (yyvsp[-4].ctxt).cant_return;
                     p->ctxt.shareable_constant_value = (yyvsp[-4].ctxt).shareable_constant_value;
                 }
-#line 30941 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30942 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 388: /* $@22: %empty  */
-#line 5344 "/tmp/ripper_tokenized.y"
+#line 5345 "/tmp/ripper_tokenized.y"
                 {
                     push_end_expect_token_locations(p, &(yylsp[-1]).beg_pos);
                 }
-#line 30949 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30950 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 389: /* primary: defn_head f_arglist $@22 bodystmt k_end  */
-#line 5349 "/tmp/ripper_tokenized.y"
+#line 5350 "/tmp/ripper_tokenized.y"
                 {
                     restore_defun(p, (yyvsp[-4].node_def_temp));
                     ((yyval.node) = (yyvsp[-4].node_def_temp)->nd_def)->nd_loc = (yyloc);
@@ -30958,19 +30959,19 @@ yyreduce:
                 {VALUE v1=get_value((-4 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=dispatch3(def,v1,v2,v3); p->s_lvalue=v4;}
                     local_pop(p);
                 }
-#line 30962 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30963 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 390: /* $@23: %empty  */
-#line 5359 "/tmp/ripper_tokenized.y"
+#line 5360 "/tmp/ripper_tokenized.y"
                 {
                     push_end_expect_token_locations(p, &(yylsp[-1]).beg_pos);
                 }
-#line 30970 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30971 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 391: /* primary: defs_head f_arglist $@23 bodystmt k_end  */
-#line 5364 "/tmp/ripper_tokenized.y"
+#line 5365 "/tmp/ripper_tokenized.y"
                 {
                     restore_defun(p, (yyvsp[-4].node_def_temp));
                     ((yyval.node) = (yyvsp[-4].node_def_temp)->nd_def)->nd_loc = (yyloc);
@@ -30979,38 +30980,38 @@ yyreduce:
                 {VALUE v1=get_value((-4 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=rb_ary_entry(v1, 0), v5=rb_ary_entry(v1, 1), v6=rb_ary_entry(v1, 2), v7=dispatch5(defs,v4,v5,v6,v2,v3); p->s_lvalue=v7;}
                     local_pop(p);
                 }
-#line 30983 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30984 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 392: /* primary: "'break'"  */
-#line 5373 "/tmp/ripper_tokenized.y"
+#line 5374 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = add_block_exit(p, NEW_BREAK(0, &(yyloc), &(yylsp[0])));
                 {VALUE v1=dispatch0(args_new), v2=dispatch1(break,v1); p->s_lvalue=v2;}
                 }
-#line 30992 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 30993 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 393: /* primary: "'next'"  */
-#line 5378 "/tmp/ripper_tokenized.y"
+#line 5379 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = add_block_exit(p, NEW_NEXT(0, &(yyloc), &(yylsp[0])));
                 {VALUE v1=dispatch0(args_new), v2=dispatch1(next,v1); p->s_lvalue=v2;}
                 }
-#line 31001 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31002 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 394: /* primary: "'redo'"  */
-#line 5383 "/tmp/ripper_tokenized.y"
+#line 5384 "/tmp/ripper_tokenized.y"
                 {
                     (yyval.node) = add_block_exit(p, NEW_REDO(&(yyloc), &(yylsp[0])));
                 {VALUE v1=dispatch0(redo); p->s_lvalue=v1;}
                 }
-#line 31010 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31011 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 395: /* primary: "'retry'"  */
-#line 5388 "/tmp/ripper_tokenized.y"
+#line 5389 "/tmp/ripper_tokenized.y"
                 {
                     if (!p->ctxt.in_defined) {
                         switch (p->ctxt.in_rescue) {
@@ -31023,29 +31024,29 @@ yyreduce:
                     (yyval.node) = NEW_RETRY(&(yyloc));
                 {VALUE v1=dispatch0(retry); p->s_lvalue=v1;}
                 }
-#line 31027 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31028 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 396: /* value_expr_primary: primary  */
-#line 3832 "/tmp/ripper_tokenized.y"
+#line 3833 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = (yyvsp[0].node);
                     }
-#line 31036 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31037 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 398: /* k_begin: "'begin'"  */
-#line 5406 "/tmp/ripper_tokenized.y"
+#line 5407 "/tmp/ripper_tokenized.y"
                     {
                         token_info_push(p, "begin", &(yyloc));
                         push_end_expect_token_locations(p, &(yylsp[0]).beg_pos);
                     }
-#line 31045 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31046 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 399: /* k_if: "'if'"  */
-#line 5413 "/tmp/ripper_tokenized.y"
+#line 5414 "/tmp/ripper_tokenized.y"
                     {
                         WARN_EOL("if");
                         token_info_push(p, "if", &(yyloc));
@@ -31061,138 +31062,138 @@ yyreduce:
                         }
                         push_end_expect_token_locations(p, &(yylsp[0]).beg_pos);
                     }
-#line 31065 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31066 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 400: /* k_unless: "'unless'"  */
-#line 5431 "/tmp/ripper_tokenized.y"
+#line 5432 "/tmp/ripper_tokenized.y"
                     {
                         token_info_push(p, "unless", &(yyloc));
                         push_end_expect_token_locations(p, &(yylsp[0]).beg_pos);
                     }
-#line 31074 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31075 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 401: /* k_while: "'while'" allow_exits  */
-#line 5438 "/tmp/ripper_tokenized.y"
+#line 5439 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_exits) = (yyvsp[0].node_exits);
                         token_info_push(p, "while", &(yyloc));
                         push_end_expect_token_locations(p, &(yylsp[-1]).beg_pos);
                     }
-#line 31084 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31085 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 402: /* k_until: "'until'" allow_exits  */
-#line 5446 "/tmp/ripper_tokenized.y"
+#line 5447 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_exits) = (yyvsp[0].node_exits);
                         token_info_push(p, "until", &(yyloc));
                         push_end_expect_token_locations(p, &(yylsp[-1]).beg_pos);
                     }
-#line 31094 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31095 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 403: /* k_case: "'case'"  */
-#line 5454 "/tmp/ripper_tokenized.y"
+#line 5455 "/tmp/ripper_tokenized.y"
                     {
                         token_info_push(p, "case", &(yyloc));
                         push_end_expect_token_locations(p, &(yylsp[0]).beg_pos);
                     }
-#line 31103 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31104 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 404: /* k_for: "'for'" allow_exits  */
-#line 5461 "/tmp/ripper_tokenized.y"
+#line 5462 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_exits) = (yyvsp[0].node_exits);
                         token_info_push(p, "for", &(yyloc));
                         push_end_expect_token_locations(p, &(yylsp[-1]).beg_pos);
                     }
-#line 31113 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31114 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 405: /* k_class: "'class'"  */
-#line 5469 "/tmp/ripper_tokenized.y"
+#line 5470 "/tmp/ripper_tokenized.y"
                     {
                         token_info_push(p, "class", &(yyloc));
                         (yyval.ctxt) = p->ctxt;
                         p->ctxt.in_rescue = before_rescue;
                         push_end_expect_token_locations(p, &(yylsp[0]).beg_pos);
                     }
-#line 31124 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31125 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 406: /* k_module: "'module'"  */
-#line 5478 "/tmp/ripper_tokenized.y"
+#line 5479 "/tmp/ripper_tokenized.y"
                     {
                         token_info_push(p, "module", &(yyloc));
                         (yyval.ctxt) = p->ctxt;
                         p->ctxt.in_rescue = before_rescue;
                         push_end_expect_token_locations(p, &(yylsp[0]).beg_pos);
                     }
-#line 31135 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31136 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 407: /* k_def: "'def'"  */
-#line 5487 "/tmp/ripper_tokenized.y"
+#line 5488 "/tmp/ripper_tokenized.y"
                     {
                         token_info_push(p, "def", &(yyloc));
                         (yyval.node_def_temp) = NEW_DEF_TEMP(&(yyloc));
                         p->ctxt.in_argdef = 1;
                     }
-#line 31145 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31146 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 408: /* k_do: "'do'"  */
-#line 5495 "/tmp/ripper_tokenized.y"
+#line 5496 "/tmp/ripper_tokenized.y"
                     {
                         token_info_push(p, "do", &(yyloc));
                         push_end_expect_token_locations(p, &(yylsp[0]).beg_pos);
                         p->lex.do_nest++;
                     }
-#line 31155 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31156 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 409: /* k_do_block: "'do' for block"  */
-#line 5503 "/tmp/ripper_tokenized.y"
+#line 5504 "/tmp/ripper_tokenized.y"
                     {
                         token_info_push(p, "do", &(yyloc));
                         push_end_expect_token_locations(p, &(yylsp[0]).beg_pos);
                         p->lex.do_nest++;
                     }
-#line 31165 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31166 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 410: /* k_rescue: "'rescue'"  */
-#line 5511 "/tmp/ripper_tokenized.y"
+#line 5512 "/tmp/ripper_tokenized.y"
                     {
                         token_info_warn(p, "rescue", p->token_info, 1, &(yyloc));
                         (yyval.ctxt) = p->ctxt;
                         p->ctxt.in_rescue = after_rescue;
                     }
-#line 31175 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31176 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 411: /* k_ensure: "'ensure'"  */
-#line 5519 "/tmp/ripper_tokenized.y"
+#line 5520 "/tmp/ripper_tokenized.y"
                     {
                         token_info_warn(p, "ensure", p->token_info, 1, &(yyloc));
                         (yyval.ctxt) = p->ctxt;
                     }
-#line 31184 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31185 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 412: /* k_when: "'when'"  */
-#line 5526 "/tmp/ripper_tokenized.y"
+#line 5527 "/tmp/ripper_tokenized.y"
                     {
                         token_info_warn(p, "when", p->token_info, 0, &(yyloc));
                     }
-#line 31192 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31193 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 413: /* k_else: "'else'"  */
-#line 5532 "/tmp/ripper_tokenized.y"
+#line 5533 "/tmp/ripper_tokenized.y"
                     {
                         token_info *ptinfo_beg = p->token_info;
                         int same = ptinfo_beg && strcmp(ptinfo_beg->token, "case") != 0;
@@ -31205,486 +31206,486 @@ yyreduce:
                             if (!e.nonspc) *ptinfo_beg = e;
                         }
                     }
-#line 31209 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31210 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 414: /* k_elsif: "'elsif'"  */
-#line 5547 "/tmp/ripper_tokenized.y"
+#line 5548 "/tmp/ripper_tokenized.y"
                     {
                         WARN_EOL("elsif");
                         token_info_warn(p, "elsif", p->token_info, 1, &(yyloc));
                     }
-#line 31218 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31219 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 415: /* k_end: "'end'"  */
-#line 5554 "/tmp/ripper_tokenized.y"
+#line 5555 "/tmp/ripper_tokenized.y"
                     {
                         token_info_pop(p, "end", &(yyloc));
                         pop_end_expect_token_locations(p);
                     }
-#line 31227 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31228 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 416: /* k_end: "dummy end"  */
-#line 5559 "/tmp/ripper_tokenized.y"
+#line 5560 "/tmp/ripper_tokenized.y"
                     {
                         compile_error(p, "syntax error, unexpected end-of-input");
                     }
-#line 31235 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31236 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 417: /* k_return: "'return'"  */
-#line 5565 "/tmp/ripper_tokenized.y"
+#line 5566 "/tmp/ripper_tokenized.y"
                     {
                         if (p->ctxt.cant_return && !dyna_in_block(p))
                             yyerror1(&(yylsp[0]), "Invalid return in class/module body");
                     }
-#line 31244 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31245 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 418: /* k_yield: "'yield'"  */
-#line 5572 "/tmp/ripper_tokenized.y"
+#line 5573 "/tmp/ripper_tokenized.y"
                     {
                         if (!p->ctxt.in_defined && !p->ctxt.in_def && !compile_for_eval)
                             yyerror1(&(yylsp[0]), "Invalid yield");
                     }
-#line 31253 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31254 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 423: /* do: "'do' for condition"  */
-#line 5584 "/tmp/ripper_tokenized.y"
+#line 5585 "/tmp/ripper_tokenized.y"
                                   { (yyval.id) = keyword_do_cond; }
-#line 31259 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31260 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 425: /* if_tail: k_elsif expr_value then compstmt_stmts if_tail  */
-#line 5591 "/tmp/ripper_tokenized.y"
+#line 5592 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_if(p, (yyvsp[-3].node), (yyvsp[-1].node), (yyvsp[0].node), &(yyloc), &(yylsp[-4]), &(yylsp[-2]), &NULL_LOC);
                         fixpos((yyval.node), (yyvsp[-3].node));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch3(elsif,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 31269 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31270 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 427: /* opt_else: k_else compstmt_stmts  */
-#line 5600 "/tmp/ripper_tokenized.y"
+#line 5601 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[0].node);
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(else,v1); p->s_lvalue=v2;}
                     }
-#line 31278 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31279 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 430: /* f_marg: f_norm_arg  */
-#line 5611 "/tmp/ripper_tokenized.y"
+#line 5612 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = assignable(p, (yyvsp[0].id), 0, &(yyloc));
                         mark_lvar_used(p, (yyval.node));
                     }
-#line 31287 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31288 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 431: /* f_marg: "(" f_margs rparen  */
-#line 5616 "/tmp/ripper_tokenized.y"
+#line 5617 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (NODE *)(yyvsp[-1].node_masgn);
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(mlhs_paren,v1); p->s_lvalue=v2;}
                     }
-#line 31296 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31297 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 432: /* mlhs_items_f_marg: f_marg  */
-#line 3719 "/tmp/ripper_tokenized.y"
+#line 3720 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_LIST((yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(mlhs_new), v3=dispatch2(mlhs_add,v2,v1); p->s_lvalue=v3;}
                     }
-#line 31305 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31306 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 433: /* mlhs_items_f_marg: mlhs_items_f_marg ',' f_marg  */
-#line 3724 "/tmp/ripper_tokenized.y"
+#line 3725 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_append(p, (yyvsp[-2].node), (yyvsp[0].node));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(mlhs_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 31314 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31315 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 434: /* f_margs: mlhs_items_f_marg  */
-#line 5624 "/tmp/ripper_tokenized.y"
+#line 5625 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN((yyvsp[0].node), 0, &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 31323 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31324 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 435: /* f_margs: mlhs_items_f_marg ',' f_rest_marg  */
-#line 5629 "/tmp/ripper_tokenized.y"
+#line 5630 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN((yyvsp[-2].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(mlhs_add_star,v1,v2); p->s_lvalue=v3;}
                     }
-#line 31332 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31333 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 436: /* f_margs: mlhs_items_f_marg ',' f_rest_marg ',' mlhs_items_f_marg  */
-#line 5634 "/tmp/ripper_tokenized.y"
+#line 5635 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN((yyvsp[-4].node), NEW_POSTARG((yyvsp[-2].node), (yyvsp[0].node), &(yyloc)), &(yyloc));
                     {VALUE v1=get_value((-4 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)), v4=dispatch2(mlhs_add_star,v1,v2), v5=dispatch2(mlhs_add_post,v4,v3); p->s_lvalue=v5;}
                     }
-#line 31341 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31342 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 437: /* f_margs: f_rest_marg  */
-#line 5639 "/tmp/ripper_tokenized.y"
+#line 5640 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN(0, (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(mlhs_new), v3=dispatch2(mlhs_add_star,v2,v1); p->s_lvalue=v3;}
                     }
-#line 31350 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31351 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 438: /* f_margs: f_rest_marg ',' mlhs_items_f_marg  */
-#line 5644 "/tmp/ripper_tokenized.y"
+#line 5645 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_masgn) = NEW_MASGN(0, NEW_POSTARG((yyvsp[-2].node), (yyvsp[0].node), &(yyloc)), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch0(mlhs_new), v4=dispatch2(mlhs_add_star,v3,v1), v5=dispatch2(mlhs_add_post,v4,v2); p->s_lvalue=v5;}
                     }
-#line 31359 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31360 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 439: /* f_rest_marg: "*" f_norm_arg  */
-#line 5651 "/tmp/ripper_tokenized.y"
+#line 5652 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                         (yyval.node) = assignable(p, (yyvsp[0].id), 0, &(yyloc));
                         mark_lvar_used(p, (yyval.node));
                     }
-#line 31369 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31370 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 440: /* f_rest_marg: "*"  */
-#line 5657 "/tmp/ripper_tokenized.y"
+#line 5658 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NODE_SPECIAL_NO_NAME_REST;
                     {p->s_lvalue=Qnil;}
                     }
-#line 31378 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31379 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 442: /* f_any_kwrest: f_no_kwarg  */
-#line 5665 "/tmp/ripper_tokenized.y"
+#line 5666 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = idNil;
                     {p->s_lvalue=ID2VAL(idNil);}
                     }
-#line 31387 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31388 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 443: /* $@24: %empty  */
-#line 5671 "/tmp/ripper_tokenized.y"
+#line 5672 "/tmp/ripper_tokenized.y"
         {p->ctxt.in_argdef = 0;}
-#line 31393 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31394 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 445: /* f_kw_primary_value: f_label primary_value  */
-#line 3691 "/tmp/ripper_tokenized.y"
+#line 3692 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 1;
                         (yyval.node_kw_arg) = new_kw_arg(p, assignable(p, (yyvsp[-1].id), (yyvsp[0].node), &(yyloc)), &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(2, p->s_lvalue, v1);}
                     }
-#line 31403 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31404 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 446: /* f_kw_primary_value: f_label  */
-#line 3697 "/tmp/ripper_tokenized.y"
+#line 3698 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 1;
                         (yyval.node_kw_arg) = new_kw_arg(p, assignable(p, (yyvsp[0].id), NODE_SPECIAL_REQUIRED_KEYWORD, &(yyloc)), &(yyloc));
                     {p->s_lvalue=rb_ary_new_from_args(2, p->s_lvalue, 0);}
                     }
-#line 31413 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31414 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 447: /* f_kwarg_primary_value: f_kw_primary_value  */
-#line 3706 "/tmp/ripper_tokenized.y"
+#line 3707 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_kw_arg) = (yyvsp[0].node_kw_arg);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new3(1, v1);}
                     }
-#line 31422 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31423 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 448: /* f_kwarg_primary_value: f_kwarg_primary_value ',' f_kw_primary_value  */
-#line 3711 "/tmp/ripper_tokenized.y"
+#line 3712 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_kw_arg) = kwd_append((yyvsp[-2].node_kw_arg), (yyvsp[0].node_kw_arg));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
-#line 31431 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31432 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 449: /* opt_f_block_arg_none: ',' f_block_arg  */
-#line 3628 "/tmp/ripper_tokenized.y"
+#line 3629 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = (yyvsp[0].id);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 31440 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31441 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 451: /* args_tail_basic_primary_value_none: f_kwarg_primary_value ',' f_kwrest opt_f_block_arg_none  */
-#line 3605 "/tmp/ripper_tokenized.y"
+#line 3606 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, (yyvsp[-3].node_kw_arg), (yyvsp[-1].id), (yyvsp[0].id), &(yylsp[-1]));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, v3);}
                     }
-#line 31449 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31450 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 452: /* args_tail_basic_primary_value_none: f_kwarg_primary_value opt_f_block_arg_none  */
-#line 3610 "/tmp/ripper_tokenized.y"
+#line 3611 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, (yyvsp[-1].node_kw_arg), 0, (yyvsp[0].id), &(yylsp[-1]));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, Qnil, v2);}
                     }
-#line 31458 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31459 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 453: /* args_tail_basic_primary_value_none: f_any_kwrest opt_f_block_arg_none  */
-#line 3615 "/tmp/ripper_tokenized.y"
+#line 3616 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, 0, (yyvsp[-1].id), (yyvsp[0].id), &(yylsp[-1]));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, v2);}
                     }
-#line 31467 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31468 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 454: /* args_tail_basic_primary_value_none: f_block_arg  */
-#line 3620 "/tmp/ripper_tokenized.y"
+#line 3621 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, 0, 0, (yyvsp[0].id), &(yylsp[0]));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, Qnil, Qnil, v1);}
                     }
-#line 31476 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31477 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 456: /* excessed_comma: ','  */
-#line 5677 "/tmp/ripper_tokenized.y"
+#line 5678 "/tmp/ripper_tokenized.y"
                     {
                         /* magic number for rest_id in iseq_set_arguments() */
                         (yyval.id) = NODE_SPECIAL_EXCESSIVE_COMMA;
                     {VALUE v1=dispatch0(excessed_comma); p->s_lvalue=v1;}
                     }
-#line 31486 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31487 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 457: /* f_opt_primary_value: f_arg_asgn f_eq primary_value  */
-#line 3669 "/tmp/ripper_tokenized.y"
+#line 3670 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 1;
                         (yyval.node_opt_arg) = NEW_OPT_ARG(assignable(p, (yyvsp[-2].id), (yyvsp[0].node), &(yyloc)), &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(2, p->s_lvalue, v1);}
                     }
-#line 31496 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31497 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 458: /* f_opt_arg_primary_value: f_opt_primary_value  */
-#line 3678 "/tmp/ripper_tokenized.y"
+#line 3679 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_opt_arg) = (yyvsp[0].node_opt_arg);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new3(1, v1);}
                     }
-#line 31505 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31506 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 459: /* f_opt_arg_primary_value: f_opt_arg_primary_value ',' f_opt_primary_value  */
-#line 3683 "/tmp/ripper_tokenized.y"
+#line 3684 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_opt_arg) = opt_arg_append((yyvsp[-2].node_opt_arg), (yyvsp[0].node_opt_arg));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
-#line 31514 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31515 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 460: /* opt_args_tail_block_args_tail_none: ',' block_args_tail  */
-#line 3778 "/tmp/ripper_tokenized.y"
+#line 3779 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = (yyvsp[0].node_args);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 31523 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31524 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 461: /* opt_args_tail_block_args_tail_none: none  */
-#line 3783 "/tmp/ripper_tokenized.y"
+#line 3784 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_empty_args_tail(p, &(yyloc));
                     {p->s_lvalue=rb_ary_new_from_args(3, Qnil, Qnil, Qnil);}
                     }
-#line 31532 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31533 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 462: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_arg ',' f_opt_arg_primary_value ',' f_rest_arg opt_args_tail_block_args_tail_none  */
-#line 6966 "/tmp/ripper_tokenized.y"
+#line 6967 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-5].node_args_aux), (yyvsp[-3].node_opt_arg), (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v2,v3,v8,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 31541 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31542 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 463: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_arg ',' f_opt_arg_primary_value ',' f_rest_arg ',' f_arg opt_args_tail_block_args_tail_none  */
-#line 6971 "/tmp/ripper_tokenized.y"
+#line 6972 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-7].node_args_aux), (yyvsp[-5].node_opt_arg), (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-7 - 1)), v2=get_value((-5 - 1)), v3=get_value((-3 - 1)), v4=get_value((-1 - 1)), v5=get_value((0 - 1)), v6=rb_ary_entry(v5, 0), v7=rb_ary_entry(v5, 1), v8=rb_ary_entry(v5, 2), v9=dispatch7(params,v1,v2,v3,v4,v6,v7,v8); p->s_lvalue=v9;}
                     }
-#line 31550 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31551 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 464: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_arg ',' f_opt_arg_primary_value opt_args_tail_block_args_tail_none  */
-#line 6976 "/tmp/ripper_tokenized.y"
+#line 6977 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-3].node_args_aux), (yyvsp[-1].node_opt_arg), 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v2,v7,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 31559 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31560 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 465: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_arg ',' f_opt_arg_primary_value ',' f_arg opt_args_tail_block_args_tail_none  */
-#line 6981 "/tmp/ripper_tokenized.y"
+#line 6982 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-5].node_args_aux), (yyvsp[-3].node_opt_arg), 0, (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v2,v8,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 31568 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31569 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 466: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_arg ',' f_rest_arg opt_args_tail_block_args_tail_none  */
-#line 6986 "/tmp/ripper_tokenized.y"
+#line 6987 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-3].node_args_aux), 0, (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v7,v2,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 31577 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31578 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 467: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_arg ',' f_rest_arg ',' f_arg opt_args_tail_block_args_tail_none  */
-#line 6991 "/tmp/ripper_tokenized.y"
+#line 6992 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-5].node_args_aux), 0, (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v8,v2,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 31586 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31587 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 468: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_opt_arg_primary_value ',' f_rest_arg opt_args_tail_block_args_tail_none  */
-#line 6996 "/tmp/ripper_tokenized.y"
+#line 6997 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-3].node_opt_arg), (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v1,v2,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 31595 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31596 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 469: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_opt_arg_primary_value ',' f_rest_arg ',' f_arg opt_args_tail_block_args_tail_none  */
-#line 7001 "/tmp/ripper_tokenized.y"
+#line 7002 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-5].node_opt_arg), (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v8,v1,v2,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 31604 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31605 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 470: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_opt_arg_primary_value opt_args_tail_block_args_tail_none  */
-#line 7006 "/tmp/ripper_tokenized.y"
+#line 7007 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-1].node_opt_arg), 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v6,v1,v7,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
-#line 31613 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31614 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 471: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_opt_arg_primary_value ',' f_arg opt_args_tail_block_args_tail_none  */
-#line 7011 "/tmp/ripper_tokenized.y"
+#line 7012 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-3].node_opt_arg), 0, (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v1,v8,v2,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 31622 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31623 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 472: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_rest_arg opt_args_tail_block_args_tail_none  */
-#line 7016 "/tmp/ripper_tokenized.y"
+#line 7017 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, 0, (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v6,v7,v1,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
-#line 31631 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31632 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 473: /* args-list_primary_value_opt_args_tail_block_args_tail_none: f_rest_arg ',' f_arg opt_args_tail_block_args_tail_none  */
-#line 7021 "/tmp/ripper_tokenized.y"
+#line 7022 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, 0, (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v8,v1,v2,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 31640 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31641 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 475: /* block_param: f_arg excessed_comma  */
-#line 5686 "/tmp/ripper_tokenized.y"
+#line 5687 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_empty_args_tail(p, &(yylsp[0]));
                         (yyval.node_args) = new_args(p, (yyvsp[-1].node_args_aux), 0, (yyvsp[0].id), 0, (yyval.node_args), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=Qnil, v4=Qnil, v5=Qnil, v6=Qnil, v7=Qnil, v8=dispatch7(params,v1,v3,v2,v4,v5,v6,v7); p->s_lvalue=v8;}
                     }
-#line 31650 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31651 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 476: /* block_param: f_arg opt_args_tail_block_args_tail_none  */
-#line 5692 "/tmp/ripper_tokenized.y"
+#line 5693 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-1].node_args_aux), 0, 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v6,v7,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
-#line 31659 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31660 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 477: /* tail-only-args_block_args_tail: block_args_tail  */
-#line 7029 "/tmp/ripper_tokenized.y"
+#line 7030 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, 0, 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v5,v6,v7,v8,v2,v3,v4); p->s_lvalue=v9;}
                     }
-#line 31668 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31669 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 480: /* opt_block_param_def: block_param_def  */
-#line 5701 "/tmp/ripper_tokenized.y"
+#line 5702 "/tmp/ripper_tokenized.y"
                         {
                             p->command_start = TRUE;
                         }
-#line 31676 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31677 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 481: /* $@25: %empty  */
-#line 5707 "/tmp/ripper_tokenized.y"
+#line 5708 "/tmp/ripper_tokenized.y"
                     {
                         p->lex.in_block_param = 1;
                     }
-#line 31684 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31685 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 482: /* block_param_def: '|' $@25 opt_block_param opt_bv_decl '|'  */
-#line 5711 "/tmp/ripper_tokenized.y"
+#line 5712 "/tmp/ripper_tokenized.y"
                     {
                         p->lex.in_block_param = 0;
                         p->max_numparam = ORDINAL_PARAM;
@@ -31692,102 +31693,102 @@ yyreduce:
                         (yyval.node_args) = (yyvsp[-2].node_args);
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(block_var,v1,v2); p->s_lvalue=v3;}
                     }
-#line 31696 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31697 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 483: /* opt_block_param: %empty  */
-#line 5721 "/tmp/ripper_tokenized.y"
+#line 5722 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = 0;
                     {VALUE v1=Qnil, v2=Qnil, v3=Qnil, v4=Qnil, v5=Qnil, v6=Qnil, v7=Qnil, v8=dispatch7(params,v1,v2,v3,v4,v5,v6,v7); p->s_lvalue=v8;}
                     }
-#line 31705 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31706 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 485: /* opt_bv_decl: option_'\n'  */
-#line 5729 "/tmp/ripper_tokenized.y"
+#line 5730 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = 0;
                     {p->s_lvalue=Qfalse;}
                     }
-#line 31714 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31715 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 486: /* opt_bv_decl: option_'\n' ';' bv_decls option_'\n'  */
-#line 5734 "/tmp/ripper_tokenized.y"
+#line 5735 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = 0;
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 31723 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31724 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 487: /* bv_decls: bvar  */
-#line 5741 "/tmp/ripper_tokenized.y"
+#line 5742 "/tmp/ripper_tokenized.y"
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new3(1, v1);}
-#line 31729 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31730 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 488: /* bv_decls: bv_decls ',' bvar  */
-#line 5743 "/tmp/ripper_tokenized.y"
+#line 5744 "/tmp/ripper_tokenized.y"
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_push(v1, v2);}
-#line 31735 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31736 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 489: /* bvar: "local variable or method"  */
-#line 5747 "/tmp/ripper_tokenized.y"
+#line 5748 "/tmp/ripper_tokenized.y"
                     {
                         new_bv(p, (yyvsp[0].id));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 31744 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31745 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 491: /* max_numparam: %empty  */
-#line 5754 "/tmp/ripper_tokenized.y"
+#line 5755 "/tmp/ripper_tokenized.y"
                  {
                         (yyval.num) = p->max_numparam;
                         p->max_numparam = 0;
                     }
-#line 31753 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31754 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 492: /* numparam: %empty  */
-#line 5760 "/tmp/ripper_tokenized.y"
+#line 5761 "/tmp/ripper_tokenized.y"
              {
                         (yyval.node) = numparam_push(p);
                     }
-#line 31761 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31762 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 493: /* it_id: %empty  */
-#line 5765 "/tmp/ripper_tokenized.y"
+#line 5766 "/tmp/ripper_tokenized.y"
            {
                         (yyval.id) = p->it_id;
                         p->it_id = 0;
                     }
-#line 31770 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31771 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 494: /* @26: %empty  */
-#line 5772 "/tmp/ripper_tokenized.y"
+#line 5773 "/tmp/ripper_tokenized.y"
                     {
                         token_info_push(p, "->", &(yylsp[0]));
                         (yyval.vars) = dyna_push(p);
                     }
-#line 31779 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31780 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 495: /* $@27: %empty  */
-#line 5778 "/tmp/ripper_tokenized.y"
+#line 5779 "/tmp/ripper_tokenized.y"
                     {
                         CMDARG_PUSH(0);
                     }
-#line 31787 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31788 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 496: /* lambda: "->" @26 max_numparam numparam it_id allow_exits f_larglist $@27 lambda_body  */
-#line 5782 "/tmp/ripper_tokenized.y"
+#line 5783 "/tmp/ripper_tokenized.y"
                     {
                         int max_numparam = p->max_numparam;
                         ID it_id = p->it_id;
@@ -31809,71 +31810,71 @@ yyreduce:
                         numparam_pop(p, (yyvsp[-5].node));
                         dyna_pop(p, (yyvsp[-7].vars));
                     }
-#line 31813 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31814 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 497: /* f_larglist: '(' f_largs opt_bv_decl ')'  */
-#line 5806 "/tmp/ripper_tokenized.y"
+#line 5807 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 0;
                         (yyval.node_args) = (yyvsp[-2].node_args);
                         p->max_numparam = ORDINAL_PARAM;
                     {VALUE v1=get_value((-2 - 1)), v2=dispatch1(paren,v1); p->s_lvalue=v2;}
                     }
-#line 31824 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31825 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 498: /* f_larglist: f_largs  */
-#line 5813 "/tmp/ripper_tokenized.y"
+#line 5814 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 0;
                         if (!args_info_empty_p(&(yyvsp[0].node_args)->nd_ainfo))
                             p->max_numparam = ORDINAL_PARAM;
                         (yyval.node_args) = (yyvsp[0].node_args);
                     }
-#line 31835 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31836 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 499: /* lambda_body: tLAMBEG compstmt_stmts '}'  */
-#line 5822 "/tmp/ripper_tokenized.y"
+#line 5823 "/tmp/ripper_tokenized.y"
                     {
                         token_info_pop(p, "}", &(yylsp[0]));
                         (yyval.locations_lambda_body) = new_locations_lambda_body(p, (yyvsp[-1].node), &(yylsp[-1]), &(yylsp[-2]), &(yylsp[0]));
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 31845 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31846 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 500: /* $@28: %empty  */
-#line 5828 "/tmp/ripper_tokenized.y"
+#line 5829 "/tmp/ripper_tokenized.y"
                     {
                         push_end_expect_token_locations(p, &(yylsp[0]).beg_pos);
                     }
-#line 31853 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31854 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 501: /* lambda_body: "'do' for lambda" $@28 bodystmt k_end  */
-#line 5832 "/tmp/ripper_tokenized.y"
+#line 5833 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.locations_lambda_body) = new_locations_lambda_body(p, (yyvsp[-1].node), &(yylsp[-1]), &(yylsp[-3]), &(yylsp[0]));
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 31862 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31863 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 502: /* do_block: k_do_block do_body k_end  */
-#line 5839 "/tmp/ripper_tokenized.y"
+#line 5840 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node);
                         set_embraced_location((yyval.node), &(yylsp[-2]), &(yylsp[0]));
                         p->lex.do_nest--;
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 31873 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31874 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 503: /* block_call: command do_block  */
-#line 5848 "/tmp/ripper_tokenized.y"
+#line 5849 "/tmp/ripper_tokenized.y"
                     {
                         if (nd_type_p((yyvsp[-1].node), NODE_YIELD)) {
                             compile_error(p, "block given to yield");
@@ -31885,11 +31886,11 @@ yyreduce:
                         fixpos((yyval.node), (yyvsp[-1].node));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(method_add_block,v1,v2); p->s_lvalue=v3;}
                     }
-#line 31889 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31890 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 504: /* block_call: block_call call_op2 operation2 opt_paren_args  */
-#line 5860 "/tmp/ripper_tokenized.y"
+#line 5861 "/tmp/ripper_tokenized.y"
                     {
                         bool has_args = (yyvsp[0].node) != 0;
                         if (NODE_EMPTY_ARGS_P((yyvsp[0].node))) (yyvsp[0].node) = 0;
@@ -31899,51 +31900,51 @@ yyreduce:
                         {VALUE v1=get_value((0 - 1)), v2=p->s_lvalue, v3=dispatch2(method_add_arg,v2,v1); p->s_lvalue=v3;}
                         }
                     }
-#line 31903 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31904 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 505: /* block_call: block_call call_op2 operation2 opt_paren_args brace_block  */
-#line 5870 "/tmp/ripper_tokenized.y"
+#line 5871 "/tmp/ripper_tokenized.y"
                     {
                         if (NODE_EMPTY_ARGS_P((yyvsp[-1].node))) (yyvsp[-1].node) = 0;
                         (yyval.node) = new_command_qcall(p, (yyvsp[-3].id), (yyvsp[-4].node), (yyvsp[-2].id), (yyvsp[-1].node), (yyvsp[0].node), &(yylsp[-2]), &(yyloc));
                     {VALUE v1=get_value((-4 - 1)), v2=get_value((-3 - 1)), v3=get_value((-2 - 1)), v4=get_value((-1 - 1)), v5=get_value((0 - 1)), v6=dispatch4(command_call,v1,v2,v3,v4), v7=dispatch2(method_add_block,v6,v5); p->s_lvalue=v7;}
                     }
-#line 31913 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31914 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 506: /* block_call: block_call call_op2 operation2 command_args do_block  */
-#line 5876 "/tmp/ripper_tokenized.y"
+#line 5877 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_command_qcall(p, (yyvsp[-3].id), (yyvsp[-4].node), (yyvsp[-2].id), (yyvsp[-1].node), (yyvsp[0].node), &(yylsp[-2]), &(yyloc));
                     {VALUE v1=get_value((-4 - 1)), v2=get_value((-3 - 1)), v3=get_value((-2 - 1)), v4=get_value((-1 - 1)), v5=get_value((0 - 1)), v6=dispatch4(command_call,v1,v2,v3,v4), v7=dispatch2(method_add_block,v6,v5); p->s_lvalue=v7;}
                     }
-#line 31922 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31923 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 507: /* block_call: block_call call_op2 paren_args  */
-#line 5881 "/tmp/ripper_tokenized.y"
+#line 5882 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_qcall(p, (yyvsp[-1].id), (yyvsp[-2].node), idCall, (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                         nd_set_line((yyval.node), (yylsp[-1]).end_pos.lineno);
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=ID2VAL(idCall), v5=dispatch3(call,v1,v2,v4), v6=dispatch2(method_add_arg,v5,v3); p->s_lvalue=v6;}
                     }
-#line 31932 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31933 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 508: /* method_call: fcall paren_args  */
-#line 5889 "/tmp/ripper_tokenized.y"
+#line 5890 "/tmp/ripper_tokenized.y"
                     {
                         (yyvsp[-1].node_fcall)->nd_args = (yyvsp[0].node);
                         (yyval.node) = (NODE *)(yyvsp[-1].node_fcall);
                         nd_set_last_loc((yyvsp[-1].node_fcall), (yylsp[0]).end_pos);
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch1(fcall,v1), v4=dispatch2(method_add_arg,v3,v2); p->s_lvalue=v4;}
                     }
-#line 31943 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31944 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 509: /* method_call: primary_value call_op operation2 opt_paren_args  */
-#line 5896 "/tmp/ripper_tokenized.y"
+#line 5897 "/tmp/ripper_tokenized.y"
                     {
                         bool has_args = (yyvsp[0].node) != 0;
                         if (NODE_EMPTY_ARGS_P((yyvsp[0].node))) (yyvsp[0].node) = 0;
@@ -31954,40 +31955,40 @@ yyreduce:
                         {VALUE v1=get_value((0 - 1)), v2=p->s_lvalue, v3=dispatch2(method_add_arg,v2,v1); p->s_lvalue=v3;}
                         }
                     }
-#line 31958 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31959 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 510: /* method_call: primary_value "::" operation2 paren_args  */
-#line 5907 "/tmp/ripper_tokenized.y"
+#line 5908 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_qcall(p, idCOLON2, (yyvsp[-3].node), (yyvsp[-1].id), (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                         nd_set_line((yyval.node), (yylsp[-1]).end_pos.lineno);
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=dispatch3(call,v1,v2,v3), v6=dispatch2(method_add_arg,v5,v4); p->s_lvalue=v6;}
                     }
-#line 31968 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31969 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 511: /* method_call: primary_value "::" operation3  */
-#line 5913 "/tmp/ripper_tokenized.y"
+#line 5914 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_qcall(p, idCOLON2, (yyvsp[-2].node), (yyvsp[0].id), 0, &(yylsp[0]), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch3(call,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 31977 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31978 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 512: /* method_call: primary_value call_op2 paren_args  */
-#line 5918 "/tmp/ripper_tokenized.y"
+#line 5919 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_qcall(p, (yyvsp[-1].id), (yyvsp[-2].node), idCall, (yyvsp[0].node), &(yylsp[-1]), &(yyloc));
                         nd_set_line((yyval.node), (yylsp[-1]).end_pos.lineno);
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=ID2VAL(idCall), v5=dispatch3(call,v1,v2,v4), v6=dispatch2(method_add_arg,v5,v3); p->s_lvalue=v6;}
                     }
-#line 31987 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 31988 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 513: /* method_call: "'super'" paren_args  */
-#line 5924 "/tmp/ripper_tokenized.y"
+#line 5925 "/tmp/ripper_tokenized.y"
                     {
                         rb_code_location_t lparen_loc = (yylsp[0]);
                         rb_code_location_t rparen_loc = (yylsp[0]);
@@ -31997,57 +31998,57 @@ yyreduce:
                         (yyval.node) = NEW_SUPER((yyvsp[0].node), &(yyloc), &(yylsp[-1]), &lparen_loc, &rparen_loc);
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(super,v1); p->s_lvalue=v2;}
                     }
-#line 32001 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32002 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 514: /* method_call: "'super'"  */
-#line 5934 "/tmp/ripper_tokenized.y"
+#line 5935 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_ZSUPER(&(yyloc));
                     {VALUE v1=dispatch0(zsuper); p->s_lvalue=v1;}
                     }
-#line 32010 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32011 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 515: /* method_call: primary_value '[' opt_call_args rbracket  */
-#line 5939 "/tmp/ripper_tokenized.y"
+#line 5940 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_CALL((yyvsp[-3].node), tAREF, (yyvsp[-1].node), &(yyloc));
                         fixpos((yyval.node), (yyvsp[-3].node));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(aref,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32020 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32021 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 516: /* brace_block: '{' brace_body '}'  */
-#line 5947 "/tmp/ripper_tokenized.y"
+#line 5948 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node);
                         set_embraced_location((yyval.node), &(yylsp[-2]), &(yylsp[0]));
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 32030 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32031 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 517: /* brace_block: k_do do_body k_end  */
-#line 5953 "/tmp/ripper_tokenized.y"
+#line 5954 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node);
                         set_embraced_location((yyval.node), &(yylsp[-2]), &(yylsp[0]));
                         p->lex.do_nest--;
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 32041 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32042 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 518: /* @29: %empty  */
-#line 5961 "/tmp/ripper_tokenized.y"
+#line 5962 "/tmp/ripper_tokenized.y"
              {(yyval.vars) = dyna_push(p);}
-#line 32047 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32048 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 519: /* brace_body: @29 max_numparam numparam it_id allow_exits opt_block_param_def compstmt_stmts  */
-#line 5964 "/tmp/ripper_tokenized.y"
+#line 5965 "/tmp/ripper_tokenized.y"
                     {
                         int max_numparam = p->max_numparam;
                         ID it_id = p->it_id;
@@ -32060,20 +32061,20 @@ yyreduce:
                         numparam_pop(p, (yyvsp[-4].node));
                         dyna_pop(p, (yyvsp[-6].vars));
                     }
-#line 32064 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32065 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 520: /* @30: %empty  */
-#line 5978 "/tmp/ripper_tokenized.y"
+#line 5979 "/tmp/ripper_tokenized.y"
              {
                         (yyval.vars) = dyna_push(p);
                         CMDARG_PUSH(0);
                     }
-#line 32073 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32074 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 521: /* do_body: @30 max_numparam numparam it_id allow_exits opt_block_param_def bodystmt  */
-#line 5984 "/tmp/ripper_tokenized.y"
+#line 5985 "/tmp/ripper_tokenized.y"
                     {
                         int max_numparam = p->max_numparam;
                         ID it_id = p->it_id;
@@ -32087,71 +32088,71 @@ yyreduce:
                         numparam_pop(p, (yyvsp[-4].node));
                         dyna_pop(p, (yyvsp[-6].vars));
                     }
-#line 32091 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32092 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 522: /* case_args: arg_value  */
-#line 6000 "/tmp/ripper_tokenized.y"
+#line 6001 "/tmp/ripper_tokenized.y"
                     {
                         check_literal_when(p, (yyvsp[0].node), &(yylsp[0]));
                         (yyval.node) = NEW_LIST((yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(args_new), v3=dispatch2(args_add,v2,v1); p->s_lvalue=v3;}
                     }
-#line 32101 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32102 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 523: /* case_args: "*" arg_value  */
-#line 6006 "/tmp/ripper_tokenized.y"
+#line 6007 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_SPLAT((yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(args_new), v3=dispatch2(args_add_star,v2,v1); p->s_lvalue=v3;}
                     }
-#line 32110 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32111 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 524: /* case_args: case_args ',' arg_value  */
-#line 6011 "/tmp/ripper_tokenized.y"
+#line 6012 "/tmp/ripper_tokenized.y"
                     {
                         check_literal_when(p, (yyvsp[0].node), &(yylsp[0]));
                         (yyval.node) = last_arg_append(p, (yyvsp[-2].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(args_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32120 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32121 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 525: /* case_args: case_args ',' "*" arg_value  */
-#line 6017 "/tmp/ripper_tokenized.y"
+#line 6018 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = rest_arg_append(p, (yyvsp[-3].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=dispatch2(args_add_star,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32129 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32130 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 526: /* case_body: k_when case_args then compstmt_stmts cases  */
-#line 6026 "/tmp/ripper_tokenized.y"
+#line 6027 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_WHEN((yyvsp[-3].node), (yyvsp[-1].node), (yyvsp[0].node), &(yyloc), &(yylsp[-4]), &(yylsp[-2]));
                         fixpos((yyval.node), (yyvsp[-3].node));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch3(when,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 32139 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32140 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 529: /* p_pvtbl: %empty  */
-#line 6037 "/tmp/ripper_tokenized.y"
+#line 6038 "/tmp/ripper_tokenized.y"
            {(yyval.tbl) = p->pvtbl; p->pvtbl = st_init_numtable();}
-#line 32145 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32146 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 530: /* p_pktbl: %empty  */
-#line 6038 "/tmp/ripper_tokenized.y"
+#line 6039 "/tmp/ripper_tokenized.y"
            {(yyval.tbl) = p->pktbl; p->pktbl = 0;}
-#line 32151 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32152 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 531: /* p_in_kwarg: %empty  */
-#line 6040 "/tmp/ripper_tokenized.y"
+#line 6041 "/tmp/ripper_tokenized.y"
                {
                         (yyval.ctxt) = p->ctxt;
                         /* Error-tolerant `in {a: ...}` still depends on this label context. */
@@ -32160,11 +32161,11 @@ yyreduce:
                         p->ctxt.in_alt_pattern = 0;
                         p->ctxt.capture_in_pattern = 0;
                     }
-#line 32164 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32165 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 532: /* $@31: %empty  */
-#line 6053 "/tmp/ripper_tokenized.y"
+#line 6054 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-2].tbl));
                         pop_pvtbl(p, (yyvsp[-3].tbl));
@@ -32172,106 +32173,106 @@ yyreduce:
                         p->ctxt.in_alt_pattern = (yyvsp[-4].ctxt).in_alt_pattern;
                         p->ctxt.capture_in_pattern = (yyvsp[-4].ctxt).capture_in_pattern;
                     }
-#line 32176 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32177 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 533: /* p_case_body: "'in'" p_in_kwarg p_pvtbl p_pktbl p_top_expr then $@31 compstmt_stmts p_cases  */
-#line 6062 "/tmp/ripper_tokenized.y"
+#line 6063 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_IN((yyvsp[-4].node), (yyvsp[-1].node), (yyvsp[0].node), &(yyloc), &(yylsp[-8]), &(yylsp[-3]), &NULL_LOC);
                     {VALUE v1=get_value((-4 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=dispatch3(in,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 32185 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32186 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 537: /* p_top_expr: p_top_expr_body "'if' modifier" expr_value  */
-#line 6074 "/tmp/ripper_tokenized.y"
+#line 6075 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_if(p, (yyvsp[0].node), (yyvsp[-2].node), 0, &(yyloc), &(yylsp[-1]), &NULL_LOC, &NULL_LOC);
                         fixpos((yyval.node), (yyvsp[0].node));
                     {VALUE v1=get_value((0 - 1)), v2=get_value((-2 - 1)), v3=dispatch2(if_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32195 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32196 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 538: /* p_top_expr: p_top_expr_body "'unless' modifier" expr_value  */
-#line 6080 "/tmp/ripper_tokenized.y"
+#line 6081 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_unless(p, (yyvsp[0].node), (yyvsp[-2].node), 0, &(yyloc), &(yylsp[-1]), &NULL_LOC, &NULL_LOC);
                         fixpos((yyval.node), (yyvsp[0].node));
                     {VALUE v1=get_value((0 - 1)), v2=get_value((-2 - 1)), v3=dispatch2(unless_mod,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32205 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32206 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 540: /* p_top_expr_body: p_expr ','  */
-#line 6089 "/tmp/ripper_tokenized.y"
+#line 6090 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern_tail(p, 0, 1, 0, 0, &(yyloc));
                         (yyval.node) = new_array_pattern(p, 0, (yyvsp[-1].node), (yyval.node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=Qnil, v3=rb_ary_new_from_args(1, v1), v4=Qnil, v5=Qnil, v6=dispatch4(aryptn,v2,v3,v4,v5); p->s_lvalue=v6;}
                     }
-#line 32215 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32216 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 541: /* p_top_expr_body: p_expr ',' p_args  */
-#line 6095 "/tmp/ripper_tokenized.y"
+#line 6096 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern(p, 0, (yyvsp[-2].node), (yyvsp[0].node), &(yyloc));
                         nd_set_first_loc((yyval.node), (yylsp[-2]).beg_pos);
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=aryptn_pre_args(p, v1, v3), v8=dispatch4(aryptn,v6,v7,v4,v5); p->s_lvalue=v8;}
                     }
-#line 32225 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32226 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 542: /* p_top_expr_body: p_find  */
-#line 6101 "/tmp/ripper_tokenized.y"
+#line 6102 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_find_pattern(p, 0, (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=dispatch4(fndptn,v5,v2,v3,v4); p->s_lvalue=v6;}
                     }
-#line 32234 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32235 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 543: /* p_top_expr_body: p_args_tail  */
-#line 6106 "/tmp/ripper_tokenized.y"
+#line 6107 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern(p, 0, 0, (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=dispatch4(aryptn,v5,v2,v3,v4); p->s_lvalue=v6;}
                     }
-#line 32243 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32244 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 544: /* p_top_expr_body: p_kwargs  */
-#line 6111 "/tmp/ripper_tokenized.y"
+#line 6112 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_hash_pattern(p, 0, (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=Qnil, v5=dispatch3(hshptn,v4,v2,v3); p->s_lvalue=v5;}
                     }
-#line 32252 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32253 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 546: /* p_as: p_expr "=>" p_variable  */
-#line 6121 "/tmp/ripper_tokenized.y"
+#line 6122 "/tmp/ripper_tokenized.y"
                     {
                         NODE *n = NEW_LIST((yyvsp[-2].node), &(yyloc));
                         n = list_append(p, n, (yyvsp[0].node));
                         (yyval.node) = new_hash(p, n, &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(id_assoc), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 32263 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32264 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 548: /* $@32: %empty  */
-#line 6131 "/tmp/ripper_tokenized.y"
+#line 6132 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_alt_pattern = 1;
                     }
-#line 32271 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32272 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 549: /* p_alt: p_alt '|' $@32 p_expr_basic  */
-#line 6135 "/tmp/ripper_tokenized.y"
+#line 6136 "/tmp/ripper_tokenized.y"
                     {
                         if (p->ctxt.capture_in_pattern) {
                             yyerror1(&(yylsp[-2]), "alternative pattern after variable capture");
@@ -32280,378 +32281,378 @@ yyreduce:
                         (yyval.node) = NEW_OR((yyvsp[-3].node), (yyvsp[0].node), &(yyloc), &(yylsp[-2]));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((0 - 1)), v3=ID2VAL(idOr), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
-#line 32284 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32285 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 551: /* $@33: %empty  */
-#line 6147 "/tmp/ripper_tokenized.y"
+#line 6148 "/tmp/ripper_tokenized.y"
                     {
                         /* AST.parse_file class pattern kwargs still depend on this */
                     }
-#line 32292 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32293 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 552: /* p_lparen: '(' $@33 p_pktbl  */
-#line 6151 "/tmp/ripper_tokenized.y"
+#line 6152 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.tbl) = (yyvsp[0].tbl);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 32301 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32302 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 553: /* $@34: %empty  */
-#line 6158 "/tmp/ripper_tokenized.y"
+#line 6159 "/tmp/ripper_tokenized.y"
                     {
                         /* AST.parse_file class pattern kwargs still depend on this */
                     }
-#line 32309 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32310 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 554: /* p_lbracket: '[' $@34 p_pktbl  */
-#line 6162 "/tmp/ripper_tokenized.y"
+#line 6163 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.tbl) = (yyvsp[0].tbl);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 32318 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32319 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 557: /* p_expr_basic: p_const p_lparen p_args rparen  */
-#line 6171 "/tmp/ripper_tokenized.y"
+#line 6172 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-2].tbl));
                         (yyval.node) = new_array_pattern(p, (yyvsp[-3].node), 0, (yyvsp[-1].node), &(yyloc));
                         nd_set_first_loc((yyval.node), (yylsp[-3]).beg_pos);
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=dispatch4(aryptn,v1,v3,v4,v5); p->s_lvalue=v6;}
                     }
-#line 32329 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32330 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 558: /* p_expr_basic: p_const p_lparen p_find rparen  */
-#line 6178 "/tmp/ripper_tokenized.y"
+#line 6179 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-2].tbl));
                         (yyval.node) = new_find_pattern(p, (yyvsp[-3].node), (yyvsp[-1].node), &(yyloc));
                         nd_set_first_loc((yyval.node), (yylsp[-3]).beg_pos);
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=dispatch4(fndptn,v1,v3,v4,v5); p->s_lvalue=v6;}
                     }
-#line 32340 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32341 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 559: /* p_expr_basic: p_const p_lparen p_kwargs rparen  */
-#line 6185 "/tmp/ripper_tokenized.y"
+#line 6186 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-2].tbl));
                         (yyval.node) = new_hash_pattern(p, (yyvsp[-3].node), (yyvsp[-1].node), &(yyloc));
                         nd_set_first_loc((yyval.node), (yylsp[-3]).beg_pos);
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=dispatch3(hshptn,v1,v3,v4); p->s_lvalue=v5;}
                     }
-#line 32351 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32352 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 560: /* p_expr_basic: p_const '(' rparen  */
-#line 6192 "/tmp/ripper_tokenized.y"
+#line 6193 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern_tail(p, 0, 0, 0, 0, &(yyloc));
                         (yyval.node) = new_array_pattern(p, (yyvsp[-2].node), 0, (yyval.node), &(yyloc));
                         {VALUE v1=get_value((-2 - 1)), v2=Qnil, v3=Qnil, v4=Qnil, v5=dispatch4(aryptn,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
-#line 32361 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32362 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 561: /* p_expr_basic: p_const p_lbracket p_args rbracket  */
-#line 6198 "/tmp/ripper_tokenized.y"
+#line 6199 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-2].tbl));
                         (yyval.node) = new_array_pattern(p, (yyvsp[-3].node), 0, (yyvsp[-1].node), &(yyloc));
                         nd_set_first_loc((yyval.node), (yylsp[-3]).beg_pos);
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=dispatch4(aryptn,v1,v3,v4,v5); p->s_lvalue=v6;}
                     }
-#line 32372 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32373 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 562: /* p_expr_basic: p_const p_lbracket p_find rbracket  */
-#line 6205 "/tmp/ripper_tokenized.y"
+#line 6206 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-2].tbl));
                         (yyval.node) = new_find_pattern(p, (yyvsp[-3].node), (yyvsp[-1].node), &(yyloc));
                         nd_set_first_loc((yyval.node), (yylsp[-3]).beg_pos);
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=dispatch4(fndptn,v1,v3,v4,v5); p->s_lvalue=v6;}
                     }
-#line 32383 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32384 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 563: /* p_expr_basic: p_const p_lbracket p_kwargs rbracket  */
-#line 6212 "/tmp/ripper_tokenized.y"
+#line 6213 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-2].tbl));
                         (yyval.node) = new_hash_pattern(p, (yyvsp[-3].node), (yyvsp[-1].node), &(yyloc));
                         nd_set_first_loc((yyval.node), (yylsp[-3]).beg_pos);
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=dispatch3(hshptn,v1,v3,v4); p->s_lvalue=v5;}
                     }
-#line 32394 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32395 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 564: /* p_expr_basic: p_const '[' rbracket  */
-#line 6219 "/tmp/ripper_tokenized.y"
+#line 6220 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern_tail(p, 0, 0, 0, 0, &(yyloc));
                         (yyval.node) = new_array_pattern(p, (yyvsp[-2].node), 0, (yyval.node), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=Qnil, v3=Qnil, v4=Qnil, v5=dispatch4(aryptn,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
-#line 32404 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32405 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 565: /* p_expr_basic: "[" p_args rbracket  */
-#line 6225 "/tmp/ripper_tokenized.y"
+#line 6226 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern(p, 0, 0, (yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=dispatch4(aryptn,v5,v2,v3,v4); p->s_lvalue=v6;}
                     }
-#line 32413 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32414 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 566: /* p_expr_basic: "[" p_find rbracket  */
-#line 6230 "/tmp/ripper_tokenized.y"
+#line 6231 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_find_pattern(p, 0, (yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=dispatch4(fndptn,v5,v2,v3,v4); p->s_lvalue=v6;}
                     }
-#line 32422 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32423 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 567: /* p_expr_basic: "[" rbracket  */
-#line 6235 "/tmp/ripper_tokenized.y"
+#line 6236 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern_tail(p, 0, 0, 0, 0, &(yyloc));
                         (yyval.node) = new_array_pattern(p, 0, 0, (yyval.node), &(yyloc));
                     {VALUE v1=Qnil, v2=Qnil, v3=Qnil, v4=Qnil, v5=dispatch4(aryptn,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
-#line 32432 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32433 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 568: /* $@35: %empty  */
-#line 6241 "/tmp/ripper_tokenized.y"
+#line 6242 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_kwarg = 0;
                     }
-#line 32440 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32441 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 569: /* p_expr_basic: "{" p_pktbl lex_ctxt $@35 p_kwargs rbrace  */
-#line 6245 "/tmp/ripper_tokenized.y"
+#line 6246 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-4].tbl));
                         p->ctxt.in_kwarg = (yyvsp[-3].ctxt).in_kwarg;
                         (yyval.node) = new_hash_pattern(p, 0, (yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=Qnil, v5=dispatch3(hshptn,v4,v2,v3); p->s_lvalue=v5;}
                     }
-#line 32451 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32452 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 570: /* p_expr_basic: "{" rbrace  */
-#line 6252 "/tmp/ripper_tokenized.y"
+#line 6253 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_hash_pattern_tail(p, 0, 0, &(yyloc));
                         (yyval.node) = new_hash_pattern(p, 0, (yyval.node), &(yyloc));
                     {VALUE v1=Qnil, v2=Qnil, v3=Qnil, v4=dispatch3(hshptn,v1,v2,v3); p->s_lvalue=v4;}
                     }
-#line 32461 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32462 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 571: /* p_expr_basic: "(" p_pktbl p_expr rparen  */
-#line 6258 "/tmp/ripper_tokenized.y"
+#line 6259 "/tmp/ripper_tokenized.y"
                     {
                         pop_pktbl(p, (yyvsp[-2].tbl));
                         (yyval.node) = (yyvsp[-1].node);
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 32471 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32472 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 572: /* p_args: p_expr  */
-#line 6266 "/tmp/ripper_tokenized.y"
+#line 6267 "/tmp/ripper_tokenized.y"
                     {
                         NODE *pre_args = NEW_LIST((yyvsp[0].node), &(yyloc));
                         (yyval.node) = new_array_pattern_tail(p, pre_args, 0, 0, 0, &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, rb_ary_new_from_args(1, v1), Qnil, Qnil);}
                     }
-#line 32481 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32482 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 573: /* p_args: p_args_head  */
-#line 6272 "/tmp/ripper_tokenized.y"
+#line 6273 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern_tail(p, (yyvsp[0].node), 1, 0, 0, &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, Qnil, Qnil);}
                     }
-#line 32490 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32491 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 574: /* p_args: p_args_head p_arg  */
-#line 6277 "/tmp/ripper_tokenized.y"
+#line 6278 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern_tail(p, list_concat((yyvsp[-1].node), (yyvsp[0].node)), 0, 0, 0, &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, rb_ary_concat(v1, v2), Qnil, Qnil);}
                     }
-#line 32499 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32500 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 575: /* p_args: p_args_head p_rest  */
-#line 6282 "/tmp/ripper_tokenized.y"
+#line 6283 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern_tail(p, (yyvsp[-1].node), 1, (yyvsp[0].node), 0, &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, Qnil);}
                     }
-#line 32508 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32509 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 576: /* p_args: p_args_head p_rest ',' p_args_post  */
-#line 6287 "/tmp/ripper_tokenized.y"
+#line 6288 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern_tail(p, (yyvsp[-3].node), 1, (yyvsp[-2].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, v3);}
                     }
-#line 32517 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32518 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 579: /* p_args_head: p_args_head p_arg ','  */
-#line 6296 "/tmp/ripper_tokenized.y"
+#line 6297 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_concat((yyvsp[-2].node), (yyvsp[-1].node));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)); p->s_lvalue=rb_ary_concat(v1, v2);}
                     }
-#line 32526 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32527 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 580: /* p_args_tail: p_rest  */
-#line 6303 "/tmp/ripper_tokenized.y"
+#line 6304 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern_tail(p, 0, 1, (yyvsp[0].node), 0, &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, Qnil);}
                     }
-#line 32535 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32536 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 581: /* p_args_tail: p_rest ',' p_args_post  */
-#line 6308 "/tmp/ripper_tokenized.y"
+#line 6309 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_array_pattern_tail(p, 0, 1, (yyvsp[-2].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, v2);}
                     }
-#line 32544 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32545 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 582: /* p_find: p_rest ',' p_args_post ',' p_rest  */
-#line 6315 "/tmp/ripper_tokenized.y"
+#line 6316 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_find_pattern_tail(p, (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-4 - 1)), v2=get_value((-2 - 1)), v3=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, v3);}
                     }
-#line 32553 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32554 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 583: /* p_rest: "*" "local variable or method"  */
-#line 6323 "/tmp/ripper_tokenized.y"
+#line 6324 "/tmp/ripper_tokenized.y"
                     {
                         error_duplicate_pattern_variable(p, (yyvsp[0].id), &(yylsp[0]));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         (yyval.node) = assignable(p, (yyvsp[0].id), 0, &(yyloc));
                     }
-#line 32563 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32564 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 584: /* p_rest: "*"  */
-#line 6329 "/tmp/ripper_tokenized.y"
+#line 6330 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = 0;
                     {VALUE v1=Qnil, v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                     }
-#line 32572 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32573 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 586: /* p_args_post: p_args_post ',' p_arg  */
-#line 6337 "/tmp/ripper_tokenized.y"
+#line 6338 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_concat((yyvsp[-2].node), (yyvsp[0].node));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_concat(v1, v2);}
                     }
-#line 32581 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32582 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 587: /* p_arg: p_expr  */
-#line 6344 "/tmp/ripper_tokenized.y"
+#line 6345 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_LIST((yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(1, v1);}
                     }
-#line 32590 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32591 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 588: /* p_kwargs: p_kwarg ',' p_any_kwrest  */
-#line 6351 "/tmp/ripper_tokenized.y"
+#line 6352 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) =  new_hash_pattern_tail(p, new_unique_key_hash(p, (yyvsp[-2].node), &(yyloc)), (yyvsp[0].id), &(yyloc));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(2, v1, v2);}
                     }
-#line 32599 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32600 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 589: /* p_kwargs: p_kwarg  */
-#line 6356 "/tmp/ripper_tokenized.y"
+#line 6357 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) =  new_hash_pattern_tail(p, new_unique_key_hash(p, (yyvsp[0].node), &(yyloc)), 0, &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(2, v1, Qnil);}
                     }
-#line 32608 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32609 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 590: /* p_kwargs: p_kwarg ','  */
-#line 6361 "/tmp/ripper_tokenized.y"
+#line 6362 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) =  new_hash_pattern_tail(p, new_unique_key_hash(p, (yyvsp[-1].node), &(yyloc)), 0, &(yyloc));
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=rb_ary_new_from_args(2, v1, Qnil);}
                     }
-#line 32617 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32618 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 591: /* p_kwargs: p_any_kwrest  */
-#line 6366 "/tmp/ripper_tokenized.y"
+#line 6367 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) =  new_hash_pattern_tail(p, new_hash(p, 0, &(yyloc)), (yyvsp[0].id), &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(2, rb_ary_new(), v1);}
                     }
-#line 32626 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32627 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 592: /* p_kwarg: p_kw  */
-#line 6373 "/tmp/ripper_tokenized.y"
+#line 6374 "/tmp/ripper_tokenized.y"
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(1, v1);}
-#line 32632 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32633 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 593: /* p_kwarg: p_kwarg ',' p_kw  */
-#line 6375 "/tmp/ripper_tokenized.y"
+#line 6376 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_concat((yyvsp[-2].node), (yyvsp[0].node));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
-#line 32641 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32642 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 594: /* p_kw: p_kw_label p_expr  */
-#line 6382 "/tmp/ripper_tokenized.y"
+#line 6383 "/tmp/ripper_tokenized.y"
                     {
                         error_duplicate_pattern_key(p, (yyvsp[-1].id), &(yylsp[-1]));
                         (yyval.node) = list_append(p, NEW_LIST(NEW_SYM(rb_id2str((yyvsp[-1].id)), &(yylsp[-1])), &(yyloc)), (yyvsp[0].node));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(2, v1, v2);}
                     }
-#line 32651 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32652 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 595: /* p_kw: p_kw_label  */
-#line 6388 "/tmp/ripper_tokenized.y"
+#line 6389 "/tmp/ripper_tokenized.y"
                     {
                         error_duplicate_pattern_key(p, (yyvsp[0].id), &(yylsp[0]));
                         if ((yyvsp[0].id) && !is_local_id((yyvsp[0].id))) {
@@ -32661,11 +32662,11 @@ yyreduce:
                         (yyval.node) = list_append(p, NEW_LIST(NEW_SYM(rb_id2str((yyvsp[0].id)), &(yyloc)), &(yyloc)), assignable(p, (yyvsp[0].id), 0, &(yyloc)));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(2, v1, Qnil);}
                     }
-#line 32665 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32666 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 597: /* p_kw_label: "string literal" string_contents tLABEL_END  */
-#line 6401 "/tmp/ripper_tokenized.y"
+#line 6402 "/tmp/ripper_tokenized.y"
                     {
                         YYLTYPE loc = code_loc_gen(&(yylsp[-2]), &(yylsp[0]));
                         if (!(yyvsp[-1].node) || nd_type_p((yyvsp[-1].node), NODE_STR)) {
@@ -32678,127 +32679,127 @@ yyreduce:
                         }
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 32682 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32683 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 598: /* p_kwrest: kwrest_mark "local variable or method"  */
-#line 6416 "/tmp/ripper_tokenized.y"
+#line 6417 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = (yyvsp[0].id);
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                     }
-#line 32691 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32692 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 599: /* p_kwrest: kwrest_mark  */
-#line 6421 "/tmp/ripper_tokenized.y"
+#line 6422 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = 0;
                     {p->s_lvalue=Qnil;}
                     }
-#line 32700 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32701 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 600: /* p_kwnorest: kwrest_mark "'nil'"  */
-#line 6428 "/tmp/ripper_tokenized.y"
+#line 6429 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = 0;
                     }
-#line 32708 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32709 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 602: /* p_any_kwrest: p_kwnorest  */
-#line 6435 "/tmp/ripper_tokenized.y"
+#line 6436 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = idNil;
                     {VALUE v1=ID2VAL(idNil), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                     }
-#line 32717 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32718 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 604: /* range_expr_p_primitive: p_primitive ".." p_primitive  */
-#line 3791 "/tmp/ripper_tokenized.y"
+#line 3792 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-2].node));
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = NEW_DOT2((yyvsp[-2].node), (yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(dot2,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32728 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32729 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 605: /* range_expr_p_primitive: p_primitive "..." p_primitive  */
-#line 3798 "/tmp/ripper_tokenized.y"
+#line 3799 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-2].node));
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = NEW_DOT3((yyvsp[-2].node), (yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(dot3,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32739 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32740 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 606: /* range_expr_p_primitive: p_primitive ".."  */
-#line 3805 "/tmp/ripper_tokenized.y"
+#line 3806 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-1].node));
                         (yyval.node) = NEW_DOT2((yyvsp[-1].node), new_nil_at(p, &(yylsp[0]).end_pos), &(yyloc), &(yylsp[0]));
                     {VALUE v1=get_value((-1 - 1)), v2=Qnil, v3=dispatch2(dot2,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32749 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32750 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 607: /* range_expr_p_primitive: p_primitive "..."  */
-#line 3811 "/tmp/ripper_tokenized.y"
+#line 3812 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[-1].node));
                         (yyval.node) = NEW_DOT3((yyvsp[-1].node), new_nil_at(p, &(yylsp[0]).end_pos), &(yyloc), &(yylsp[0]));
                     {VALUE v1=get_value((-1 - 1)), v2=Qnil, v3=dispatch2(dot3,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32759 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32760 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 608: /* range_expr_p_primitive: "(.." p_primitive  */
-#line 3817 "/tmp/ripper_tokenized.y"
+#line 3818 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = NEW_DOT2(new_nil_at(p, &(yylsp[-1]).beg_pos), (yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((0 - 1)), v2=Qnil, v3=dispatch2(dot2,v2,v1); p->s_lvalue=v3;}
                     }
-#line 32769 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32770 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 609: /* range_expr_p_primitive: "(..." p_primitive  */
-#line 3823 "/tmp/ripper_tokenized.y"
+#line 3824 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = NEW_DOT3(new_nil_at(p, &(yylsp[-1]).beg_pos), (yyvsp[0].node), &(yyloc), &(yylsp[-1]));
                     {VALUE v1=get_value((0 - 1)), v2=Qnil, v3=dispatch2(dot3,v2,v1); p->s_lvalue=v3;}
                     }
-#line 32779 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32780 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 622: /* p_primitive: keyword_variable  */
-#line 6450 "/tmp/ripper_tokenized.y"
+#line 6451 "/tmp/ripper_tokenized.y"
                     {
                         if (!((yyval.node) = gettable(p, (yyvsp[0].id), &(yyloc)))) (yyval.node) = NEW_ERROR(&(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                     }
-#line 32788 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32789 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 624: /* p_variable: "local variable or method"  */
-#line 6458 "/tmp/ripper_tokenized.y"
+#line 6459 "/tmp/ripper_tokenized.y"
                     {
                         error_duplicate_pattern_variable(p, (yyvsp[0].id), &(yylsp[0]));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         (yyval.node) = assignable(p, (yyvsp[0].id), 0, &(yyloc));
                     }
-#line 32798 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32799 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 625: /* p_var_ref: '^' "local variable or method"  */
-#line 6466 "/tmp/ripper_tokenized.y"
+#line 6467 "/tmp/ripper_tokenized.y"
                     {
                         NODE *n = gettable(p, (yyvsp[0].id), &(yyloc));
                         if (!n) {
@@ -32810,56 +32811,56 @@ yyreduce:
                         (yyval.node) = n;
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                     }
-#line 32814 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32815 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 626: /* p_var_ref: '^' nonlocal_var  */
-#line 6478 "/tmp/ripper_tokenized.y"
+#line 6479 "/tmp/ripper_tokenized.y"
                     {
                         if (!((yyval.node) = gettable(p, (yyvsp[0].id), &(yyloc)))) (yyval.node) = NEW_ERROR(&(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                     }
-#line 32823 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32824 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 627: /* p_expr_ref: '^' "(" expr_value rparen  */
-#line 6485 "/tmp/ripper_tokenized.y"
+#line 6486 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_BLOCK((yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(begin,v1); p->s_lvalue=v2;}
                     }
-#line 32832 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32833 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 628: /* p_const: ":: at EXPR_BEG" cname  */
-#line 6492 "/tmp/ripper_tokenized.y"
+#line 6493 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_COLON3((yyvsp[0].id), &(yyloc), &(yylsp[-1]), &(yylsp[0]));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(top_const_ref,v1); p->s_lvalue=v2;}
                     }
-#line 32841 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32842 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 629: /* p_const: p_const "::" cname  */
-#line 6497 "/tmp/ripper_tokenized.y"
+#line 6498 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_COLON2((yyvsp[-2].node), (yyvsp[0].id), &(yyloc), &(yylsp[-1]), &(yylsp[0]));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(const_path_ref,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32850 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32851 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 630: /* p_const: "constant"  */
-#line 6502 "/tmp/ripper_tokenized.y"
+#line 6503 "/tmp/ripper_tokenized.y"
                    {
                         (yyval.node) = gettable(p, (yyvsp[0].id), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                    }
-#line 32859 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32860 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 631: /* opt_rescue: k_rescue exc_list exc_var then compstmt_stmts opt_rescue  */
-#line 6511 "/tmp/ripper_tokenized.y"
+#line 6512 "/tmp/ripper_tokenized.y"
                     {
                         NODE *err = (yyvsp[-3].node);
                         if ((yyvsp[-3].node)) {
@@ -32878,48 +32879,48 @@ yyreduce:
                         }
                     {VALUE v1=get_value((-4 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=dispatch4(rescue,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
-#line 32882 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32883 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 633: /* exc_list: arg_value  */
-#line 6533 "/tmp/ripper_tokenized.y"
+#line 6534 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = NEW_LIST((yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new3(1, v1);}
                     }
-#line 32891 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32892 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 634: /* exc_list: mrhs  */
-#line 6538 "/tmp/ripper_tokenized.y"
+#line 6539 "/tmp/ripper_tokenized.y"
                     {
                         if (!((yyval.node) = splat_array((yyvsp[0].node)))) (yyval.node) = (yyvsp[0].node);
                     }
-#line 32899 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32900 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 636: /* exc_var: "=>" lhs  */
-#line 6545 "/tmp/ripper_tokenized.y"
+#line 6546 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[0].node);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 32908 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32909 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 638: /* opt_ensure: k_ensure stmts option_terms  */
-#line 6553 "/tmp/ripper_tokenized.y"
+#line 6554 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_rescue = (yyvsp[-2].ctxt).in_rescue;
                         (yyval.node) = (yyvsp[-1].node);
                         void_expr(p, void_stmts(p, (yyval.node)));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(ensure,v1); p->s_lvalue=v2;}
                     }
-#line 32919 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32920 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 642: /* strings: string  */
-#line 6567 "/tmp/ripper_tokenized.y"
+#line 6568 "/tmp/ripper_tokenized.y"
                     {
                         if (!(yyvsp[0].node)) {
                             (yyval.node) = NEW_STR(STRING_NEW0(), &(yyloc));
@@ -32929,20 +32930,20 @@ yyreduce:
                         }
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 32933 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32934 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 645: /* string: string string1  */
-#line 6581 "/tmp/ripper_tokenized.y"
+#line 6582 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = literal_concat(p, (yyvsp[-1].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(string_concat,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32942 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32943 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 646: /* string1: "string literal" string_contents "terminator"  */
-#line 6588 "/tmp/ripper_tokenized.y"
+#line 6589 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = heredoc_dedent(p, (yyvsp[-1].node));
                         if ((yyval.node)) nd_set_loc((yyval.node), &(yyloc));
@@ -32953,11 +32954,11 @@ yyreduce:
                         }
                     {VALUE v1=p->s_lvalue, v2=dispatch1(string_literal,v1); p->s_lvalue=v2;}
                     }
-#line 32957 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32958 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 647: /* xstring: "backtick literal" xstring_contents "terminator"  */
-#line 6601 "/tmp/ripper_tokenized.y"
+#line 6602 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_xstring(p, heredoc_dedent(p, (yyvsp[-1].node)), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
@@ -32967,188 +32968,188 @@ yyreduce:
                         }
                     {VALUE v1=p->s_lvalue, v2=dispatch1(xstring_literal,v1); p->s_lvalue=v2;}
                     }
-#line 32971 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32972 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 648: /* regexp: "regexp literal" regexp_contents tREGEXP_END  */
-#line 6613 "/tmp/ripper_tokenized.y"
+#line 6614 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = new_regexp(p, (yyvsp[-1].node), (yyvsp[0].num), &(yyloc), &(yylsp[-2]), &(yylsp[-1]), &(yylsp[0]));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(regexp_literal,v1,v2); p->s_lvalue=v3;}
                     }
-#line 32980 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32981 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 651: /* words_tWORDS_BEG_word_list: "word list" nonempty_list_' ' word_list "terminator"  */
-#line 3840 "/tmp/ripper_tokenized.y"
+#line 3841 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = make_list((yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(array,v1); p->s_lvalue=v2;}
                     }
-#line 32989 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32990 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 653: /* word_list: %empty  */
-#line 6623 "/tmp/ripper_tokenized.y"
+#line 6624 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = 0;
                     {VALUE v1=dispatch0(words_new); p->s_lvalue=v1;}
                     }
-#line 32998 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 32999 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 654: /* word_list: word_list word nonempty_list_' '  */
-#line 6628 "/tmp/ripper_tokenized.y"
+#line 6629 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_append(p, (yyvsp[-2].node), evstr2dstr(p, (yyvsp[-1].node)));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(words_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 33007 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33008 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 655: /* word: string_content  */
-#line 6635 "/tmp/ripper_tokenized.y"
+#line 6636 "/tmp/ripper_tokenized.y"
                     {VALUE v1=get_value((0 - 1)), v2=dispatch0(word_new), v3=dispatch2(word_add,v2,v1); p->s_lvalue=v3;}
-#line 33013 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33014 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 656: /* word: word string_content  */
-#line 6637 "/tmp/ripper_tokenized.y"
+#line 6638 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = literal_concat(p, (yyvsp[-1].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(word_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 33022 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33023 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 657: /* words_tSYMBOLS_BEG_symbol_list: "symbol list" nonempty_list_' ' symbol_list "terminator"  */
-#line 3840 "/tmp/ripper_tokenized.y"
+#line 3841 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = make_list((yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(array,v1); p->s_lvalue=v2;}
                     }
-#line 33031 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33032 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 659: /* symbol_list: %empty  */
-#line 6647 "/tmp/ripper_tokenized.y"
+#line 6648 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = 0;
                     {VALUE v1=dispatch0(symbols_new); p->s_lvalue=v1;}
                     }
-#line 33040 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33041 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 660: /* symbol_list: symbol_list word nonempty_list_' '  */
-#line 6652 "/tmp/ripper_tokenized.y"
+#line 6653 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = symbol_append(p, (yyvsp[-2].node), evstr2dstr(p, (yyvsp[-1].node)));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(symbols_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 33049 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33050 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 661: /* words_tQWORDS_BEG_qword_list: "verbatim word list" nonempty_list_' ' qword_list "terminator"  */
-#line 3840 "/tmp/ripper_tokenized.y"
+#line 3841 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = make_list((yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(array,v1); p->s_lvalue=v2;}
                     }
-#line 33058 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33059 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 663: /* words_tQSYMBOLS_BEG_qsym_list: "verbatim symbol list" nonempty_list_' ' qsym_list "terminator"  */
-#line 3840 "/tmp/ripper_tokenized.y"
+#line 3841 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = make_list((yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(array,v1); p->s_lvalue=v2;}
                     }
-#line 33067 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33068 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 665: /* qword_list: %empty  */
-#line 6665 "/tmp/ripper_tokenized.y"
+#line 6666 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = 0;
                     {VALUE v1=dispatch0(qwords_new); p->s_lvalue=v1;}
                     }
-#line 33076 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33077 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 666: /* qword_list: qword_list "literal content" nonempty_list_' '  */
-#line 6670 "/tmp/ripper_tokenized.y"
+#line 6671 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_append(p, (yyvsp[-2].node), (yyvsp[-1].node));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(qwords_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 33085 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33086 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 667: /* qsym_list: %empty  */
-#line 6677 "/tmp/ripper_tokenized.y"
+#line 6678 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = 0;
                     {VALUE v1=dispatch0(qsymbols_new); p->s_lvalue=v1;}
                     }
-#line 33094 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33095 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 668: /* qsym_list: qsym_list "literal content" nonempty_list_' '  */
-#line 6682 "/tmp/ripper_tokenized.y"
+#line 6683 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = symbol_append(p, (yyvsp[-2].node), (yyvsp[-1].node));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((-1 - 1)), v3=dispatch2(qsymbols_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 33103 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33104 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 669: /* string_contents: %empty  */
-#line 6689 "/tmp/ripper_tokenized.y"
+#line 6690 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = 0;
                     {VALUE v1=dispatch0(string_content); p->s_lvalue=v1;}
                     }
-#line 33112 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33113 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 670: /* string_contents: string_contents string_content  */
-#line 6694 "/tmp/ripper_tokenized.y"
+#line 6695 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = literal_concat(p, (yyvsp[-1].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(string_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 33121 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33122 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 671: /* xstring_contents: %empty  */
-#line 6701 "/tmp/ripper_tokenized.y"
+#line 6702 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = 0;
                     {VALUE v1=dispatch0(xstring_new); p->s_lvalue=v1;}
                     }
-#line 33130 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33131 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 672: /* xstring_contents: xstring_contents string_content  */
-#line 6706 "/tmp/ripper_tokenized.y"
+#line 6707 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = literal_concat(p, (yyvsp[-1].node), (yyvsp[0].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(xstring_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 33139 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33140 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 673: /* regexp_contents: %empty  */
-#line 6713 "/tmp/ripper_tokenized.y"
+#line 6714 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = 0;
                     {VALUE v1=dispatch0(regexp_new); p->s_lvalue=v1;}
                     }
-#line 33148 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33149 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 674: /* regexp_contents: regexp_contents string_content  */
-#line 6718 "/tmp/ripper_tokenized.y"
+#line 6719 "/tmp/ripper_tokenized.y"
                     {
                         NODE *head = (yyvsp[-1].node), *tail = (yyvsp[0].node);
                         if (!head) {
@@ -33172,38 +33173,38 @@ yyreduce:
                         }
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(regexp_add,v1,v2); p->s_lvalue=v3;}
                     }
-#line 33176 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33177 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 675: /* string_content: "literal content"  */
-#line 6744 "/tmp/ripper_tokenized.y"
+#line 6745 "/tmp/ripper_tokenized.y"
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
-#line 33182 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33183 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 676: /* @36: %empty  */
-#line 6746 "/tmp/ripper_tokenized.y"
+#line 6747 "/tmp/ripper_tokenized.y"
                     {
                         /* need to backup p->lex.strterm so that a string literal `%&foo,#$&,bar&` can be parsed */
                         (yyval.strterm) = p->lex.strterm;
                         p->lex.strterm = 0;
                     }
-#line 33192 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33193 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 677: /* string_content: tSTRING_DVAR @36 string_dvar  */
-#line 6752 "/tmp/ripper_tokenized.y"
+#line 6753 "/tmp/ripper_tokenized.y"
                     {
                         p->lex.strterm = (yyvsp[-1].strterm);
                         (yyval.node) = NEW_EVSTR((yyvsp[0].node), &(yyloc), &(yylsp[-2]), &NULL_LOC);
                         nd_set_line((yyval.node), (yylsp[0]).end_pos.lineno);
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(string_dvar,v1); p->s_lvalue=v2;}
                     }
-#line 33203 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33204 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 678: /* @37: %empty  */
-#line 6759 "/tmp/ripper_tokenized.y"
+#line 6760 "/tmp/ripper_tokenized.y"
                     {
                         CMDARG_PUSH(0);
                         COND_PUSH(0);
@@ -33211,29 +33212,29 @@ yyreduce:
                         (yyval.strterm) = p->lex.strterm;
                         p->lex.strterm = 0;
                     }
-#line 33215 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33216 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 679: /* @38: %empty  */
-#line 6766 "/tmp/ripper_tokenized.y"
+#line 6767 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.num) = p->lex.brace_nest;
                         p->lex.brace_nest = 0;
                     }
-#line 33224 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33225 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 680: /* @39: %empty  */
-#line 6770 "/tmp/ripper_tokenized.y"
+#line 6771 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.num) = p->heredoc_indent;
                         p->heredoc_indent = 0;
                     }
-#line 33233 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33234 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 681: /* string_content: "'#{'" @37 @38 @39 compstmt_stmts string_dend  */
-#line 6775 "/tmp/ripper_tokenized.y"
+#line 6776 "/tmp/ripper_tokenized.y"
                     {
                         COND_POP();
                         CMDARG_POP();
@@ -33245,20 +33246,20 @@ yyreduce:
                         (yyval.node) = new_evstr(p, (yyvsp[-1].node), &(yyloc), &(yylsp[-5]), &(yylsp[0]));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(string_embexpr,v1); p->s_lvalue=v2;}
                     }
-#line 33249 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33250 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 684: /* string_dvar: nonlocal_var  */
-#line 6793 "/tmp/ripper_tokenized.y"
+#line 6794 "/tmp/ripper_tokenized.y"
                     {
                         if (!((yyval.node) = gettable(p, (yyvsp[0].id), &(yyloc)))) (yyval.node) = NEW_ERROR(&(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                     }
-#line 33258 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33259 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 688: /* ssym: "symbol literal" sym  */
-#line 6805 "/tmp/ripper_tokenized.y"
+#line 6806 "/tmp/ripper_tokenized.y"
                     {
                         VALUE str;
                         str = rb_id2str((yyvsp[0].id));
@@ -33272,72 +33273,72 @@ yyreduce:
                         (yyval.node) = NEW_SYM(str, &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(symbol,v1), v3=dispatch1(symbol_literal,v2); p->s_lvalue=v3;}
                     }
-#line 33276 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33277 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 691: /* dsym: "symbol literal" string_contents "terminator"  */
-#line 6825 "/tmp/ripper_tokenized.y"
+#line 6826 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = dsym_node(p, (yyvsp[-1].node), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(dyna_symbol,v1); p->s_lvalue=v2;}
                     }
-#line 33285 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33286 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 693: /* numeric: tUMINUS_NUM simple_numeric  */
-#line 6833 "/tmp/ripper_tokenized.y"
+#line 6834 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[0].node);
                         negate_lit(p, (yyval.node), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=ID2VAL(idUMinus), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
-#line 33295 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33296 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 704: /* keyword_variable: "'nil'"  */
-#line 6855 "/tmp/ripper_tokenized.y"
+#line 6856 "/tmp/ripper_tokenized.y"
                               {(yyval.id) = KWD2EID(nil, (yyvsp[0].id));}
-#line 33301 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33302 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 705: /* keyword_variable: "'self'"  */
-#line 6856 "/tmp/ripper_tokenized.y"
+#line 6857 "/tmp/ripper_tokenized.y"
                                {(yyval.id) = KWD2EID(self, (yyvsp[0].id));}
-#line 33307 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33308 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 706: /* keyword_variable: "'true'"  */
-#line 6857 "/tmp/ripper_tokenized.y"
+#line 6858 "/tmp/ripper_tokenized.y"
                                {(yyval.id) = KWD2EID(true, (yyvsp[0].id));}
-#line 33313 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33314 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 707: /* keyword_variable: "'false'"  */
-#line 6858 "/tmp/ripper_tokenized.y"
+#line 6859 "/tmp/ripper_tokenized.y"
                                 {(yyval.id) = KWD2EID(false, (yyvsp[0].id));}
-#line 33319 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33320 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 708: /* keyword_variable: "'__FILE__'"  */
-#line 6859 "/tmp/ripper_tokenized.y"
+#line 6860 "/tmp/ripper_tokenized.y"
                                   {(yyval.id) = KWD2EID(_FILE__, (yyvsp[0].id));}
-#line 33325 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33326 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 709: /* keyword_variable: "'__LINE__'"  */
-#line 6860 "/tmp/ripper_tokenized.y"
+#line 6861 "/tmp/ripper_tokenized.y"
                                   {(yyval.id) = KWD2EID(_LINE__, (yyvsp[0].id));}
-#line 33331 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33332 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 710: /* keyword_variable: "'__ENCODING__'"  */
-#line 6861 "/tmp/ripper_tokenized.y"
+#line 6862 "/tmp/ripper_tokenized.y"
                                       {(yyval.id) = KWD2EID(_ENCODING__, (yyvsp[0].id));}
-#line 33337 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33338 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 711: /* var_ref: user_variable  */
-#line 6865 "/tmp/ripper_tokenized.y"
+#line 6866 "/tmp/ripper_tokenized.y"
                     {
                         if (!((yyval.node) = gettable(p, (yyvsp[0].id), &(yyloc)))) (yyval.node) = NEW_ERROR(&(yyloc));
                         if (ifdef_ripper(id_is_var(p, (yyvsp[0].id)), false)) {
@@ -33347,94 +33348,94 @@ yyreduce:
                         {VALUE v1=get_value((0 - 1)), v2=dispatch1(vcall,v1); p->s_lvalue=v2;}
                         }
                     }
-#line 33351 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33352 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 712: /* var_ref: keyword_variable  */
-#line 6875 "/tmp/ripper_tokenized.y"
+#line 6876 "/tmp/ripper_tokenized.y"
                     {
                         if (!((yyval.node) = gettable(p, (yyvsp[0].id), &(yyloc)))) (yyval.node) = NEW_ERROR(&(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                     }
-#line 33360 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33361 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 713: /* var_lhs: user_variable  */
-#line 6882 "/tmp/ripper_tokenized.y"
+#line 6883 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         (yyval.node) = assignable(p, (yyvsp[0].id), 0, &(yyloc));
                     }
-#line 33369 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33370 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 714: /* var_lhs: keyword_variable  */
-#line 6882 "/tmp/ripper_tokenized.y"
+#line 6883 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         (yyval.node) = assignable(p, (yyvsp[0].id), 0, &(yyloc));
                     }
-#line 33378 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33379 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 717: /* $@40: %empty  */
-#line 6893 "/tmp/ripper_tokenized.y"
+#line 6894 "/tmp/ripper_tokenized.y"
                     {
                         p->command_start = TRUE;
                     }
-#line 33386 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33387 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 718: /* superclass: '<' $@40 expr_value term  */
-#line 6897 "/tmp/ripper_tokenized.y"
+#line 6898 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node);
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 33395 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33396 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 721: /* f_opt_paren_args: f_empty_arg  */
-#line 6906 "/tmp/ripper_tokenized.y"
+#line 6907 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 0;
                     }
-#line 33403 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33404 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 722: /* f_empty_arg: %empty  */
-#line 6912 "/tmp/ripper_tokenized.y"
+#line 6913 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_empty_args_tail(p, &(yyloc));
                         (yyval.node_args) = new_args(p, 0, 0, 0, 0, (yyval.node_args), &(yyloc));
                     {VALUE v1=Qnil, v2=Qnil, v3=Qnil, v4=Qnil, v5=Qnil, v6=Qnil, v7=Qnil, v8=dispatch7(params,v1,v2,v3,v4,v5,v6,v7); p->s_lvalue=v8;}
                     }
-#line 33413 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33414 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 723: /* f_paren_args: '(' f_args rparen  */
-#line 6920 "/tmp/ripper_tokenized.y"
+#line 6921 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = (yyvsp[-1].node_args);
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(paren,v1); p->s_lvalue=v2;}
                         p->command_start = TRUE;
                         p->ctxt.in_argdef = 0;
                     }
-#line 33424 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33425 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 725: /* @41: %empty  */
-#line 6929 "/tmp/ripper_tokenized.y"
+#line 6930 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.ctxt) = p->ctxt;
                         p->ctxt.in_kwarg = 1;
                         p->ctxt.in_argdef = 1;
                     }
-#line 33434 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33435 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 726: /* f_arglist: @41 f_args term  */
-#line 6935 "/tmp/ripper_tokenized.y"
+#line 6936 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_kwarg = (yyvsp[-2].ctxt).in_kwarg;
                         p->ctxt.in_argdef = 0;
@@ -33442,477 +33443,477 @@ yyreduce:
                         p->command_start = TRUE;
                     {VALUE v1=get_value((-1 - 1)); p->s_lvalue=v1;}
                     }
-#line 33446 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33447 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 727: /* f_kw_arg_value: f_label arg_value  */
-#line 3691 "/tmp/ripper_tokenized.y"
+#line 3692 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 1;
                         (yyval.node_kw_arg) = new_kw_arg(p, assignable(p, (yyvsp[-1].id), (yyvsp[0].node), &(yyloc)), &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(2, p->s_lvalue, v1);}
                     }
-#line 33456 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33457 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 728: /* f_kw_arg_value: f_label  */
-#line 3697 "/tmp/ripper_tokenized.y"
+#line 3698 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 1;
                         (yyval.node_kw_arg) = new_kw_arg(p, assignable(p, (yyvsp[0].id), NODE_SPECIAL_REQUIRED_KEYWORD, &(yyloc)), &(yyloc));
                     {p->s_lvalue=rb_ary_new_from_args(2, p->s_lvalue, 0);}
                     }
-#line 33466 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33467 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 729: /* f_kwarg_arg_value: f_kw_arg_value  */
-#line 3706 "/tmp/ripper_tokenized.y"
+#line 3707 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_kw_arg) = (yyvsp[0].node_kw_arg);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new3(1, v1);}
                     }
-#line 33475 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33476 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 730: /* f_kwarg_arg_value: f_kwarg_arg_value ',' f_kw_arg_value  */
-#line 3711 "/tmp/ripper_tokenized.y"
+#line 3712 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_kw_arg) = kwd_append((yyvsp[-2].node_kw_arg), (yyvsp[0].node_kw_arg));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
-#line 33484 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33485 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 731: /* opt_f_block_arg_opt_comma: ',' f_block_arg  */
-#line 3628 "/tmp/ripper_tokenized.y"
+#line 3629 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = (yyvsp[0].id);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 33493 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33494 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 733: /* args_tail_basic_arg_value_opt_comma: f_kwarg_arg_value ',' f_kwrest opt_f_block_arg_opt_comma  */
-#line 3605 "/tmp/ripper_tokenized.y"
+#line 3606 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, (yyvsp[-3].node_kw_arg), (yyvsp[-1].id), (yyvsp[0].id), &(yylsp[-1]));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, v3);}
                     }
-#line 33502 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33503 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 734: /* args_tail_basic_arg_value_opt_comma: f_kwarg_arg_value opt_f_block_arg_opt_comma  */
-#line 3610 "/tmp/ripper_tokenized.y"
+#line 3611 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, (yyvsp[-1].node_kw_arg), 0, (yyvsp[0].id), &(yylsp[-1]));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, Qnil, v2);}
                     }
-#line 33511 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33512 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 735: /* args_tail_basic_arg_value_opt_comma: f_any_kwrest opt_f_block_arg_opt_comma  */
-#line 3615 "/tmp/ripper_tokenized.y"
+#line 3616 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, 0, (yyvsp[-1].id), (yyvsp[0].id), &(yylsp[-1]));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, v2);}
                     }
-#line 33520 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33521 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 736: /* args_tail_basic_arg_value_opt_comma: f_block_arg  */
-#line 3620 "/tmp/ripper_tokenized.y"
+#line 3621 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, 0, 0, (yyvsp[0].id), &(yylsp[0]));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, Qnil, Qnil, v1);}
                     }
-#line 33529 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33530 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 738: /* args_tail: args_forward  */
-#line 6946 "/tmp/ripper_tokenized.y"
+#line 6947 "/tmp/ripper_tokenized.y"
                     {
                         add_forwarding_args(p);
                         (yyval.node_args) = new_args_tail(p, 0, (yyvsp[0].id), arg_FWD_BLOCK, &(yylsp[0]));
                         (yyval.node_args)->nd_ainfo.forwarding = 1;
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, Qnil);}
                     }
-#line 33540 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33541 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 739: /* args_tail_basic_arg_value_none: f_kwarg_arg_value ',' f_kwrest opt_f_block_arg_none  */
-#line 3605 "/tmp/ripper_tokenized.y"
+#line 3606 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, (yyvsp[-3].node_kw_arg), (yyvsp[-1].id), (yyvsp[0].id), &(yylsp[-1]));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, v3);}
                     }
-#line 33549 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33550 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 740: /* args_tail_basic_arg_value_none: f_kwarg_arg_value opt_f_block_arg_none  */
-#line 3610 "/tmp/ripper_tokenized.y"
+#line 3611 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, (yyvsp[-1].node_kw_arg), 0, (yyvsp[0].id), &(yylsp[-1]));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, v1, Qnil, v2);}
                     }
-#line 33558 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33559 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 741: /* args_tail_basic_arg_value_none: f_any_kwrest opt_f_block_arg_none  */
-#line 3615 "/tmp/ripper_tokenized.y"
+#line 3616 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, 0, (yyvsp[-1].id), (yyvsp[0].id), &(yylsp[-1]));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, v2);}
                     }
-#line 33567 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33568 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 742: /* args_tail_basic_arg_value_none: f_block_arg  */
-#line 3620 "/tmp/ripper_tokenized.y"
+#line 3621 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args_tail(p, 0, 0, (yyvsp[0].id), &(yylsp[0]));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, Qnil, Qnil, v1);}
                     }
-#line 33576 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33577 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 744: /* largs_tail: args_forward  */
-#line 6956 "/tmp/ripper_tokenized.y"
+#line 6957 "/tmp/ripper_tokenized.y"
                     {
                         yyerror1(&(yylsp[0]), "unexpected ... in lambda argument");
                         (yyval.node_args) = new_args_tail(p, 0, 0, 0, &(yylsp[0]));
                         (yyval.node_args)->nd_ainfo.forwarding = 1;
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, Qnil);}
                     }
-#line 33587 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33588 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 745: /* f_opt_arg_value: f_arg_asgn f_eq arg_value  */
-#line 3669 "/tmp/ripper_tokenized.y"
+#line 3670 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 1;
                         (yyval.node_opt_arg) = NEW_OPT_ARG(assignable(p, (yyvsp[-2].id), (yyvsp[0].node), &(yyloc)), &(yyloc));
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new_from_args(2, p->s_lvalue, v1);}
                     }
-#line 33597 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33598 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 746: /* f_opt_arg_arg_value: f_opt_arg_value  */
-#line 3678 "/tmp/ripper_tokenized.y"
+#line 3679 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_opt_arg) = (yyvsp[0].node_opt_arg);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new3(1, v1);}
                     }
-#line 33606 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33607 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 747: /* f_opt_arg_arg_value: f_opt_arg_arg_value ',' f_opt_arg_value  */
-#line 3683 "/tmp/ripper_tokenized.y"
+#line 3684 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_opt_arg) = opt_arg_append((yyvsp[-2].node_opt_arg), (yyvsp[0].node_opt_arg));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
-#line 33615 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33616 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 748: /* opt_args_tail_args_tail_opt_comma: ',' args_tail  */
-#line 3778 "/tmp/ripper_tokenized.y"
+#line 3779 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = (yyvsp[0].node_args);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 33624 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33625 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 749: /* opt_args_tail_args_tail_opt_comma: opt_comma  */
-#line 3783 "/tmp/ripper_tokenized.y"
+#line 3784 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_empty_args_tail(p, &(yyloc));
                     {p->s_lvalue=rb_ary_new_from_args(3, Qnil, Qnil, Qnil);}
                     }
-#line 33633 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33634 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 750: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_arg ',' f_opt_arg_arg_value ',' f_rest_arg opt_args_tail_args_tail_opt_comma  */
-#line 6966 "/tmp/ripper_tokenized.y"
+#line 6967 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-5].node_args_aux), (yyvsp[-3].node_opt_arg), (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v2,v3,v8,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 33642 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33643 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 751: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_arg ',' f_opt_arg_arg_value ',' f_rest_arg ',' f_arg opt_args_tail_args_tail_opt_comma  */
-#line 6971 "/tmp/ripper_tokenized.y"
+#line 6972 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-7].node_args_aux), (yyvsp[-5].node_opt_arg), (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-7 - 1)), v2=get_value((-5 - 1)), v3=get_value((-3 - 1)), v4=get_value((-1 - 1)), v5=get_value((0 - 1)), v6=rb_ary_entry(v5, 0), v7=rb_ary_entry(v5, 1), v8=rb_ary_entry(v5, 2), v9=dispatch7(params,v1,v2,v3,v4,v6,v7,v8); p->s_lvalue=v9;}
                     }
-#line 33651 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33652 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 752: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_arg ',' f_opt_arg_arg_value opt_args_tail_args_tail_opt_comma  */
-#line 6976 "/tmp/ripper_tokenized.y"
+#line 6977 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-3].node_args_aux), (yyvsp[-1].node_opt_arg), 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v2,v7,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 33660 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33661 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 753: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_arg ',' f_opt_arg_arg_value ',' f_arg opt_args_tail_args_tail_opt_comma  */
-#line 6981 "/tmp/ripper_tokenized.y"
+#line 6982 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-5].node_args_aux), (yyvsp[-3].node_opt_arg), 0, (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v2,v8,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 33669 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33670 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 754: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_arg ',' f_rest_arg opt_args_tail_args_tail_opt_comma  */
-#line 6986 "/tmp/ripper_tokenized.y"
+#line 6987 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-3].node_args_aux), 0, (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v7,v2,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 33678 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33679 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 755: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_arg ',' f_rest_arg ',' f_arg opt_args_tail_args_tail_opt_comma  */
-#line 6991 "/tmp/ripper_tokenized.y"
+#line 6992 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-5].node_args_aux), 0, (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v8,v2,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 33687 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33688 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 756: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_opt_arg_arg_value ',' f_rest_arg opt_args_tail_args_tail_opt_comma  */
-#line 6996 "/tmp/ripper_tokenized.y"
+#line 6997 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-3].node_opt_arg), (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v1,v2,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 33696 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33697 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 757: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_opt_arg_arg_value ',' f_rest_arg ',' f_arg opt_args_tail_args_tail_opt_comma  */
-#line 7001 "/tmp/ripper_tokenized.y"
+#line 7002 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-5].node_opt_arg), (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v8,v1,v2,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 33705 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33706 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 758: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_opt_arg_arg_value opt_args_tail_args_tail_opt_comma  */
-#line 7006 "/tmp/ripper_tokenized.y"
+#line 7007 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-1].node_opt_arg), 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v6,v1,v7,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
-#line 33714 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33715 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 759: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_opt_arg_arg_value ',' f_arg opt_args_tail_args_tail_opt_comma  */
-#line 7011 "/tmp/ripper_tokenized.y"
+#line 7012 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-3].node_opt_arg), 0, (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v1,v8,v2,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 33723 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33724 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 760: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_rest_arg opt_args_tail_args_tail_opt_comma  */
-#line 7016 "/tmp/ripper_tokenized.y"
+#line 7017 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, 0, (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v6,v7,v1,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
-#line 33732 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33733 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 761: /* args-list_arg_value_opt_args_tail_args_tail_opt_comma: f_rest_arg ',' f_arg opt_args_tail_args_tail_opt_comma  */
-#line 7021 "/tmp/ripper_tokenized.y"
+#line 7022 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, 0, (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v8,v1,v2,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 33741 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33742 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 763: /* f_args-list_args_tail_opt_comma: f_arg opt_args_tail_args_tail_opt_comma  */
-#line 7038 "/tmp/ripper_tokenized.y"
+#line 7039 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-1].node_args_aux), 0, 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v6,v7,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
-#line 33750 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33751 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 764: /* tail-only-args_args_tail: args_tail  */
-#line 7029 "/tmp/ripper_tokenized.y"
+#line 7030 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, 0, 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v5,v6,v7,v8,v2,v3,v4); p->s_lvalue=v9;}
                     }
-#line 33759 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33760 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 768: /* opt_args_tail_largs_tail_none: ',' largs_tail  */
-#line 3778 "/tmp/ripper_tokenized.y"
+#line 3779 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = (yyvsp[0].node_args);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 33768 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33769 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 769: /* opt_args_tail_largs_tail_none: none  */
-#line 3783 "/tmp/ripper_tokenized.y"
+#line 3784 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_empty_args_tail(p, &(yyloc));
                     {p->s_lvalue=rb_ary_new_from_args(3, Qnil, Qnil, Qnil);}
                     }
-#line 33777 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33778 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 770: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_arg ',' f_opt_arg_arg_value ',' f_rest_arg opt_args_tail_largs_tail_none  */
-#line 6966 "/tmp/ripper_tokenized.y"
+#line 6967 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-5].node_args_aux), (yyvsp[-3].node_opt_arg), (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v2,v3,v8,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 33786 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33787 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 771: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_arg ',' f_opt_arg_arg_value ',' f_rest_arg ',' f_arg opt_args_tail_largs_tail_none  */
-#line 6971 "/tmp/ripper_tokenized.y"
+#line 6972 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-7].node_args_aux), (yyvsp[-5].node_opt_arg), (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-7 - 1)), v2=get_value((-5 - 1)), v3=get_value((-3 - 1)), v4=get_value((-1 - 1)), v5=get_value((0 - 1)), v6=rb_ary_entry(v5, 0), v7=rb_ary_entry(v5, 1), v8=rb_ary_entry(v5, 2), v9=dispatch7(params,v1,v2,v3,v4,v6,v7,v8); p->s_lvalue=v9;}
                     }
-#line 33795 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33796 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 772: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_arg ',' f_opt_arg_arg_value opt_args_tail_largs_tail_none  */
-#line 6976 "/tmp/ripper_tokenized.y"
+#line 6977 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-3].node_args_aux), (yyvsp[-1].node_opt_arg), 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v2,v7,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 33804 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33805 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 773: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_arg ',' f_opt_arg_arg_value ',' f_arg opt_args_tail_largs_tail_none  */
-#line 6981 "/tmp/ripper_tokenized.y"
+#line 6982 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-5].node_args_aux), (yyvsp[-3].node_opt_arg), 0, (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v2,v8,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 33813 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33814 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 774: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_arg ',' f_rest_arg opt_args_tail_largs_tail_none  */
-#line 6986 "/tmp/ripper_tokenized.y"
+#line 6987 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-3].node_args_aux), 0, (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v7,v2,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 33822 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33823 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 775: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_arg ',' f_rest_arg ',' f_arg opt_args_tail_largs_tail_none  */
-#line 6991 "/tmp/ripper_tokenized.y"
+#line 6992 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-5].node_args_aux), 0, (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v8,v2,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 33831 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33832 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 776: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_opt_arg_arg_value ',' f_rest_arg opt_args_tail_largs_tail_none  */
-#line 6996 "/tmp/ripper_tokenized.y"
+#line 6997 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-3].node_opt_arg), (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v1,v2,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 33840 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33841 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 777: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_opt_arg_arg_value ',' f_rest_arg ',' f_arg opt_args_tail_largs_tail_none  */
-#line 7001 "/tmp/ripper_tokenized.y"
+#line 7002 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-5].node_opt_arg), (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-5 - 1)), v2=get_value((-3 - 1)), v3=get_value((-1 - 1)), v4=get_value((0 - 1)), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v8,v1,v2,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
-#line 33849 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33850 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 778: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_opt_arg_arg_value opt_args_tail_largs_tail_none  */
-#line 7006 "/tmp/ripper_tokenized.y"
+#line 7007 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-1].node_opt_arg), 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v6,v1,v7,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
-#line 33858 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33859 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 779: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_opt_arg_arg_value ',' f_arg opt_args_tail_largs_tail_none  */
-#line 7011 "/tmp/ripper_tokenized.y"
+#line 7012 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, (yyvsp[-3].node_opt_arg), 0, (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v1,v8,v2,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 33867 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33868 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 780: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_rest_arg opt_args_tail_largs_tail_none  */
-#line 7016 "/tmp/ripper_tokenized.y"
+#line 7017 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, 0, (yyvsp[-1].id), 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v6,v7,v1,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
-#line 33876 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33877 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 781: /* args-list_arg_value_opt_args_tail_largs_tail_none: f_rest_arg ',' f_arg opt_args_tail_largs_tail_none  */
-#line 7021 "/tmp/ripper_tokenized.y"
+#line 7022 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, 0, (yyvsp[-3].id), (yyvsp[-1].node_args_aux), (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-3 - 1)), v2=get_value((-1 - 1)), v3=get_value((0 - 1)), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v8,v1,v2,v4,v5,v6); p->s_lvalue=v9;}
                     }
-#line 33885 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33886 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 783: /* f_args-list_largs_tail_none: f_arg opt_args_tail_largs_tail_none  */
-#line 7038 "/tmp/ripper_tokenized.y"
+#line 7039 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, (yyvsp[-1].node_args_aux), 0, 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v6,v7,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
-#line 33894 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33895 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 784: /* tail-only-args_largs_tail: largs_tail  */
-#line 7029 "/tmp/ripper_tokenized.y"
+#line 7030 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args) = new_args(p, 0, 0, 0, 0, (yyvsp[0].node_args), &(yyloc));
                     {VALUE v1=get_value((0 - 1)), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v5,v6,v7,v8,v2,v3,v4); p->s_lvalue=v9;}
                     }
-#line 33903 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33904 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 788: /* args_forward: "(..."  */
-#line 7053 "/tmp/ripper_tokenized.y"
+#line 7054 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = idFWD_KWREST;
                     {VALUE v1=dispatch0(args_forward); p->s_lvalue=v1;}
                     }
-#line 33912 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33913 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 789: /* f_bad_arg: "constant"  */
-#line 7060 "/tmp/ripper_tokenized.y"
+#line 7061 "/tmp/ripper_tokenized.y"
                     {
                         static const char mesg[] = "formal argument cannot be a constant";
 #if 0
@@ -33921,11 +33922,11 @@ yyreduce:
                         (yyval.id) = 0;
                     {VALUE v1=get_value((0 - 1)), v2=ERR_MESG(), v3=dispatch2(param_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
-#line 33925 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33926 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 790: /* f_bad_arg: "instance variable"  */
-#line 7069 "/tmp/ripper_tokenized.y"
+#line 7070 "/tmp/ripper_tokenized.y"
                     {
                         static const char mesg[] = "formal argument cannot be an instance variable";
 #if 0
@@ -33934,11 +33935,11 @@ yyreduce:
                         (yyval.id) = 0;
                     {VALUE v1=get_value((0 - 1)), v2=ERR_MESG(), v3=dispatch2(param_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
-#line 33938 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33939 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 791: /* f_bad_arg: "global variable"  */
-#line 7078 "/tmp/ripper_tokenized.y"
+#line 7079 "/tmp/ripper_tokenized.y"
                     {
                         static const char mesg[] = "formal argument cannot be a global variable";
 #if 0
@@ -33947,11 +33948,11 @@ yyreduce:
                         (yyval.id) = 0;
                     {VALUE v1=get_value((0 - 1)), v2=ERR_MESG(), v3=dispatch2(param_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
-#line 33951 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33952 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 792: /* f_bad_arg: "class variable"  */
-#line 7087 "/tmp/ripper_tokenized.y"
+#line 7088 "/tmp/ripper_tokenized.y"
                     {
                         static const char mesg[] = "formal argument cannot be a class variable";
 #if 0
@@ -33960,11 +33961,11 @@ yyreduce:
                         (yyval.id) = 0;
                     {VALUE v1=get_value((0 - 1)), v2=ERR_MESG(), v3=dispatch2(param_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
-#line 33964 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33965 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 794: /* f_norm_arg: "local variable or method"  */
-#line 7099 "/tmp/ripper_tokenized.y"
+#line 7100 "/tmp/ripper_tokenized.y"
                     {
                         VALUE e = formal_argument_error(p, (yyval.id) = (yyvsp[0].id));
                         if (e) {
@@ -33972,29 +33973,29 @@ yyreduce:
                         }
                         p->max_numparam = ORDINAL_PARAM;
                     }
-#line 33976 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33977 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 795: /* f_arg_asgn: f_norm_arg  */
-#line 7109 "/tmp/ripper_tokenized.y"
+#line 7110 "/tmp/ripper_tokenized.y"
                     {
                         arg_var(p, (yyvsp[0].id));
                         (yyval.id) = (yyvsp[0].id);
                     }
-#line 33985 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33986 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 796: /* f_arg_item: f_arg_asgn  */
-#line 7116 "/tmp/ripper_tokenized.y"
+#line 7117 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args_aux) = NEW_ARGS_AUX((yyvsp[0].id), 1, &NULL_LOC);
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=v1;}
                     }
-#line 33994 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 33995 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 797: /* f_arg_item: "(" f_margs rparen  */
-#line 7121 "/tmp/ripper_tokenized.y"
+#line 7122 "/tmp/ripper_tokenized.y"
                     {
                         ID tid = internal_id(p);
                         YYLTYPE loc;
@@ -34011,17 +34012,17 @@ yyreduce:
                         (yyval.node_args_aux)->nd_next = (NODE *)(yyvsp[-1].node_masgn);
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(mlhs_paren,v1); p->s_lvalue=v2;}
                     }
-#line 34015 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34016 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 798: /* f_arg: f_arg_item  */
-#line 7140 "/tmp/ripper_tokenized.y"
+#line 7141 "/tmp/ripper_tokenized.y"
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new3(1, v1);}
-#line 34021 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34022 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 799: /* f_arg: f_arg ',' f_arg_item  */
-#line 7142 "/tmp/ripper_tokenized.y"
+#line 7143 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node_args_aux) = (yyvsp[-2].node_args_aux);
                         (yyval.node_args_aux)->nd_plen++;
@@ -34029,11 +34030,11 @@ yyreduce:
                         rb_discard_node(p, (NODE *)(yyvsp[0].node_args_aux));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
-#line 34033 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34034 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 800: /* f_label: "label"  */
-#line 7153 "/tmp/ripper_tokenized.y"
+#line 7154 "/tmp/ripper_tokenized.y"
                     {
                         VALUE e = formal_argument_error(p, (yyval.id) = (yyvsp[0].id));
                         if (e) {
@@ -34051,106 +34052,106 @@ yyreduce:
                         p->max_numparam = ORDINAL_PARAM;
                         p->ctxt.in_argdef = 0;
                     }
-#line 34055 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34056 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 803: /* f_no_kwarg: p_kwnorest  */
-#line 7177 "/tmp/ripper_tokenized.y"
+#line 7178 "/tmp/ripper_tokenized.y"
                     {
                     {VALUE v1=Qnil, v2=dispatch1(nokw_param,v1); p->s_lvalue=v2;}
                     }
-#line 34063 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34064 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 804: /* f_kwrest: kwrest_mark "local variable or method"  */
-#line 7183 "/tmp/ripper_tokenized.y"
+#line 7184 "/tmp/ripper_tokenized.y"
                     {
                         arg_var(p, shadowing_lvar(p, (yyvsp[0].id)));
                         (yyval.id) = (yyvsp[0].id);
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(kwrest_param,v1); p->s_lvalue=v2;}
                     }
-#line 34073 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34074 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 805: /* f_kwrest: kwrest_mark  */
-#line 7189 "/tmp/ripper_tokenized.y"
+#line 7190 "/tmp/ripper_tokenized.y"
                     {
                         arg_var(p, idFWD_KWREST);
                         (yyval.id) = idFWD_KWREST;
                     {VALUE v1=Qnil, v2=dispatch1(kwrest_param,v1); p->s_lvalue=v2;}
                     }
-#line 34083 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34084 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 808: /* f_rest_arg: restarg_mark "local variable or method"  */
-#line 7201 "/tmp/ripper_tokenized.y"
+#line 7202 "/tmp/ripper_tokenized.y"
                     {
                         arg_var(p, shadowing_lvar(p, (yyvsp[0].id)));
                         (yyval.id) = (yyvsp[0].id);
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(rest_param,v1); p->s_lvalue=v2;}
                     }
-#line 34093 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34094 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 809: /* f_rest_arg: restarg_mark  */
-#line 7207 "/tmp/ripper_tokenized.y"
+#line 7208 "/tmp/ripper_tokenized.y"
                     {
                         arg_var(p, idFWD_REST);
                         (yyval.id) = idFWD_REST;
                     {VALUE v1=Qnil, v2=dispatch1(rest_param,v1); p->s_lvalue=v2;}
                     }
-#line 34103 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34104 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 812: /* f_block_arg: blkarg_mark "local variable or method"  */
-#line 7219 "/tmp/ripper_tokenized.y"
+#line 7220 "/tmp/ripper_tokenized.y"
                     {
                         arg_var(p, shadowing_lvar(p, (yyvsp[0].id)));
                         (yyval.id) = (yyvsp[0].id);
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(blockarg,v1); p->s_lvalue=v2;}
                     }
-#line 34113 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34114 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 813: /* f_block_arg: blkarg_mark "'nil'"  */
-#line 7225 "/tmp/ripper_tokenized.y"
+#line 7226 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = idNil;
                     {VALUE v1=ID2VAL(idNil), v2=dispatch1(blockarg,v1); p->s_lvalue=v2;}
                     }
-#line 34122 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34123 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 814: /* f_block_arg: blkarg_mark  */
-#line 7230 "/tmp/ripper_tokenized.y"
+#line 7231 "/tmp/ripper_tokenized.y"
                     {
                         arg_var(p, idFWD_BLOCK);
                         (yyval.id) = idFWD_BLOCK;
                     {VALUE v1=Qnil, v2=dispatch1(blockarg,v1); p->s_lvalue=v2;}
                     }
-#line 34132 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34133 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 817: /* opt_comma: option_','  */
-#line 7238 "/tmp/ripper_tokenized.y"
+#line 7239 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.id) = 0;
                     {p->s_lvalue=Qnil;}
                     }
-#line 34141 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34142 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 818: /* value_expr_singleton_expr: singleton_expr  */
-#line 3832 "/tmp/ripper_tokenized.y"
+#line 3833 "/tmp/ripper_tokenized.y"
                     {
                         value_expr(p, (yyvsp[0].node));
                         (yyval.node) = (yyvsp[0].node);
                     }
-#line 34150 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34151 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 819: /* singleton: value_expr_singleton_expr  */
-#line 7246 "/tmp/ripper_tokenized.y"
+#line 7247 "/tmp/ripper_tokenized.y"
                     {
                         NODE *expr = last_expr_node((yyvsp[0].node));
                         switch (nd_type(expr)) {
@@ -34178,44 +34179,44 @@ yyreduce:
                         }
                         (yyval.node) = (yyvsp[0].node);
                     }
-#line 34182 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34183 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 821: /* $@42: %empty  */
-#line 7277 "/tmp/ripper_tokenized.y"
+#line 7278 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 0;
                     }
-#line 34190 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34191 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 822: /* singleton_expr: '(' $@42 expr rparen  */
-#line 7281 "/tmp/ripper_tokenized.y"
+#line 7282 "/tmp/ripper_tokenized.y"
                     {
                         p->ctxt.in_argdef = 1;
                         (yyval.node) = (yyvsp[-1].node);
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(paren,v1); p->s_lvalue=v2;}
                     }
-#line 34200 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34201 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 824: /* assoc_list: assocs trailer  */
-#line 7290 "/tmp/ripper_tokenized.y"
+#line 7291 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = (yyvsp[-1].node);
                     {VALUE v1=get_value((-1 - 1)), v2=dispatch1(assoclist_from_args,v1); p->s_lvalue=v2;}
                     }
-#line 34209 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34210 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 825: /* assocs: assoc  */
-#line 7297 "/tmp/ripper_tokenized.y"
+#line 7298 "/tmp/ripper_tokenized.y"
                     {VALUE v1=get_value((0 - 1)); p->s_lvalue=rb_ary_new3(1, v1);}
-#line 34215 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34216 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 826: /* assocs: assocs ',' assoc  */
-#line 7299 "/tmp/ripper_tokenized.y"
+#line 7300 "/tmp/ripper_tokenized.y"
                     {
                         NODE *assocs = (yyvsp[-2].node);
                         NODE *tail = (yyvsp[0].node);
@@ -34238,70 +34239,70 @@ yyreduce:
                         (yyval.node) = assocs;
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
-#line 34242 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34243 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 827: /* assoc: arg_value "=>" arg_value  */
-#line 7324 "/tmp/ripper_tokenized.y"
+#line 7325 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_append(p, NEW_LIST((yyvsp[-2].node), &(yyloc)), (yyvsp[0].node));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch2(assoc_new,v1,v2); p->s_lvalue=v3;}
                     }
-#line 34251 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34252 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 828: /* assoc: "label" arg_value  */
-#line 7329 "/tmp/ripper_tokenized.y"
+#line 7330 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_append(p, NEW_LIST(NEW_SYM(rb_id2str((yyvsp[-1].id)), &(yylsp[-1])), &(yyloc)), (yyvsp[0].node));
                     {VALUE v1=get_value((-1 - 1)), v2=get_value((0 - 1)), v3=dispatch2(assoc_new,v1,v2); p->s_lvalue=v3;}
                     }
-#line 34260 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34261 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 829: /* assoc: "label"  */
-#line 7334 "/tmp/ripper_tokenized.y"
+#line 7335 "/tmp/ripper_tokenized.y"
                     {
                         NODE *val = gettable(p, (yyvsp[0].id), &(yyloc));
                         if (!val) val = NEW_ERROR(&(yyloc));
                         (yyval.node) = list_append(p, NEW_LIST(NEW_SYM(rb_id2str((yyvsp[0].id)), &(yylsp[0])), &(yyloc)), val);
                     {VALUE v1=get_value((0 - 1)), v2=Qnil, v3=dispatch2(assoc_new,v1,v2); p->s_lvalue=v3;}
                     }
-#line 34271 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34272 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 830: /* assoc: "string literal" string_contents tLABEL_END arg_value  */
-#line 7341 "/tmp/ripper_tokenized.y"
+#line 7342 "/tmp/ripper_tokenized.y"
                     {
                         YYLTYPE loc = code_loc_gen(&(yylsp[-3]), &(yylsp[-1]));
                         (yyval.node) = list_append(p, NEW_LIST(dsym_node(p, (yyvsp[-2].node), &loc), &loc), (yyvsp[0].node));
                     {VALUE v1=get_value((-2 - 1)), v2=get_value((0 - 1)), v3=dispatch1(dyna_symbol,v1), v4=dispatch2(assoc_new,v3,v2); p->s_lvalue=v4;}
                     }
-#line 34281 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34282 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 831: /* assoc: "**arg" arg_value  */
-#line 7347 "/tmp/ripper_tokenized.y"
+#line 7348 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = list_append(p, NEW_LIST(0, &(yyloc)), (yyvsp[0].node));
                     {VALUE v1=get_value((0 - 1)), v2=dispatch1(assoc_splat,v1); p->s_lvalue=v2;}
                     }
-#line 34290 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34291 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 832: /* assoc: "**arg"  */
-#line 7352 "/tmp/ripper_tokenized.y"
+#line 7353 "/tmp/ripper_tokenized.y"
                     {
                         forwarding_arg_check(p, idFWD_KWREST, idFWD_ALL, "keyword rest");
                         (yyval.node) = list_append(p, NEW_LIST(0, &(yyloc)),
                                          NEW_LVAR(idFWD_KWREST, &(yyloc)));
                     {VALUE v1=Qnil, v2=dispatch1(assoc_splat,v1); p->s_lvalue=v2;}
                     }
-#line 34301 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34302 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 851: /* term: ';'  */
-#line 7399 "/tmp/ripper_tokenized.y"
+#line 7400 "/tmp/ripper_tokenized.y"
                     {
                         yyerrok;
                         token_flush(p);
@@ -34309,35 +34310,35 @@ yyreduce:
                             p->ctxt.has_trailing_semicolon = 1;
                         }
                     }
-#line 34313 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34314 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 852: /* term: '\n'  */
-#line 7407 "/tmp/ripper_tokenized.y"
+#line 7408 "/tmp/ripper_tokenized.y"
                     {
                         (yyloc).end_pos = (yyloc).beg_pos;
                         token_flush(p);
                     }
-#line 34322 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34323 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 854: /* terms: terms ';'  */
-#line 7414 "/tmp/ripper_tokenized.y"
+#line 7415 "/tmp/ripper_tokenized.y"
                             {yyerrok;}
-#line 34328 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34329 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
   case 856: /* none: %empty  */
-#line 7419 "/tmp/ripper_tokenized.y"
+#line 7420 "/tmp/ripper_tokenized.y"
                     {
                         (yyval.node) = 0;
                     {p->s_lvalue=Qnil;}
                     }
-#line 34337 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34338 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
     break;
 
 
-#line 34341 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34342 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
 
       default: break;
     }
@@ -34356,9 +34357,9 @@ yyreduce:
 
   YYPOPSTACK (yylen);
         /* %after-reduce function. */
-#line 3345 "/tmp/ripper_tokenized.y"
+#line 3346 "/tmp/ripper_tokenized.y"
         {after_reduce(yylen, p);}
-#line 34362 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34363 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
 
   yylen = 0;
 
@@ -34462,9 +34463,9 @@ yyerrorlab:
      this YYERROR.  */
   YYPOPSTACK (yylen);
         /* %after-pop-stack function. */
-#line 3347 "/tmp/ripper_tokenized.y"
+#line 3348 "/tmp/ripper_tokenized.y"
         {after_pop_stack(yylen, p);}
-#line 34468 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34469 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
 
   yylen = 0;
   YY_STACK_PRINT (yyss, yyssp, p);
@@ -34502,9 +34503,9 @@ yyerrlab1:
                   YY_ACCESSING_SYMBOL (yystate), yyvsp, yylsp, p);
       YYPOPSTACK (1);
         /* %after-pop-stack function. */
-#line 3347 "/tmp/ripper_tokenized.y"
+#line 3348 "/tmp/ripper_tokenized.y"
         {after_pop_stack(1, p);}
-#line 34508 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34509 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
 
       yystate = *yyssp;
       YY_STACK_PRINT (yyss, yyssp, p);
@@ -34521,9 +34522,9 @@ yyerrlab1:
   /* Shift the error token.  */
   YY_SYMBOL_PRINT ("Shifting", YY_ACCESSING_SYMBOL (yyn), yyvsp, yylsp, p);
         /* %after-shift-error-token code. */
-#line 3346 "/tmp/ripper_tokenized.y"
+#line 3347 "/tmp/ripper_tokenized.y"
         {after_shift_error_token(p);}
-#line 34527 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
+#line 34528 "/Users/yudai.takada/Downloads/ydah/ruby/ext/ripper/ripper.c"
 
 
   yystate = yyn;
@@ -34586,7 +34587,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 7424 "/tmp/ripper_tokenized.y"
+#line 7425 "/tmp/ripper_tokenized.y"
 
 /* Check if the given state's default reduction is an empty rule (yyr2 == 0).
  * States with empty default reductions are "transient" pass-through states
@@ -38364,7 +38365,11 @@ parser_pslr_lbrace_token(struct parser_params *p)
 {
     /* Pseudo-scan picks the correct brace token from parser state. */
     ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
-    if (scan.token == tLBRACE_ARG) return tLBRACE_ARG;
+    /* Inside parenthesized arguments, tLBRACE_ARG is not valid —
+       convert to primary block. */
+    if (scan.token == tLBRACE_ARG) {
+        return (p->lex.paren_nest > p->lex.brace_nest) ? '{' : tLBRACE_ARG;
+    }
     if (scan.token == '{') return '{';
     /* After value/method-like token, prefer block over hash when PSLR
        chooses tLBRACE — in Ruby, '{' after a value is almost always a block. */

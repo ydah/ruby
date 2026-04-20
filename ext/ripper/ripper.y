@@ -1063,12 +1063,13 @@ parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
 {
     ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
     if (scan.token == '{') return TRUE;
+    /* Inside parenthesized arguments, tLBRACE_ARG is not valid —
+       use primary block '{' instead.  tLBRACE_ARG is only for
+       command-style calls without parentheses. */
+    if (scan.token == tLBRACE_ARG && p->lex.paren_nest > p->lex.brace_nest)
+        return TRUE;
     if (scan.token == tLBRACE_ARG) return FALSE;
-    /* After a value or method-like token, '{' should be a block.
-       PSLR may return tLBRACE (hash) because the grammar accepts both
-       hash and block in some post-expression parser states.
-       In Ruby, '{' is block by default; hash is the exception (only in
-       literal context like `{a: 1}` or after labels). */
+    /* After a value or method-like token, '{' should be a block. */
     if (scan.token == tLBRACE &&
         (LAST_TOKEN_IS_METHOD(p) || LAST_TOKEN_IS_VALUE(p)))
         return TRUE;
@@ -11198,7 +11199,11 @@ parser_pslr_lbrace_token(struct parser_params *p)
 {
     /* Pseudo-scan picks the correct brace token from parser state. */
     ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
-    if (scan.token == tLBRACE_ARG) return tLBRACE_ARG;
+    /* Inside parenthesized arguments, tLBRACE_ARG is not valid —
+       convert to primary block. */
+    if (scan.token == tLBRACE_ARG) {
+        return (p->lex.paren_nest > p->lex.brace_nest) ? '{' : tLBRACE_ARG;
+    }
     if (scan.token == '{') return '{';
     /* After value/method-like token, prefer block over hash when PSLR
        chooses tLBRACE — in Ruby, '{' after a value is almost always a block. */
