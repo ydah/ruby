@@ -1083,9 +1083,9 @@ module Lrama
 
       acc_sp = acceptable_tokens_for_pslr(state, filtered_lookaheads)
 
-      # Cache: use frozen acc_sp as key to avoid recomputing signature
-      # for states with identical acceptable token sets
-      cache_key = acc_sp.to_a.sort.freeze
+      # Cache: include state id to avoid false matches between different
+      # states that happen to have the same acceptable token set
+      cache_key = [state.id, filtered_lookaheads.nil?, acc_sp.to_a.sort].freeze
       @_pslr_sig_cache ||= {}
       return @_pslr_sig_cache[cache_key] if @_pslr_sig_cache.key?(cache_key)
 
@@ -1116,7 +1116,10 @@ module Lrama
       state.reduces.each do |reduce|
         look_ahead =
           if filtered_lookaheads && kernel_reduce_items.include?(reduce.item)
-            filtered_lookaheads[reduce.item] || []
+            # Use filtered lookaheads if available; fall back to full
+            # lookahead when the item is not in the propagated set,
+            # to avoid dropping reduce actions from the profile.
+            filtered_lookaheads[reduce.item] || state.acceptable_pslr_reduce_lookahead(reduce)
           else
             state.acceptable_pslr_reduce_lookahead(reduce)
           end
@@ -1264,8 +1267,13 @@ module Lrama
           next if expected_profile == actual_profile
 
           matching_state = next_state.ielr_isocores.find do |candidate|
+            candidate != next_state &&
             pslr_state_signature(candidate) == expected_profile
           end
+
+          # Skip if no matching isocore was found — the profile mismatch
+          # is within a single state, not a conflict between split states.
+          next unless matching_state
 
           inadequacies << State::PslrInadequacy.new(
             type: State::PslrInadequacy::PSLR_RELATIVE,
