@@ -640,22 +640,15 @@ struct parser_params {
 /* Rename lrama-generated PSLR symbols to avoid leaked global symbols */
 #ifdef RIPPER
 #define yy_state_accepts_token ripper_yy_state_accepts_token
-#define yy_state_eventually_accepts_token ripper_yy_state_eventually_accepts_token
-#define yy_state_deep_accepts_token ripper_yy_state_deep_accepts_token
 #define yy_pseudo_scan ripper_yy_pseudo_scan
 #define yy_state_has_empty_default_reduction ripper_yy_state_has_empty_default_reduction
 #else
 #define yy_state_accepts_token rb_yy_state_accepts_token
-#define yy_state_eventually_accepts_token rb_yy_state_eventually_accepts_token
-#define yy_state_deep_accepts_token rb_yy_state_deep_accepts_token
 #define yy_pseudo_scan rb_yy_pseudo_scan
 #define yy_state_has_empty_default_reduction rb_yy_state_has_empty_default_reduction
 #endif
 
 int yy_state_accepts_token(int yystate, int token);
-int yy_state_eventually_accepts_token(int yystate, int token);
-int yy_state_deep_accepts_token(int yystate, int yychar,
-                                const void *stack_base, const void *stack_top);
 int yy_pseudo_scan(int parser_state, const char *input, int *match_length);
 int yy_state_has_empty_default_reduction(int yystate);
 
@@ -669,17 +662,8 @@ int yy_state_has_empty_default_reduction(int yystate);
 
 /* parser_pslr_is_transient_state removed: not used by token selection. */
 
-/* Stack-aware deep token acceptance: traces through BOTH empty and non-empty
- * default reductions using the actual parser stack. This can see tokens that
- * become visible after reductions like stmt -> expr (yyr2 > 0). */
-static inline int
-parser_pslr_deep_accepts_token(struct parser_params *p, int token)
-{
-    return p->pslr_current_state >= 0 &&
-           p->pslr_stack_base && p->pslr_stack_top &&
-           yy_state_deep_accepts_token(p->pslr_current_state, token,
-                                       p->pslr_stack_base, p->pslr_stack_top);
-}
+/* parser_pslr_deep_accepts_token removed: token selection now uses
+ * pseudo-scan (yy_pseudo_scan) as the primary source of truth. */
 
 static inline int
 parser_pslr_accepts_token(struct parser_params *p, int token)
@@ -687,11 +671,8 @@ parser_pslr_accepts_token(struct parser_params *p, int token)
     return p->pslr_current_state >= 0 && yy_state_accepts_token(p->pslr_current_state, token);
 }
 
-static inline int
-parser_pslr_eventually_accepts_token(struct parser_params *p, int token)
-{
-    return p->pslr_current_state >= 0 && yy_state_eventually_accepts_token(p->pslr_current_state, token);
-}
+/* parser_pslr_eventually_accepts_token removed: token selection now uses
+ * pseudo-scan (yy_pseudo_scan) as the primary source of truth. */
 
 static inline int
 parser_pslr_accepts_expr_beg_token_p(struct parser_params *p)
@@ -893,11 +874,7 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
        beginning states where newlines should be ignored (e.g., after '('). */
     if (parser_pslr_accepts_token(p, keyword_if) &&
         !parser_pslr_accepts_token(p, modifier_if) &&
-        !parser_pslr_deep_accepts_token(p, keyword_then))
-        return TRUE;
-    if (parser_pslr_eventually_accepts_token(p, keyword_if) &&
-        !parser_pslr_eventually_accepts_token(p, modifier_if) &&
-        !parser_pslr_deep_accepts_token(p, keyword_then))
+        !parser_pslr_accepts_token(p, keyword_then))
         return TRUE;
     /* BEG-like transient states (mid-rule action states after do/begin):
        suppress newlines only when command_start was set by block-starting
@@ -905,7 +882,7 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
     if (parser_pslr_accepts_expr_beg_token_p(p) &&
         yy_state_has_empty_default_reduction(p->pslr_current_state) &&
         !parser_pslr_accepts_token(p, modifier_if) &&
-        !parser_pslr_deep_accepts_token(p, keyword_then)) {
+        !parser_pslr_accepts_token(p, keyword_then)) {
         if (!p->ctxt.in_argdef && p->cmd_state)
             return TRUE;
     }
@@ -924,8 +901,8 @@ parser_pslr_ignores_newline_p(struct parser_params *p)
         !p->cmd_state &&
         !(p->cond_stack & 1) &&
         !p->lex.strterm &&
-        !parser_pslr_deep_accepts_token(p, modifier_if) &&
-        !parser_pslr_deep_accepts_token(p, keyword_then))
+        !parser_pslr_accepts_token(p, modifier_if) &&
+        !parser_pslr_accepts_token(p, keyword_then))
         return TRUE;
     return FALSE;
 }
@@ -978,23 +955,7 @@ parser_pslr_qmark_is_ternary_p(struct parser_params *p)
     int accepts_char = parser_pslr_accepts_token(p, tCHAR);
 
     if (accepts_ternary + accepts_char == 1) return accepts_ternary;
-    /* Deep PSLR (empty reductions) */
-    {
-        int deep_ternary = parser_pslr_eventually_accepts_token(p, '?');
-        int deep_char = parser_pslr_eventually_accepts_token(p, tCHAR);
-        if (deep_ternary + deep_char == 1) return deep_ternary;
-    }
-    /* Stack-aware deep PSLR */
-    {
-        int stack_ternary = parser_pslr_deep_accepts_token(p, '?');
-        int stack_char = parser_pslr_deep_accepts_token(p, tCHAR);
-        if (stack_ternary + stack_char == 1) return stack_ternary;
-    }
-    /* When PSLR cannot disambiguate, use END context as fallback.
-       This keeps non-ternary behavior for end-like states.
-       Cases where this wrongly returns ternary (e.g. `p ?x` where p is a
-       method) are handled in parse_qmark by checking if the char after ? is a
-       single identchar. */
+    /* Fallback: after a value, '?' is ternary. */
     return parser_pslr_end_state_fallback_p(p);
 }
 
@@ -1024,47 +985,24 @@ static inline int
 parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
 {
     if (parser_pslr_space_arg_fallback_p(p, -1, space_seen)) return TRUE;
-    if (parser_pslr_prefers_token_p(p, tCOLON3, tCOLON2)) return TRUE;
-    if (parser_pslr_prefers_token_p(p, tCOLON2, tCOLON3)) return FALSE;
-    /* Deep PSLR: trace empty reductions to check tCOLON3 reachability */
-    if (parser_pslr_eventually_accepts_token(p, tCOLON3)) {
-        if (!parser_pslr_eventually_accepts_token(p, tCOLON2)) return TRUE;
+    {
+        ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+        if (scan.token == tCOLON3) return TRUE;
+        if (scan.token == tCOLON2) return FALSE;
     }
-    else if (parser_pslr_eventually_accepts_token(p, tCOLON2)) {
-        return FALSE;
-    }
-    /* Stack-aware deep PSLR */
-    if (parser_pslr_deep_accepts_token(p, tCOLON3) &&
-        !parser_pslr_deep_accepts_token(p, tCOLON2)) {
-        return TRUE;
-    }
-    if (parser_pslr_deep_accepts_token(p, tCOLON2) &&
-        !parser_pslr_deep_accepts_token(p, tCOLON3)) {
-        return FALSE;
-    }
-    /* Fallback: both eventually accepted or neither -- use grammar check */
     return parser_pslr_begin_like_p(p);
 }
 
 static inline int
 parser_pslr_colon_symbol_literal_p(struct parser_params *p, int c)
 {
-    if (parser_pslr_prefers_token_p(p, ':', tSYMBEG)) return TRUE;
-    if (parser_pslr_prefers_token_p(p, tSYMBEG, ':')) return FALSE;
-    /* Deep PSLR */
     {
-        int deep_colon = parser_pslr_eventually_accepts_token(p, ':');
-        int deep_sym = parser_pslr_eventually_accepts_token(p, tSYMBEG);
-        if (deep_colon && !deep_sym) return TRUE;
-        if (deep_sym && !deep_colon) return FALSE;
+        ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+        if (scan.token == ':') return TRUE;
+        if (scan.token == tSYMBEG) return FALSE;
     }
-    /* ':' followed by a digit cannot be a symbol literal (:1 is invalid).
-       Also space/comment -> colon. Stack-aware deep check: if ':' (colon)
-       is accepted via non-empty reductions (e.g. ternary), prefer colon. */
+    /* ':' followed by a digit/space/comment cannot be a symbol literal. */
     if (ISSPACE(c) || c == '#' || ISDIGIT(c)) return TRUE;
-    if (parser_pslr_deep_accepts_token(p, ':') &&
-        !parser_pslr_deep_accepts_token(p, tSYMBEG))
-        return TRUE;
     return FALSE;
 }
 
@@ -1078,17 +1016,7 @@ parser_pslr_lparen_arg_fallback_p(struct parser_params *p, int space_seen)
     if (!space_seen) return FALSE;
     if (accepts_plain + accepts_paren + accepts_arg == 1) return accepts_arg;
     if (parser_pslr_arg_state_fallback_p(p)) return TRUE;
-    /* Only return TRUE when tLPAREN is NOT also accepted.
-     * When both tLPAREN and tLPAREN_ARG are accepted (e.g., mlhs after comma),
-     * tLPAREN_ARG would be wrong -- let the caller fall through to other checks. */
     if (accepts_arg && !accepts_paren) return TRUE;
-    /* Deep PSLR: after lex_state fallback, check if tLPAREN_ARG uniquely reachable */
-    {
-        int deep_plain = parser_pslr_eventually_accepts_token(p, '(');
-        int deep_paren = parser_pslr_eventually_accepts_token(p, tLPAREN);
-        int deep_arg = parser_pslr_eventually_accepts_token(p, tLPAREN_ARG);
-        if (deep_plain + deep_paren + deep_arg == 1) return deep_arg;
-    }
     return FALSE;
 }
 
@@ -10668,9 +10596,7 @@ parse_qmark(struct parser_params *p, int space_seen)
            wrongly choose ternary for `method ?x` (character literal).
            Peek ahead: if space_seen AND next char is a single identchar
            (character literal pattern), don't treat as ternary -- fall through. */
-        if (space_seen && (parser_pslr_accepts_token(p, tCHAR) ||
-                           parser_pslr_eventually_accepts_token(p, tCHAR) ||
-                           parser_pslr_deep_accepts_token(p, tCHAR))) {
+        if (space_seen && parser_pslr_accepts_token(p, tCHAR)) {
             const uint8_t *s = (const uint8_t *)start;
             if (!lex_eol_ptr_p(p, start) && !rb_enc_isspace(*s, p->enc)) {
                 if (*s == '\\') {
@@ -11216,16 +11142,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 keyword_variant = parser_pslr_keyword_variant(p, kw->id[0], kw->id[1]);
                 if (keyword_variant) return keyword_variant;
             }
-            /* Fall back to context-based check, but verify with deep accepts.
-               If the modifier form is reachable via stack-aware reductions
-               (e.g., undef_list reduces to stmt, then modifier_if applies),
-               prefer modifier form even in BEG context. */
-            if (kw->id[0] != kw->id[1]) {
-                int deep_mod = parser_pslr_deep_accepts_token(p, kw->id[1]);
-                int deep_kw = parser_pslr_deep_accepts_token(p, kw->id[0]);
-                if (deep_mod && !deep_kw) return kw->id[1];
-                if (deep_kw && !deep_mod) return kw->id[0];
-            }
+            /* Context-based fallback for keyword vs modifier. */
             if (parser_pslr_reserved_word_begin_p(p)) {
                 return kw->id[0];
             }
@@ -11967,13 +11884,10 @@ parser_yylex(struct parser_params *p)
                 c = pslr_c;
             }
             else if (pslr_c == '(' &&
-                     !parser_pslr_eventually_accepts_token(p, '!') &&
-                     (parser_pslr_eventually_accepts_token(p, tLPAREN_ARG) ||
-                      parser_pslr_deep_accepts_token(p, tLPAREN_ARG))) {
-                /* PSLR chose plain '(' but tLPAREN_ARG is also reachable,
-                   AND we're NOT in a general expression context ('!' not accepted).
-                   This handles defined? (;x) where the grammar has both
-                   keyword_defined '(' and the tLPAREN_ARG compstmt path. */
+                     !parser_pslr_accepts_token(p, '!') &&
+                     parser_pslr_accepts_token(p, tLPAREN_ARG)) {
+                /* PSLR chose plain '(' but tLPAREN_ARG is also accepted.
+                   This handles defined? (;x). */
                 c = tLPAREN_ARG;
             }
             else if (pslr_c != 0) {
@@ -12037,15 +11951,8 @@ parser_yylex(struct parser_params *p)
                 c = tLBRACK;
             }
             else {
-                /* Both or neither accepted at surface level; try deep checks */
-                int deep_plain = parser_pslr_deep_accepts_token(p, '[');
-                int deep_lbrack = parser_pslr_deep_accepts_token(p, tLBRACK);
-                if (deep_plain && !deep_lbrack) {
-                    c = '[';
-                }
-                else {
-                    c = tLBRACK;
-                }
+                /* Both or neither accepted; default to tLBRACK in ambiguous case */
+                c = tLBRACK;
             }
         }
         else if (parser_pslr_lbrack_arg_fallback_p(p, space_seen)) {
