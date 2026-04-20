@@ -1098,10 +1098,17 @@ parser_pslr_do_token(struct parser_params *p)
 static inline enum yytokentype
 parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_token, enum yytokentype modifier_token)
 {
+    /* Semantic override: after a value/method, prefer modifier form.
+       In statement-beginning context, prefer keyword form. */
+    if (LAST_TOKEN_IS_VALUE(p) || LAST_TOKEN_IS_METHOD(p)) {
+        return modifier_token;
+    }
     /* Pseudo-scan selects keyword vs modifier from parser state. */
-    ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
-    if (scan.token == (int)keyword_token) return keyword_token;
-    if (scan.token == (int)modifier_token) return modifier_token;
+    {
+        ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
+        if (scan.token == (int)keyword_token) return keyword_token;
+        if (scan.token == (int)modifier_token) return modifier_token;
+    }
     /* Fallback: direct acceptance */
     {
         int accepts_keyword = parser_pslr_accepts_token(p, keyword_token);
@@ -1110,11 +1117,8 @@ parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_to
             return accepts_keyword ? keyword_token : modifier_token;
         }
     }
-    /* Post-expression fallback: prefer modifier form. */
-    if (parser_pslr_end_state_fallback_p(p)) {
-        return modifier_token;
-    }
-    return 0;
+    /* Default: keyword form (expression-beginning context). */
+    return keyword_token;
 }
 
 static inline int
