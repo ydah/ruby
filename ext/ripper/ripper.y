@@ -3588,7 +3588,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                 : lhs '=' lex_ctxt rhs
                     {
                         $$ = node_assign(p, (NODE *)$lhs, $rhs, $lex_ctxt, &@$);
-                    /*% ripper: assign!($:1, $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:4), v3=dispatch2(assign,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -3596,22 +3596,22 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                 : f_kwarg(value) ',' f_kwrest opt_f_block_arg(trailing)
                     {
                         $$ = new_args_tail(p, $1, $3, $4, &@3);
-                    /*% ripper: [$:1, $:3, $:4] %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=get_value($:4); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, v3);}
                     }
                 | f_kwarg(value) opt_f_block_arg(trailing)
                     {
                         $$ = new_args_tail(p, $1, 0, $2, &@1);
-                    /*% ripper: [$:1, Qnil, $:2] %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2); p->s_lvalue=rb_ary_new_from_args(3, v1, Qnil, v2);}
                     }
                 | f_any_kwrest opt_f_block_arg(trailing)
                     {
                         $$ = new_args_tail(p, 0, $1, $2, &@1);
-                    /*% ripper: [Qnil, $:1, $:2] %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, v2);}
                     }
                 | f_block_arg
                     {
                         $$ = new_args_tail(p, 0, 0, $1, &@1);
-                    /*% ripper: [Qnil, Qnil, $:1] %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new_from_args(3, Qnil, Qnil, v1);}
                     }
                 ;
 
@@ -3619,7 +3619,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                 : ',' f_block_arg
                     {
                         $$ = $2;
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 | trailing
                 ;
@@ -3632,8 +3632,8 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                         ($$ = $head->nd_def)->nd_loc = @$;
                         $bodystmt = new_scope_body(p, $args, $bodystmt, $$, &@$);
                         RNODE_DEFN($$)->nd_defn = $bodystmt;
-                    /*% ripper: bodystmt!($:bodystmt, Qnil, Qnil, Qnil) %*/
-                    /*% ripper: def!($:head, $:args, $:$) %*/
+                    {VALUE v1=get_value($:bodystmt), v2=Qnil, v3=Qnil, v4=Qnil, v5=dispatch4(bodystmt,v1,v2,v3,v4); p->s_lvalue=v5;}
+                    {VALUE v1=get_value($:head), v2=get_value($:args), v3=p->s_lvalue, v4=dispatch3(def,v1,v2,v3); p->s_lvalue=v4;}
                         local_pop(p);
                     }
                 | defs_head[head] f_opt_paren_args[args] '=' bodystmt
@@ -3643,8 +3643,8 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                         ($$ = $head->nd_def)->nd_loc = @$;
                         $bodystmt = new_scope_body(p, $args, $bodystmt, $$, &@$);
                         RNODE_DEFS($$)->nd_defn = $bodystmt;
-                    /*% ripper: bodystmt!($:bodystmt, Qnil, Qnil, Qnil) %*/
-                    /*% ripper: defs!(*$:head[0..2], $:args, $:$) %*/
+                    {VALUE v1=get_value($:bodystmt), v2=Qnil, v3=Qnil, v4=Qnil, v5=dispatch4(bodystmt,v1,v2,v3,v4); p->s_lvalue=v5;}
+                    {VALUE v1=get_value($:head), v2=get_value($:args), v3=rb_ary_entry(v1, 0), v4=rb_ary_entry(v1, 1), v5=rb_ary_entry(v1, 2), v6=p->s_lvalue, v7=dispatch5(defs,v3,v4,v5,v2,v6); p->s_lvalue=v7;}
                         local_pop(p);
                     }
                 ;
@@ -3661,7 +3661,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                     {
                         p->ctxt.in_argdef = 1;
                         $$ = NEW_OPT_ARG(assignable(p, $f_arg_asgn, $value, &@$), &@$);
-                    /*% ripper: [$:$, $:3] %*/
+                    {VALUE v1=get_value($:3); p->s_lvalue=rb_ary_new_from_args(2, p->s_lvalue, v1);}
                     }
                 ;
 
@@ -3669,12 +3669,12 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                 : f_opt(value)
                     {
                         $$ = $f_opt;
-                    /*% ripper: rb_ary_new3(1, $:1) %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new3(1, v1);}
                     }
                 | f_opt_arg(value) ',' f_opt(value)
                     {
                         $$ = opt_arg_append($f_opt_arg, $f_opt);
-                    /*% ripper: rb_ary_push($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
                 ;
 
@@ -3683,13 +3683,13 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                     {
                         p->ctxt.in_argdef = 1;
                         $$ = new_kw_arg(p, assignable(p, $f_label, $value, &@$), &@$);
-                    /*% ripper: [$:$, $:value] %*/
+                    {VALUE v1=get_value($:value); p->s_lvalue=rb_ary_new_from_args(2, p->s_lvalue, v1);}
                     }
                 | f_label
                     {
                         p->ctxt.in_argdef = 1;
                         $$ = new_kw_arg(p, assignable(p, $f_label, NODE_SPECIAL_REQUIRED_KEYWORD, &@$), &@$);
-                    /*% ripper: [$:$, 0] %*/
+                    {p->s_lvalue=rb_ary_new_from_args(2, p->s_lvalue, 0);}
                     }
                 ;
 
@@ -3697,12 +3697,12 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                 : f_kw(value)
                     {
                         $$ = $f_kw;
-                    /*% ripper: rb_ary_new3(1, $:1) %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new3(1, v1);}
                     }
                 | f_kwarg(value) ',' f_kw(value)
                     {
                         $$ = kwd_append($f_kwarg, $f_kw);
-                    /*% ripper: rb_ary_push($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
                 ;
 
@@ -3710,12 +3710,12 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                 : item
                     {
                         $$ = NEW_LIST($1, &@$);
-                    /*% ripper: mlhs_add!(mlhs_new!, $:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(mlhs_new), v3=dispatch2(mlhs_add,v2,v1); p->s_lvalue=v3;}
                     }
                 | mlhs_items(item) ',' item
                     {
                         $$ = list_append(p, $1, $3);
-                    /*% ripper: mlhs_add!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(mlhs_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -3723,45 +3723,45 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                 : var_lhs tOP_ASGN lex_ctxt rhs
                     {
                         $$ = new_op_assign(p, $var_lhs, $tOP_ASGN, $rhs, $lex_ctxt, &@$);
-                    /*% ripper: opassign!($:var_lhs, $:tOP_ASGN, $:rhs) %*/
+                    {VALUE v1=get_value($:var_lhs), v2=get_value($:tOP_ASGN), v3=get_value($:rhs), v4=dispatch3(opassign,v1,v2,v3); p->s_lvalue=v4;}
                     }
                 | primary_value '['[lbracket] opt_call_args rbracket tOP_ASGN lex_ctxt rhs
                     {
                         $$ = new_ary_op_assign(p, $primary_value, $opt_call_args, $tOP_ASGN, $rhs, &@opt_call_args, &@$, &NULL_LOC, &@lbracket, &@rbracket, &@tOP_ASGN);
-                    /*% ripper: opassign!(aref_field!($:primary_value, $:opt_call_args), $:tOP_ASGN, $:rhs) %*/
+                    {VALUE v1=get_value($:primary_value), v2=get_value($:opt_call_args), v3=get_value($:tOP_ASGN), v4=get_value($:rhs), v5=dispatch2(aref_field,v1,v2), v6=dispatch3(opassign,v5,v3,v4); p->s_lvalue=v6;}
                     }
                 | primary_value call_op tIDENTIFIER tOP_ASGN lex_ctxt rhs
                     {
                         $$ = new_attr_op_assign(p, $primary_value, $call_op, $tIDENTIFIER, $tOP_ASGN, $rhs, &@$, &@call_op, &@tIDENTIFIER, &@tOP_ASGN);
-                    /*% ripper: opassign!(field!($:primary_value, $:call_op, $:tIDENTIFIER), $:tOP_ASGN, $:rhs) %*/
+                    {VALUE v1=get_value($:primary_value), v2=get_value($:call_op), v3=get_value($:tIDENTIFIER), v4=get_value($:tOP_ASGN), v5=get_value($:rhs), v6=dispatch3(field,v1,v2,v3), v7=dispatch3(opassign,v6,v4,v5); p->s_lvalue=v7;}
                     }
                 | primary_value call_op tCONSTANT tOP_ASGN lex_ctxt rhs
                     {
                         $$ = new_attr_op_assign(p, $primary_value, $call_op, $tCONSTANT, $tOP_ASGN, $rhs, &@$, &@call_op, &@tCONSTANT, &@tOP_ASGN);
-                    /*% ripper: opassign!(field!($:primary_value, $:call_op, $:tCONSTANT), $:tOP_ASGN, $:rhs) %*/
+                    {VALUE v1=get_value($:primary_value), v2=get_value($:call_op), v3=get_value($:tCONSTANT), v4=get_value($:tOP_ASGN), v5=get_value($:rhs), v6=dispatch3(field,v1,v2,v3), v7=dispatch3(opassign,v6,v4,v5); p->s_lvalue=v7;}
                     }
                 | primary_value tCOLON2 tIDENTIFIER tOP_ASGN lex_ctxt rhs
                     {
                         $$ = new_attr_op_assign(p, $primary_value, idCOLON2, $tIDENTIFIER, $tOP_ASGN, $rhs, &@$, &@tCOLON2, &@tIDENTIFIER, &@tOP_ASGN);
-                    /*% ripper: opassign!(field!($:primary_value, $:tCOLON2, $:tIDENTIFIER), $:tOP_ASGN, $:rhs) %*/
+                    {VALUE v1=get_value($:primary_value), v2=get_value($:tCOLON2), v3=get_value($:tIDENTIFIER), v4=get_value($:tOP_ASGN), v5=get_value($:rhs), v6=dispatch3(field,v1,v2,v3), v7=dispatch3(opassign,v6,v4,v5); p->s_lvalue=v7;}
                     }
                 | primary_value tCOLON2 tCONSTANT tOP_ASGN lex_ctxt rhs
                     {
                         YYLTYPE loc = code_loc_gen(&@primary_value, &@tCONSTANT);
                         $$ = new_const_op_assign(p, NEW_COLON2($primary_value, $tCONSTANT, &loc, &@tCOLON2, &@tCONSTANT), $tOP_ASGN, $rhs, $lex_ctxt, &@$);
-                    /*% ripper: opassign!(const_path_field!($:primary_value, $:tCONSTANT), $:tOP_ASGN, $:rhs) %*/
+                    {VALUE v1=get_value($:primary_value), v2=get_value($:tCONSTANT), v3=get_value($:tOP_ASGN), v4=get_value($:rhs), v5=dispatch2(const_path_field,v1,v2), v6=dispatch3(opassign,v5,v3,v4); p->s_lvalue=v6;}
                     }
                 | tCOLON3 tCONSTANT tOP_ASGN lex_ctxt rhs
                     {
                         YYLTYPE loc = code_loc_gen(&@tCOLON3, &@tCONSTANT);
                         $$ = new_const_op_assign(p, NEW_COLON3($tCONSTANT, &loc, &@tCOLON3, &@tCONSTANT), $tOP_ASGN, $rhs, $lex_ctxt, &@$);
-                    /*% ripper: opassign!(top_const_field!($:tCONSTANT), $:tOP_ASGN, $:rhs) %*/
+                    {VALUE v1=get_value($:tCONSTANT), v2=get_value($:tOP_ASGN), v3=get_value($:rhs), v4=dispatch1(top_const_field,v1), v5=dispatch3(opassign,v4,v2,v3); p->s_lvalue=v5;}
                     }
                 | backref tOP_ASGN lex_ctxt rhs
                     {
                         VALUE MAYBE_UNUSED(e) = rb_backref_error(p, $backref);
                         $$ = NEW_ERROR(&@$);
-                    /*% ripper[error]: assign_error!(?e, opassign!(var_field!($:backref), $:tOP_ASGN, $:rhs)) %*/
+                    {VALUE v1=get_value($:backref), v2=get_value($:tOP_ASGN), v3=get_value($:rhs), v4=dispatch1(var_field,v1), v5=dispatch3(opassign,v4,v2,v3), v6=e, v7=dispatch2(assign_error,v6,v5); p->s_lvalue=v7;ripper_error(p);}
                     }
                 ;
 
@@ -3769,12 +3769,12 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                 : ',' tail
                     {
                         $$ = $tail;
-                    /*% ripper: $:tail %*/
+                    {VALUE v1=get_value($:tail); p->s_lvalue=v1;}
                     }
                 | trailing
                     {
                         $$ = new_empty_args_tail(p, &@$);
-                    /*% ripper: [Qnil, Qnil, Qnil] %*/
+                    {p->s_lvalue=rb_ary_new_from_args(3, Qnil, Qnil, Qnil);}
                     }
                 ;
 
@@ -3784,38 +3784,38 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                         value_expr(p, $1);
                         value_expr(p, $3);
                         $$ = NEW_DOT2($1, $3, &@$, &@2);
-                    /*% ripper: dot2!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(dot2,v1,v2); p->s_lvalue=v3;}
                     }
                 | range tDOT3 range
                     {
                         value_expr(p, $1);
                         value_expr(p, $3);
                         $$ = NEW_DOT3($1, $3, &@$, &@2);
-                    /*% ripper: dot3!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(dot3,v1,v2); p->s_lvalue=v3;}
                     }
                 | range tDOT2
                     {
                         value_expr(p, $1);
                         $$ = NEW_DOT2($1, new_nil_at(p, &@2.end_pos), &@$, &@2);
-                    /*% ripper: dot2!($:1, Qnil) %*/
+                    {VALUE v1=get_value($:1), v2=Qnil, v3=dispatch2(dot2,v1,v2); p->s_lvalue=v3;}
                     }
                 | range tDOT3
                     {
                         value_expr(p, $1);
                         $$ = NEW_DOT3($1, new_nil_at(p, &@2.end_pos), &@$, &@2);
-                    /*% ripper: dot3!($:1, Qnil) %*/
+                    {VALUE v1=get_value($:1), v2=Qnil, v3=dispatch2(dot3,v1,v2); p->s_lvalue=v3;}
                     }
                 | tBDOT2 range
                     {
                         value_expr(p, $2);
                         $$ = NEW_DOT2(new_nil_at(p, &@1.beg_pos), $2, &@$, &@1);
-                    /*% ripper: dot2!(Qnil, $:2) %*/
+                    {VALUE v1=get_value($:2), v2=Qnil, v3=dispatch2(dot2,v2,v1); p->s_lvalue=v3;}
                     }
                 | tBDOT3 range
                     {
                         value_expr(p, $2);
                         $$ = NEW_DOT3(new_nil_at(p, &@1.beg_pos), $2, &@$, &@1);
-                    /*% ripper: dot3!(Qnil, $:2) %*/
+                    {VALUE v1=get_value($:2), v2=Qnil, v3=dispatch2(dot3,v2,v1); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -3831,7 +3831,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
                 : begin ' '+ word_list tSTRING_END
                     {
                         $$ = make_list($word_list, &@$);
-                    /*% ripper: array!($:word_list) %*/
+                    {VALUE v1=get_value($:word_list), v2=dispatch1(array,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -3856,7 +3856,7 @@ program		:  {
                             void_expr(p, node);
                         }
                         p->eval_tree = NEW_SCOPE(0, block_append(p, p->eval_tree, $2), NULL, &@$);
-                    /*% ripper[final]: program!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(program,v1); p->result=v2;}
                         local_pop(p);
                     }
                 ;
@@ -3864,17 +3864,17 @@ program		:  {
 top_stmts	: none
                     {
                         $$ = NEW_BEGIN(0, &@$);
-                    /*% ripper: stmts_add!(stmts_new!, void_stmt!) %*/
+                    {VALUE v1=dispatch0(stmts_new), v2=dispatch0(void_stmt), v3=dispatch2(stmts_add,v1,v2); p->s_lvalue=v3;}
                     }
                 | top_stmt
                     {
                         $$ = newline_node($1);
-                    /*% ripper: stmts_add!(stmts_new!, $:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(stmts_new), v3=dispatch2(stmts_add,v2,v1); p->s_lvalue=v3;}
                     }
                 | top_stmts terms top_stmt
                     {
                         $$ = block_append(p, $1, newline_node($3));
-                    /*% ripper: stmts_add!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(stmts_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -3886,7 +3886,7 @@ top_stmt	: stmt
                 | keyword_BEGIN begin_block
                     {
                         $$ = $2;
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -3898,7 +3898,7 @@ begin_block	: block_open compstmt(top_stmts) '}'
                         p->eval_tree_begin = block_append(p, p->eval_tree_begin,
                                                           NEW_BEGIN($compstmt, &@$));
                         $$ = NEW_BEGIN(0, &@$);
-                    /*% ripper: BEGIN!($:compstmt) %*/
+                    {VALUE v1=get_value($:compstmt), v2=dispatch1(BEGIN,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -3917,7 +3917,7 @@ bodystmt	: compstmt(stmts)[body]
                   opt_ensure
                     {
                         $$ = new_bodystmt(p, $body, $opt_rescue, $elsebody, $opt_ensure, &@$);
-                    /*% ripper: bodystmt!($:body, $:opt_rescue, $:elsebody, $:opt_ensure) %*/
+                    {VALUE v1=get_value($:body), v2=get_value($:opt_rescue), v3=get_value($:elsebody), v4=get_value($:opt_ensure), v5=dispatch4(bodystmt,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
                 | compstmt(stmts)[body]
                   lex_ctxt[ctxt]
@@ -3928,24 +3928,24 @@ bodystmt	: compstmt(stmts)[body]
                   opt_ensure
                     {
                         $$ = new_bodystmt(p, $body, $opt_rescue, 0, $opt_ensure, &@$);
-                    /*% ripper: bodystmt!($:body, $:opt_rescue, Qnil, $:opt_ensure) %*/
+                    {VALUE v1=get_value($:body), v2=get_value($:opt_rescue), v3=get_value($:opt_ensure), v4=Qnil, v5=dispatch4(bodystmt,v1,v2,v4,v3); p->s_lvalue=v5;}
                     }
                 ;
 
 stmts		: none
                     {
                         $$ = NEW_BEGIN(0, &@$);
-                    /*% ripper: stmts_add!(stmts_new!, void_stmt!) %*/
+                    {VALUE v1=dispatch0(stmts_new), v2=dispatch0(void_stmt), v3=dispatch2(stmts_add,v1,v2); p->s_lvalue=v3;}
                     }
                 | stmt_or_begin
                     {
                         $$ = newline_node($1);
-                    /*% ripper: stmts_add!(stmts_new!, $:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(stmts_new), v3=dispatch2(stmts_add,v2,v1); p->s_lvalue=v3;}
                     }
                 | stmts terms stmt_or_begin
                     {
                         $$ = block_append(p, $1, newline_node($3));
-                    /*% ripper: stmts_add!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(stmts_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -3966,7 +3966,7 @@ k_END		: keyword_END lex_ctxt
                     {
                         $$ = $2;
                         p->ctxt.in_rescue = before_rescue;
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     };
 
 stmt		: keyword_alias[kw] fitem[new]
@@ -3976,12 +3976,12 @@ stmt		: keyword_alias[kw] fitem[new]
                   fitem[old]
                     {
                         $$ = NEW_ALIAS($new, $old, &@$, &@kw);
-                    /*% ripper: alias!($:new, $:old) %*/
+                    {VALUE v1=get_value($:new), v2=get_value($:old), v3=dispatch2(alias,v1,v2); p->s_lvalue=v3;}
                     }
                 | keyword_alias[kw] tGVAR[new] tGVAR[old]
                     {
                         $$ = NEW_VALIAS($new, $old, &@$, &@kw);
-                    /*% ripper: var_alias!($:new, $:old) %*/
+                    {VALUE v1=get_value($:new), v2=get_value($:old), v3=dispatch2(var_alias,v1,v2); p->s_lvalue=v3;}
                     }
                 | keyword_alias[kw] tGVAR[new] tBACK_REF[old]
                     {
@@ -3989,35 +3989,35 @@ stmt		: keyword_alias[kw] fitem[new]
                         buf[0] = '$';
                         buf[1] = (char)RNODE_BACK_REF($old)->nd_nth;
                         $$ = NEW_VALIAS($new, rb_intern2(buf, 2), &@$, &@kw);
-                    /*% ripper: var_alias!($:new, $:old) %*/
+                    {VALUE v1=get_value($:new), v2=get_value($:old), v3=dispatch2(var_alias,v1,v2); p->s_lvalue=v3;}
                     }
                 | keyword_alias tGVAR tNTH_REF[nth]
                     {
                         static const char mesg[] = "can't make alias for the number variables";
-                    /*%%%*/
+#if 0
                         yyerror1(&@nth, mesg);
-                    /*% %*/
+#endif
                         $$ = NEW_ERROR(&@$);
-                    /*% ripper[error]: alias_error!(ERR_MESG(), $:nth) %*/
+                    {VALUE v1=get_value($:nth), v2=ERR_MESG(), v3=dispatch2(alias_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
                 | keyword_undef[kw] undef_list[list]
                     {
                         nd_set_first_loc($list, @kw.beg_pos);
                         RNODE_UNDEF($list)->keyword_loc = @kw;
                         $$ = $list;
-                    /*% ripper: undef!($:list) %*/
+                    {VALUE v1=get_value($:list), v2=dispatch1(undef,v1); p->s_lvalue=v2;}
                     }
                 | stmt[body] modifier_if[mod] expr_value[cond]
                     {
                         $$ = new_if(p, $cond, remove_begin($body), 0, &@$, &@mod, &NULL_LOC, &NULL_LOC);
                         fixpos($$, $cond);
-                    /*% ripper: if_mod!($:cond, $:body) %*/
+                    {VALUE v1=get_value($:cond), v2=get_value($:body), v3=dispatch2(if_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 | stmt[body] modifier_unless[mod] expr_value[cond]
                     {
                         $$ = new_unless(p, $cond, remove_begin($body), 0, &@$, &@mod, &NULL_LOC, &NULL_LOC);
                         fixpos($$, $cond);
-                    /*% ripper: unless_mod!($:cond, $:body) %*/
+                    {VALUE v1=get_value($:cond), v2=get_value($:body), v3=dispatch2(unless_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 | stmt[body] modifier_while[mod] expr_value[cond_expr]
                     {
@@ -4028,7 +4028,7 @@ stmt		: keyword_alias[kw] fitem[new]
                         else {
                             $$ = NEW_WHILE(cond(p, $cond_expr, &@cond_expr), $body, 1, &@$, &@mod, &NULL_LOC);
                         }
-                    /*% ripper: while_mod!($:cond_expr, $:body) %*/
+                    {VALUE v1=get_value($:cond_expr), v2=get_value($:body), v3=dispatch2(while_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 | stmt[body] modifier_until[mod] expr_value[cond_expr]
                     {
@@ -4039,7 +4039,7 @@ stmt		: keyword_alias[kw] fitem[new]
                         else {
                             $$ = NEW_UNTIL(cond(p, $cond_expr, &@cond_expr), $body, 1, &@$, &@mod, &NULL_LOC);
                         }
-                    /*% ripper: until_mod!($:cond_expr, $:body) %*/
+                    {VALUE v1=get_value($:cond_expr), v2=get_value($:body), v3=dispatch2(until_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 | stmt[body] modifier_rescue[mod] after_rescue[ctxt] stmt[resbody]
                     {
@@ -4048,7 +4048,7 @@ stmt		: keyword_alias[kw] fitem[new]
                         YYLTYPE loc = code_loc_gen(&@mod, &@resbody);
                         resq = NEW_RESBODY(0, 0, remove_begin($resbody), 0, &loc);
                         $$ = NEW_RESCUE(remove_begin($body), resq, 0, &@$);
-                    /*% ripper: rescue_mod!($:body, $:resbody) %*/
+                    {VALUE v1=get_value($:body), v2=get_value($:resbody), v3=dispatch2(rescue_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 | k_END[k_end] allow_exits[allow] '{'[lbrace] compstmt(stmts)[body] '}'[rbrace]
                     {
@@ -4062,13 +4062,13 @@ stmt		: keyword_alias[kw] fitem[new]
                             $$ = NEW_POSTEXE(scope, &@$, &@k_end, &@lbrace, &@rbrace);
                             RNODE_SCOPE(scope)->nd_parent = $$;
                         }
-                    /*% ripper: END!($:body) %*/
+                    {VALUE v1=get_value($:body), v2=dispatch1(END,v1); p->s_lvalue=v2;}
                     }
                 | command_asgn
                 | mlhs[lhs] '=' lex_ctxt[ctxt] command_call_value[rhs]
                     {
                         $$ = node_assign(p, (NODE *)$lhs, $rhs, $ctxt, &@$);
-                    /*% ripper: massign!($:lhs, $:rhs) %*/
+                    {VALUE v1=get_value($:lhs), v2=get_value($:rhs), v3=dispatch2(massign,v1,v2); p->s_lvalue=v3;}
                     }
                 | asgn(mrhs)
                 | mlhs[lhs] '=' lex_ctxt[lex_ctxt] mrhs_arg[mrhs_arg] modifier_rescue[modifier_rescue]
@@ -4080,12 +4080,12 @@ stmt		: keyword_alias[kw] fitem[new]
                         loc.beg_pos = @mrhs_arg.beg_pos;
                         $mrhs_arg = NEW_RESCUE($mrhs_arg, $resbody, 0, &loc);
                         $$ = node_assign(p, (NODE *)$lhs, $mrhs_arg, $lex_ctxt, &@$);
-                    /*% ripper: massign!($:lhs, rescue_mod!($:mrhs_arg, $:resbody)) %*/
+                    {VALUE v1=get_value($:lhs), v2=get_value($:mrhs_arg), v3=get_value($:resbody), v4=dispatch2(rescue_mod,v2,v3), v5=dispatch2(massign,v1,v4); p->s_lvalue=v5;}
                     }
                 | mlhs[lhs] '=' lex_ctxt[ctxt] mrhs_arg[rhs]
                     {
                         $$ = node_assign(p, (NODE *)$lhs, $rhs, $ctxt, &@$);
-                    /*% ripper: massign!($:lhs, $:rhs) %*/
+                    {VALUE v1=get_value($:lhs), v2=get_value($:rhs), v3=dispatch2(massign,v1,v2); p->s_lvalue=v3;}
                     }
                 | expr
                 | error
@@ -4105,12 +4105,12 @@ endless_command : command
                     {
                         p->ctxt.in_rescue = $3.in_rescue;
                         $$ = rescued_expr(p, $1, $4, &@1, &@2, &@4);
-                    /*% ripper: rescue_mod!($:1, $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:4), v3=dispatch2(rescue_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 | keyword_not '\n'? endless_command
                     {
                         $$ = call_uni_op(p, method_cond(p, $3, &@3), METHOD_NOT, &@1, &@$);
-                    /*% ripper: unary!(ID2VAL(idNOT), $:3) %*/
+                    {VALUE v1=get_value($:3), v2=ID2VAL(idNOT), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -4120,7 +4120,7 @@ command_rhs	: command_call_value   %prec tOP_ASGN
                         p->ctxt.in_rescue = $3.in_rescue;
                         YYLTYPE loc = code_loc_gen(&@2, &@4);
                         $$ = NEW_RESCUE($1, NEW_RESBODY(0, 0, remove_begin($4), 0, &loc), 0, &@$);
-                    /*% ripper: rescue_mod!($:1, $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:4), v3=dispatch2(rescue_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 | command_asgn
                 ;
@@ -4129,22 +4129,22 @@ expr		: command_call
                 | expr[left] keyword_and[op] expr[right]
                     {
                         $$ = logop(p, idAND, $left, $right, &@op, &@$);
-                    /*% ripper: binary!($:left, ID2VAL(idAND), $:right) %*/
+                    {VALUE v1=get_value($:left), v2=get_value($:right), v3=ID2VAL(idAND), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | expr[left] keyword_or[op] expr[right]
                     {
                         $$ = logop(p, idOR, $left, $right, &@op, &@$);
-                    /*% ripper: binary!($:left, ID2VAL(idOR), $:right) %*/
+                    {VALUE v1=get_value($:left), v2=get_value($:right), v3=ID2VAL(idOR), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | keyword_not[not] '\n'? expr[arg]
                     {
                         $$ = call_uni_op(p, method_cond(p, $arg, &@arg), METHOD_NOT, &@not, &@$);
-                    /*% ripper: unary!(ID2VAL(idNOT), $:arg) %*/
+                    {VALUE v1=get_value($:arg), v2=ID2VAL(idNOT), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
                 | '!'[not] command_call[arg]
                     {
                         $$ = call_uni_op(p, method_cond(p, $arg, &@arg), '!', &@not, &@$);
-                    /*% ripper: unary!(ID2VAL('\'!\''), $:arg) %*/
+                    {VALUE v1=get_value($:arg), v2=ID2VAL('!'), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
                 | arg tASSOC[assoc]
                     {
@@ -4159,7 +4159,7 @@ expr		: command_call
                         p->ctxt.in_alt_pattern = $ctxt.in_alt_pattern;
                         p->ctxt.capture_in_pattern = $ctxt.capture_in_pattern;
                         $$ = NEW_CASE3($arg, NEW_IN($body, 0, 0, &@body, &NULL_LOC, &NULL_LOC, &@assoc), &@$, &NULL_LOC, &NULL_LOC);
-                    /*% ripper: case!($:arg, in!($:body, Qnil, Qnil)) %*/
+                    {VALUE v1=get_value($:arg), v2=get_value($:body), v3=Qnil, v4=Qnil, v5=dispatch3(in,v2,v3,v4), v6=dispatch2(case,v1,v5); p->s_lvalue=v6;}
                     }
                 | arg keyword_in
                     {
@@ -4174,7 +4174,7 @@ expr		: command_call
                         p->ctxt.in_alt_pattern = $ctxt.in_alt_pattern;
                         p->ctxt.capture_in_pattern = $ctxt.capture_in_pattern;
                         $$ = NEW_CASE3($arg, NEW_IN($body, NEW_TRUE(&@body), NEW_FALSE(&@body), &@body, &@keyword_in, &NULL_LOC, &NULL_LOC), &@$, &NULL_LOC, &NULL_LOC);
-                    /*% ripper: case!($:arg, in!($:body, Qnil, Qnil)) %*/
+                    {VALUE v1=get_value($:arg), v2=get_value($:body), v3=Qnil, v4=Qnil, v5=dispatch3(in,v2,v3,v4), v6=dispatch2(case,v1,v5); p->s_lvalue=v6;}
                     }
                 | arg %prec tLBRACE_ARG
                 ;
@@ -4195,7 +4195,7 @@ defn_head	: k_def def_name
                         $$ = def_head_save(p, $k_def);
                         $$->nd_mid = $def_name;
                         $$->nd_def = NEW_DEFN($def_name, 0, &@$);
-                    /*% ripper: $:def_name %*/
+                    {VALUE v1=get_value($:def_name); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -4206,7 +4206,7 @@ defs_head	: k_def singleton dot_or_colon
                         $$->nd_mid = $def_name;
                         $$->nd_def = NEW_DEFS($singleton, $def_name, 0, &@$);
                         /* ENDFN is already set when `def_name` is lexed */
-                    /*% ripper: [$:singleton, $:dot_or_colon, $:def_name] %*/
+                    {VALUE v1=get_value($:singleton), v2=get_value($:dot_or_colon), v3=get_value($:def_name); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, v3);}
                     }
                 ;
 
@@ -4220,7 +4220,7 @@ expr_value	: value_expr(expr)
 expr_value_do	: {COND_PUSH(1);} expr_value do {COND_POP();}
                     {
                         $$ = $2;
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -4235,7 +4235,7 @@ block_command	: block_call
                 | block_call call_op2 operation2 command_args
                     {
                         $$ = new_qcall(p, $2, $1, $3, $4, &@3, &@$);
-                    /*% ripper: method_add_arg!(call!($:1, $:2, $:3), $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=get_value($:4), v5=dispatch3(call,v1,v2,v3), v6=dispatch2(method_add_arg,v5,v4); p->s_lvalue=v6;}
                     }
                 ;
 
@@ -4243,14 +4243,14 @@ cmd_brace_block	: tLBRACE_ARG brace_body '}'
                     {
                         $$ = $2;
                         set_embraced_location($$, &@1, &@3);
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 ;
 
 fcall		: operation
                     {
                         $$ = NEW_FCALL($1, 0, &@$);
-                    /*% ripper: $:1 %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -4259,7 +4259,7 @@ command		: fcall command_args       %prec tLOWEST
                         $1->nd_args = $2;
                         nd_set_last_loc($1, @2.end_pos);
                         $$ = (NODE *)$1;
-                    /*% ripper: command!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(command,v1,v2); p->s_lvalue=v3;}
                     }
                 | fcall command_args cmd_brace_block
                     {
@@ -4268,64 +4268,64 @@ command		: fcall command_args       %prec tLOWEST
                         $$ = method_add_block(p, (NODE *)$1, $3, &@$);
                         fixpos($$, RNODE($1));
                         nd_set_last_loc($1, @2.end_pos);
-                    /*% ripper: method_add_block!(command!($:1, $:2), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=dispatch2(command,v1,v2), v5=dispatch2(method_add_block,v4,v3); p->s_lvalue=v5;}
                     }
                 | primary_value call_op operation2 command_args	%prec tLOWEST
                     {
                         $$ = new_command_qcall(p, $2, $1, $3, $4, 0, &@3, &@$);
-                    /*% ripper: command_call!($:1, $:2, $:3, $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=get_value($:4), v5=dispatch4(command_call,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
                 | primary_value call_op operation2 command_args cmd_brace_block
                     {
                         $$ = new_command_qcall(p, $2, $1, $3, $4, $5, &@3, &@$);
-                    /*% ripper: method_add_block!(command_call!($:1, $:2, $:3, $:4), $:5) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=get_value($:4), v5=get_value($:5), v6=dispatch4(command_call,v1,v2,v3,v4), v7=dispatch2(method_add_block,v6,v5); p->s_lvalue=v7;}
                     }
                 | primary_value tCOLON2 operation2 command_args	%prec tLOWEST
                     {
                         $$ = new_command_qcall(p, idCOLON2, $1, $3, $4, 0, &@3, &@$);
-                    /*% ripper: command_call!($:1, $:2, $:3, $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=get_value($:4), v5=dispatch4(command_call,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
                 | primary_value tCOLON2 operation2 command_args cmd_brace_block
                     {
                         $$ = new_command_qcall(p, idCOLON2, $1, $3, $4, $5, &@3, &@$);
-                    /*% ripper: method_add_block!(command_call!($:1, $:2, $:3, $:4), $:5) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=get_value($:4), v5=get_value($:5), v6=dispatch4(command_call,v1,v2,v3,v4), v7=dispatch2(method_add_block,v6,v5); p->s_lvalue=v7;}
                    }
                 | primary_value tCOLON2 tCONSTANT '{' brace_body '}'
                     {
                         set_embraced_location($5, &@4, &@6);
                         $$ = new_command_qcall(p, idCOLON2, $1, $3, 0, $5, &@3, &@$);
-                    /*% ripper: method_add_block!(command_call!($:1, $:2, $:3, Qnil), $:5) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=get_value($:5), v5=Qnil, v6=dispatch4(command_call,v1,v2,v3,v5), v7=dispatch2(method_add_block,v6,v4); p->s_lvalue=v7;}
                    }
                 | keyword_super command_args
                     {
                         $$ = NEW_SUPER($2, &@$, &@1, &NULL_LOC, &NULL_LOC);
                         fixpos($$, $2);
-                    /*% ripper: super!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(super,v1); p->s_lvalue=v2;}
                     }
                 | k_yield command_args
                     {
                         $$ = NEW_YIELD($2, &@$, &@1, &NULL_LOC, &NULL_LOC);
                         fixpos($$, $2);
-                    /*% ripper: yield!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(yield,v1); p->s_lvalue=v2;}
                     }
                 | k_return call_args
                     {
                         $$ = NEW_RETURN(ret_args(p, $2), &@$, &@1);
-                    /*% ripper: return!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(return,v1); p->s_lvalue=v2;}
                     }
                 | keyword_break call_args
                     {
                         NODE *args = 0;
                         args = ret_args(p, $2);
                         $$ = add_block_exit(p, NEW_BREAK(args, &@$, &@1));
-                    /*% ripper: break!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(break,v1); p->s_lvalue=v2;}
                     }
                 | keyword_next call_args
                     {
                         NODE *args = 0;
                         args = ret_args(p, $2);
                         $$ = add_block_exit(p, NEW_NEXT(args, &@$, &@1));
-                    /*% ripper: next!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(next,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -4333,7 +4333,7 @@ mlhs		: mlhs_basic
                 | tLPAREN mlhs_inner rparen
                     {
                         $$ = $2;
-                    /*% ripper: mlhs_paren!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(mlhs_paren,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -4341,59 +4341,59 @@ mlhs_inner	: mlhs_basic
                 | tLPAREN mlhs_inner rparen
                     {
                         $$ = NEW_MASGN(NEW_LIST((NODE *)$2, &@$), 0, &@$);
-                    /*% ripper: mlhs_paren!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(mlhs_paren,v1); p->s_lvalue=v2;}
                     }
                 ;
 
 mlhs_basic	: mlhs_head
                     {
                         $$ = NEW_MASGN($1, 0, &@$);
-                    /*% ripper: $:1 %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=v1;}
                     }
                 | mlhs_head mlhs_item
                     {
                         $$ = NEW_MASGN(list_append(p, $1, $2), 0, &@$);
-                    /*% ripper: mlhs_add!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(mlhs_add,v1,v2); p->s_lvalue=v3;}
                     }
                 | mlhs_head tSTAR mlhs_node
                     {
                         $$ = NEW_MASGN($1, $3, &@$);
-                    /*% ripper: mlhs_add_star!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(mlhs_add_star,v1,v2); p->s_lvalue=v3;}
                     }
                 | mlhs_head tSTAR mlhs_node ',' mlhs_items(mlhs_item)
                     {
                         $$ = NEW_MASGN($1, NEW_POSTARG($3,$5,&@$), &@$);
-                    /*% ripper: mlhs_add_post!(mlhs_add_star!($:1, $:3), $:5) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=get_value($:5), v4=dispatch2(mlhs_add_star,v1,v2), v5=dispatch2(mlhs_add_post,v4,v3); p->s_lvalue=v5;}
                     }
                 | mlhs_head tSTAR
                     {
                         $$ = NEW_MASGN($1, NODE_SPECIAL_NO_NAME_REST, &@$);
-                    /*% ripper: mlhs_add_star!($:1, Qnil) %*/
+                    {VALUE v1=get_value($:1), v2=Qnil, v3=dispatch2(mlhs_add_star,v1,v2); p->s_lvalue=v3;}
                     }
                 | mlhs_head tSTAR ',' mlhs_items(mlhs_item)
                     {
                         $$ = NEW_MASGN($1, NEW_POSTARG(NODE_SPECIAL_NO_NAME_REST, $4, &@$), &@$);
-                    /*% ripper: mlhs_add_post!(mlhs_add_star!($:1, Qnil), $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:4), v3=Qnil, v4=dispatch2(mlhs_add_star,v1,v3), v5=dispatch2(mlhs_add_post,v4,v2); p->s_lvalue=v5;}
                     }
                 | tSTAR mlhs_node
                     {
                         $$ = NEW_MASGN(0, $2, &@$);
-                    /*% ripper: mlhs_add_star!(mlhs_new!, $:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch0(mlhs_new), v3=dispatch2(mlhs_add_star,v2,v1); p->s_lvalue=v3;}
                     }
                 | tSTAR mlhs_node ',' mlhs_items(mlhs_item)
                     {
                         $$ = NEW_MASGN(0, NEW_POSTARG($2,$4,&@$), &@$);
-                    /*% ripper: mlhs_add_post!(mlhs_add_star!(mlhs_new!, $:2), $:4) %*/
+                    {VALUE v1=get_value($:2), v2=get_value($:4), v3=dispatch0(mlhs_new), v4=dispatch2(mlhs_add_star,v3,v1), v5=dispatch2(mlhs_add_post,v4,v2); p->s_lvalue=v5;}
                     }
                 | tSTAR
                     {
                         $$ = NEW_MASGN(0, NODE_SPECIAL_NO_NAME_REST, &@$);
-                    /*% ripper: mlhs_add_star!(mlhs_new!, Qnil) %*/
+                    {VALUE v1=dispatch0(mlhs_new), v2=Qnil, v3=dispatch2(mlhs_add_star,v1,v2); p->s_lvalue=v3;}
                     }
                 | tSTAR ',' mlhs_items(mlhs_item)
                     {
                         $$ = NEW_MASGN(0, NEW_POSTARG(NODE_SPECIAL_NO_NAME_REST, $3, &@$), &@$);
-                    /*% ripper: mlhs_add_post!(mlhs_add_star!(mlhs_new!, Qnil), $:3) %*/
+                    {VALUE v1=get_value($:3), v2=dispatch0(mlhs_new), v3=Qnil, v4=dispatch2(mlhs_add_star,v2,v3), v5=dispatch2(mlhs_add_post,v4,v1); p->s_lvalue=v5;}
                     }
                 ;
 
@@ -4401,107 +4401,107 @@ mlhs_item	: mlhs_node
                 | tLPAREN mlhs_inner rparen
                     {
                         $$ = (NODE *)$2;
-                    /*% ripper: mlhs_paren!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(mlhs_paren,v1); p->s_lvalue=v2;}
                     }
                 ;
 
 mlhs_head	: mlhs_item ','
                     {
                         $$ = NEW_LIST($1, &@1);
-                    /*% ripper: mlhs_add!(mlhs_new!, $:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(mlhs_new), v3=dispatch2(mlhs_add,v2,v1); p->s_lvalue=v3;}
                     }
                 | mlhs_head mlhs_item ','
                     {
                         $$ = list_append(p, $1, $2);
-                    /*% ripper: mlhs_add!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(mlhs_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
 
 mlhs_node	: user_or_keyword_variable
                     {
-                    /*% ripper: var_field!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         $$ = assignable(p, $1, 0, &@$);
                     }
                 | primary_value '[' opt_call_args rbracket
                     {
                         $$ = aryset(p, $1, $3, &@$);
-                    /*% ripper: aref_field!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(aref_field,v1,v2); p->s_lvalue=v3;}
                     }
                 | primary_value call_op ident_or_const
                     {
                         anddot_multiple_assignment_check(p, &@2, $2);
                         $$ = attrset(p, $1, $2, $3, &@$);
-                    /*% ripper: field!($:1, $:2, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=dispatch3(field,v1,v2,v3); p->s_lvalue=v4;}
                     }
                 | primary_value tCOLON2 tIDENTIFIER
                     {
                         $$ = attrset(p, $1, idCOLON2, $3, &@$);
-                    /*% ripper: const_path_field!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(const_path_field,v1,v2); p->s_lvalue=v3;}
                     }
                 | primary_value tCOLON2 tCONSTANT
                     {
-                    /*% ripper: const_path_field!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(const_path_field,v1,v2); p->s_lvalue=v3;}
                         $$ = const_decl(p, NEW_COLON2($1, $3, &@$, &@2, &@3), &@$);
                     }
                 | tCOLON3 tCONSTANT
                     {
-                    /*% ripper: top_const_field!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(top_const_field,v1); p->s_lvalue=v2;}
                         $$ = const_decl(p, NEW_COLON3($2, &@$, &@1, &@2), &@$);
                     }
                 | backref
                     {
                         VALUE MAYBE_UNUSED(e) = rb_backref_error(p, $1);
                         $$ = NEW_ERROR(&@$);
-                    /*% ripper[error]: assign_error!(?e, var_field!($:1)) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(var_field,v1), v3=e, v4=dispatch2(assign_error,v3,v2); p->s_lvalue=v4;ripper_error(p);}
                     }
                 ;
 
 lhs		: user_or_keyword_variable
                     {
-                    /*% ripper: var_field!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         $$ = assignable(p, $1, 0, &@$);
                     }
                 | primary_value '[' opt_call_args rbracket
                     {
                         $$ = aryset(p, $1, $3, &@$);
-                    /*% ripper: aref_field!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(aref_field,v1,v2); p->s_lvalue=v3;}
                     }
                 | primary_value call_op ident_or_const
                     {
                         $$ = attrset(p, $1, $2, $3, &@$);
-                    /*% ripper: field!($:1, $:2, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=dispatch3(field,v1,v2,v3); p->s_lvalue=v4;}
                     }
                 | primary_value tCOLON2 tIDENTIFIER
                     {
                         $$ = attrset(p, $1, idCOLON2, $3, &@$);
-                    /*% ripper: field!($:1, $:2, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=dispatch3(field,v1,v2,v3); p->s_lvalue=v4;}
                     }
                 | primary_value tCOLON2 tCONSTANT
                     {
-                    /*% ripper: const_path_field!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(const_path_field,v1,v2); p->s_lvalue=v3;}
                         $$ = const_decl(p, NEW_COLON2($1, $3, &@$, &@2, &@3), &@$);
                     }
                 | tCOLON3 tCONSTANT
                     {
-                    /*% ripper: top_const_field!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(top_const_field,v1); p->s_lvalue=v2;}
                         $$ = const_decl(p, NEW_COLON3($2, &@$, &@1, &@2), &@$);
                     }
                 | backref
                     {
                         VALUE MAYBE_UNUSED(e) = rb_backref_error(p, $1);
                         $$ = NEW_ERROR(&@$);
-                    /*% ripper[error]: assign_error!(?e, var_field!($:1)) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(var_field,v1), v3=e, v4=dispatch2(assign_error,v3,v2); p->s_lvalue=v4;ripper_error(p);}
                     }
                 ;
 
 cname		: tIDENTIFIER
                     {
                         static const char mesg[] = "class/module name must be CONSTANT";
-                    /*%%%*/
+#if 0
                         yyerror1(&@1, mesg);
-                    /*% %*/
-                    /*% ripper[error]: class_name_error!(ERR_MESG(), $:1) %*/
+#endif
+                    {VALUE v1=get_value($:1), v2=ERR_MESG(), v3=dispatch2(class_name_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
                 | tCONSTANT
                 ;
@@ -4509,17 +4509,17 @@ cname		: tIDENTIFIER
 cpath		: tCOLON3 cname
                     {
                         $$ = NEW_COLON3($2, &@$, &@1, &@2);
-                    /*% ripper: top_const_ref!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(top_const_ref,v1); p->s_lvalue=v2;}
                     }
                 | cname
                     {
                         $$ = NEW_COLON2(0, $1, &@$, &NULL_LOC, &@1);
-                    /*% ripper: const_ref!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(const_ref,v1); p->s_lvalue=v2;}
                     }
                 | primary_value tCOLON2 cname
                     {
                         $$ = NEW_COLON2($1, $3, &@$, &@2, &@3);
-                    /*% ripper: const_path_ref!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(const_path_ref,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -4534,7 +4534,7 @@ fname		: operation
 fitem		: fname
                     {
                         $$ = NEW_SYM(rb_id2str($1), &@$);
-                    /*% ripper: symbol_literal!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(symbol_literal,v1); p->s_lvalue=v2;}
                     }
                 | symbol
                 ;
@@ -4542,7 +4542,7 @@ fitem		: fname
 undef_list	: fitem
                     {
                         $$ = NEW_UNDEF($1, &@$);
-                    /*% ripper: rb_ary_new3(1, $:1) %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new3(1, v1);}
                     }
                 | undef_list ','
                     {
@@ -4552,7 +4552,7 @@ undef_list	: fitem
                     {
                         nd_set_last_loc($1, @4.end_pos);
                         rb_parser_ary_push_node(p, RNODE_UNDEF($1)->nd_undefs, $4);
-                    /*% ripper: rb_ary_push($:1, $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:4); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
                 ;
 
@@ -4608,130 +4608,130 @@ arg		: asgn(arg_rhs)
                 | arg '+' arg
                     {
                         $$ = call_bin_op(p, $1, '+', $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL('\'+\''), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL('+'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg '-' arg
                     {
                         $$ = call_bin_op(p, $1, '-', $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL('\'-\''), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL('-'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg '*' arg
                     {
                         $$ = call_bin_op(p, $1, '*', $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL('\'*\''), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL('*'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg '/' arg
                     {
                         $$ = call_bin_op(p, $1, '/', $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL('\'/\''), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL('/'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg '%' arg
                     {
                         $$ = call_bin_op(p, $1, '%', $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL('\'%\''), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL('%'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg tPOW arg
                     {
                         $$ = call_bin_op(p, $1, idPow, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idPow), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idPow), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | tUMINUS_NUM simple_numeric tPOW arg
                     {
                         $$ = call_uni_op(p, call_bin_op(p, $2, idPow, $4, &@2, &@$), idUMinus, &@1, &@$);
-                    /*% ripper: unary!(ID2VAL(idUMinus), binary!($:2, ID2VAL(idPow), $:4)) %*/
+                    {VALUE v1=get_value($:2), v2=get_value($:4), v3=ID2VAL(idPow), v4=dispatch3(binary,v1,v3,v2), v5=ID2VAL(idUMinus), v6=dispatch2(unary,v5,v4); p->s_lvalue=v6;}
                     }
                 | tUPLUS arg
                     {
                         $$ = call_uni_op(p, $2, idUPlus, &@1, &@$);
-                    /*% ripper: unary!(ID2VAL(idUPlus), $:2) %*/
+                    {VALUE v1=get_value($:2), v2=ID2VAL(idUPlus), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
                 | tUMINUS arg
                     {
                         $$ = call_uni_op(p, $2, idUMinus, &@1, &@$);
-                    /*% ripper: unary!(ID2VAL(idUMinus), $:2) %*/
+                    {VALUE v1=get_value($:2), v2=ID2VAL(idUMinus), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
                 | arg '|' arg
                     {
                         $$ = call_bin_op(p, $1, '|', $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL('\'|\''), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL('|'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg '^' arg
                     {
                         $$ = call_bin_op(p, $1, '^', $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL('\'^\''), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL('^'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg '&' arg
                     {
                         $$ = call_bin_op(p, $1, '&', $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL('\'&\''), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL('&'), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg tCMP arg
                     {
                         $$ = call_bin_op(p, $1, idCmp, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idCmp), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idCmp), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | rel_expr   %prec tCMP
                 | arg tEQ arg
                     {
                         $$ = call_bin_op(p, $1, idEq, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idEq), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idEq), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg tEQQ arg
                     {
                         $$ = call_bin_op(p, $1, idEqq, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idEqq), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idEqq), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg tNEQ arg
                     {
                         $$ = call_bin_op(p, $1, idNeq, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idNeq), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idNeq), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg tMATCH arg
                     {
                         $$ = match_op(p, $1, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idEqTilde), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idEqTilde), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg tNMATCH arg
                     {
                         $$ = call_bin_op(p, $1, idNeqTilde, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idNeqTilde), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idNeqTilde), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | '!' arg
                     {
                         $$ = call_uni_op(p, method_cond(p, $2, &@2), '!', &@1, &@$);
-                    /*% ripper: unary!(ID2VAL('\'!\''), $:2) %*/
+                    {VALUE v1=get_value($:2), v2=ID2VAL('!'), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
                 | '~' arg
                     {
                         $$ = call_uni_op(p, $2, '~', &@1, &@$);
-                    /*% ripper: unary!(ID2VAL('\'~\''), $:2) %*/
+                    {VALUE v1=get_value($:2), v2=ID2VAL('~'), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
                 | arg tLSHFT arg
                     {
                         $$ = call_bin_op(p, $1, idLTLT, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idLTLT), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idLTLT), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg tRSHFT arg
                     {
                         $$ = call_bin_op(p, $1, idGTGT, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idGTGT), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idGTGT), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg tANDOP arg
                     {
                         $$ = logop(p, idANDOP, $1, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idANDOP), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idANDOP), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | arg tOROP arg
                     {
                         $$ = logop(p, idOROP, $1, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL(idOROP), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(idOROP), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | keyword_defined '\n'? begin_defined arg
                     {
                         p->ctxt.in_defined = $3.in_defined;
                         $$ = new_defined(p, $4, &@$, &@1);
                         p->ctxt.has_trailing_semicolon = $3.has_trailing_semicolon;
-                    /*% ripper: defined!($:4) %*/
+                    {VALUE v1=get_value($:4), v2=dispatch1(defined,v1); p->s_lvalue=v2;}
                     }
                 | def_endless_method(endless_arg)
                 | ternary
@@ -4743,7 +4743,7 @@ ternary		: arg '?' arg '\n'? ':' arg
                         value_expr(p, $1);
                         $$ = new_if(p, $1, $3, $6, &@$, &NULL_LOC, &@5, &NULL_LOC);
                         fixpos($$, $1);
-                    /*% ripper: ifop!($:1, $:3, $:6) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=get_value($:6), v4=dispatch3(ifop,v1,v2,v3); p->s_lvalue=v4;}
                     }
                 ;
 
@@ -4752,12 +4752,12 @@ endless_arg	: arg %prec modifier_rescue
                     {
                         p->ctxt.in_rescue = $3.in_rescue;
                         $$ = rescued_expr(p, $1, $4, &@1, &@2, &@4);
-                    /*% ripper: rescue_mod!($:1, $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:4), v3=dispatch2(rescue_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 | keyword_not '\n'? endless_arg
                     {
                         $$ = call_uni_op(p, method_cond(p, $3, &@3), METHOD_NOT, &@1, &@$);
-                    /*% ripper: unary!(ID2VAL(idNOT), $:3) %*/
+                    {VALUE v1=get_value($:3), v2=ID2VAL(idNOT), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -4770,13 +4770,13 @@ relop		: '>'  {$$ = '>';}
 rel_expr	: arg relop arg   %prec '>'
                     {
                         $$ = call_bin_op(p, $1, $2, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL($2), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL($2), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | rel_expr relop arg   %prec '>'
                     {
                         rb_warning1("comparison '%s' after comparison", WARN_ID($2));
                         $$ = call_bin_op(p, $1, $2, $3, &@2, &@$);
-                    /*% ripper: binary!($:1, ID2VAL($2), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL($2), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 ;
 
@@ -4808,12 +4808,12 @@ aref_args	: none
                 | args ',' assocs trailer
                     {
                         $$ = $3 ? arg_append(p, $1, new_hash(p, $3, &@3), &@$) : $1;
-                    /*% ripper: args_add!($:1, bare_assoc_hash!($:3)) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch1(bare_assoc_hash,v2), v4=dispatch2(args_add,v1,v3); p->s_lvalue=v4;}
                     }
                 | assocs trailer
                     {
                         $$ = $1 ? NEW_LIST(new_hash(p, $1, &@1), &@$) : 0;
-                    /*% ripper: args_add!(args_new!, bare_assoc_hash!($:1)) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(args_new), v3=dispatch1(bare_assoc_hash,v1), v4=dispatch2(args_add,v2,v3); p->s_lvalue=v4;}
                     }
                 ;
 
@@ -4827,14 +4827,14 @@ arg_rhs 	: arg   %prec tOP_ASGN
                         p->ctxt.in_rescue = $3.in_rescue;
                         value_expr(p, $1);
                         $$ = rescued_expr(p, $1, $4, &@1, &@2, &@4);
-                    /*% ripper: rescue_mod!($:1, $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:4), v3=dispatch2(rescue_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
 paren_args	: '(' opt_call_args rparen
                     {
                         $$ = $2;
-                    /*% ripper: arg_paren!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(arg_paren,v1); p->s_lvalue=v2;}
                     }
                 | '(' args ',' args_forward rparen
                     {
@@ -4843,7 +4843,7 @@ paren_args	: '(' opt_call_args rparen
                         }
                         else {
                             $$ = new_args_forward_call(p, $2, &@4, &@$);
-                        /*% ripper: arg_paren!(args_add!($:2, $:4)) %*/
+                        {VALUE v1=get_value($:2), v2=get_value($:4), v3=dispatch2(args_add,v1,v2), v4=dispatch1(arg_paren,v3); p->s_lvalue=v4;}
                         }
                     }
                 | '(' args_forward rparen
@@ -4853,7 +4853,7 @@ paren_args	: '(' opt_call_args rparen
                         }
                         else {
                             $$ = new_args_forward_call(p, 0, &@2, &@$);
-                        /*% ripper: arg_paren!($:2) %*/
+                        {VALUE v1=get_value($:2), v2=dispatch1(arg_paren,v1); p->s_lvalue=v2;}
                         }
                     }
                 ;
@@ -4871,44 +4871,44 @@ opt_call_args	: none
                 | args ',' assocs ','
                     {
                         $$ = $3 ? arg_append(p, $1, new_hash(p, $3, &@3), &@$) : $1;
-                    /*% ripper: args_add!($:1, bare_assoc_hash!($:3)) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch1(bare_assoc_hash,v2), v4=dispatch2(args_add,v1,v3); p->s_lvalue=v4;}
                     }
                 | assocs ','
                     {
                         $$ = $1 ? NEW_LIST(new_hash(p, $1, &@1), &@1) : 0;
-                    /*% ripper: args_add!(args_new!, bare_assoc_hash!($:1)) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(args_new), v3=dispatch1(bare_assoc_hash,v1), v4=dispatch2(args_add,v2,v3); p->s_lvalue=v4;}
                     }
                 ;
 
 call_args	: value_expr(command)
                     {
                         $$ = NEW_LIST($1, &@$);
-                    /*% ripper: args_add!(args_new!, $:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(args_new), v3=dispatch2(args_add,v2,v1); p->s_lvalue=v3;}
                     }
                 | def_endless_method(endless_command)
                     {
                         $$ = NEW_LIST($1, &@$);
-                    /*% ripper: args_add!(args_new!, $:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(args_new), v3=dispatch2(args_add,v2,v1); p->s_lvalue=v3;}
                     }
                 | args opt_block_arg
                     {
                         $$ = arg_blk_pass($1, $2);
-                    /*% ripper: args_add_block!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(args_add_block,v1,v2); p->s_lvalue=v3;}
                     }
                 | assocs opt_block_arg
                     {
                         $$ = $1 ? NEW_LIST(new_hash(p, $1, &@1), &@1) : 0;
                         $$ = arg_blk_pass($$, $2);
-                    /*% ripper: args_add_block!(args_add!(args_new!, bare_assoc_hash!($:1)), $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch0(args_new), v4=dispatch1(bare_assoc_hash,v1), v5=dispatch2(args_add,v3,v4), v6=dispatch2(args_add_block,v5,v2); p->s_lvalue=v6;}
                     }
                 | args ',' assocs opt_block_arg
                     {
                         $$ = $3 ? arg_append(p, $1, new_hash(p, $3, &@3), &@$) : $1;
                         $$ = arg_blk_pass($$, $4);
-                    /*% ripper: args_add_block!(args_add!($:1, bare_assoc_hash!($:3)), $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=get_value($:4), v4=dispatch1(bare_assoc_hash,v2), v5=dispatch2(args_add,v1,v4), v6=dispatch2(args_add_block,v5,v3); p->s_lvalue=v6;}
                     }
                 | block_arg
-                    /*% ripper: args_add_block!(args_new!, $:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(args_new), v3=dispatch2(args_add_block,v2,v1); p->s_lvalue=v3;}
                 ;
 
 command_args	:   {
@@ -4945,32 +4945,32 @@ command_args	:   {
                         CMDARG_POP();
                         if (lookahead) CMDARG_PUSH(0);
                         $$ = $2;
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 ;
 
 block_arg	: tAMPER arg_value
                     {
                         $$ = NEW_BLOCK_PASS($2, &@$, &@1);
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 | tAMPER
                     {
                         forwarding_arg_check(p, idFWD_BLOCK, idFWD_ALL, "block");
                         $$ = NEW_BLOCK_PASS(NEW_LVAR(idFWD_BLOCK, &@1), &@$, &@1);
-                    /*% ripper: Qnil %*/
+                    {p->s_lvalue=Qnil;}
                     }
                 ;
 
 opt_block_arg	: ',' block_arg
                     {
                         $$ = $2;
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 | none
                     {
                         $$ = 0;
-                    /*% ripper: Qfalse %*/
+                    {p->s_lvalue=Qfalse;}
                     }
                 ;
 
@@ -4978,22 +4978,22 @@ opt_block_arg	: ',' block_arg
 args		: arg_value
                     {
                         $$ = NEW_LIST($arg_value, &@$);
-                    /*% ripper: args_add!(args_new!, $:arg_value) %*/
+                    {VALUE v1=get_value($:arg_value), v2=dispatch0(args_new), v3=dispatch2(args_add,v2,v1); p->s_lvalue=v3;}
                     }
                 | arg_splat
                     {
                         $$ = $arg_splat;
-                    /*% ripper: args_add_star!(args_new!, $:arg_splat) %*/
+                    {VALUE v1=get_value($:arg_splat), v2=dispatch0(args_new), v3=dispatch2(args_add_star,v2,v1); p->s_lvalue=v3;}
                     }
                 | args[non_last_args] ',' arg_value
                     {
                         $$ = last_arg_append(p, $non_last_args, $arg_value, &@$);
-                    /*% ripper: args_add!($:non_last_args, $:arg_value) %*/
+                    {VALUE v1=get_value($:non_last_args), v2=get_value($:arg_value), v3=dispatch2(args_add,v1,v2); p->s_lvalue=v3;}
                     }
                 | args[non_last_args] ',' arg_splat
                     {
                         $$ = rest_arg_append(p, $non_last_args, RNODE_SPLAT($arg_splat)->nd_head, &@$);
-                    /*% ripper: args_add_star!($:non_last_args, $:arg_splat) %*/
+                    {VALUE v1=get_value($:non_last_args), v2=get_value($:arg_splat), v3=dispatch2(args_add_star,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -5001,13 +5001,13 @@ args		: arg_value
 arg_splat	: tSTAR arg_value
                     {
                         $$ = NEW_SPLAT($arg_value, &@$, &@tSTAR);
-                    /*% ripper: $:arg_value %*/
+                    {VALUE v1=get_value($:arg_value); p->s_lvalue=v1;}
                     }
                 | tSTAR /* none */
                     {
                         forwarding_arg_check(p, idFWD_REST, idFWD_ALL, "rest");
                         $$ = NEW_SPLAT(NEW_LVAR(idFWD_REST, &@tSTAR), &@$, &@tSTAR);
-                    /*% ripper: Qnil %*/
+                    {p->s_lvalue=Qnil;}
                     }
                 ;
 
@@ -5020,17 +5020,17 @@ mrhs_arg	: mrhs
 mrhs		: args ',' arg_value
                     {
                         $$ = last_arg_append(p, $args, $arg_value, &@$);
-                    /*% ripper: mrhs_add!(mrhs_new_from_args!($:args), $:arg_value) %*/
+                    {VALUE v1=get_value($:args), v2=get_value($:arg_value), v3=dispatch1(mrhs_new_from_args,v1), v4=dispatch2(mrhs_add,v3,v2); p->s_lvalue=v4;}
                     }
                 | args ',' tSTAR arg_value
                     {
                         $$ = rest_arg_append(p, $args, $arg_value, &@$);
-                    /*% ripper: mrhs_add_star!(mrhs_new_from_args!($:args), $:arg_value) %*/
+                    {VALUE v1=get_value($:args), v2=get_value($:arg_value), v3=dispatch1(mrhs_new_from_args,v1), v4=dispatch2(mrhs_add_star,v3,v2); p->s_lvalue=v4;}
                     }
                 | tSTAR arg_value
                     {
                         $$ = NEW_SPLAT($arg_value, &@$, &@tSTAR);
-                    /*% ripper: mrhs_add_star!(mrhs_new!, $:arg_value) %*/
+                    {VALUE v1=get_value($:arg_value), v2=dispatch0(mrhs_new), v3=dispatch2(mrhs_add_star,v2,v1); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -5051,7 +5051,7 @@ primary		: inline_primary
             | tFID[fid]
                 {
                     $$ = (NODE *)NEW_FCALL($fid, 0, &@$);
-                /*% ripper: method_add_arg!(fcall!($:fid), args_new!) %*/
+                {VALUE v1=get_value($:fid), v2=dispatch1(fcall,v1), v3=dispatch0(args_new), v4=dispatch2(method_add_arg,v2,v3); p->s_lvalue=v4;}
                 }
             | k_begin[kw]
                 {
@@ -5066,7 +5066,7 @@ primary		: inline_primary
                     set_line_body($body, @kw.end_pos.lineno);
                     $$ = NEW_BEGIN($body, &@$);
                     nd_set_line($$, @kw.end_pos.lineno);
-                /*% ripper: begin!($:body) %*/
+                {VALUE v1=get_value($:body), v2=dispatch1(begin,v1); p->s_lvalue=v2;}
                 }
             | tLPAREN_ARG compstmt(stmts)[body]
                 {
@@ -5075,83 +5075,83 @@ primary		: inline_primary
                 {
                     if (nd_type_p($body, NODE_SELF)) RNODE_SELF($body)->nd_state = 0;
                     $$ = $body;
-                /*% ripper: paren!($:body) %*/
+                {VALUE v1=get_value($:body), v2=dispatch1(paren,v1); p->s_lvalue=v2;}
                 }
             | tLPAREN compstmt(stmts)[body] ')'
                 {
                     if (nd_type_p($body, NODE_SELF)) RNODE_SELF($body)->nd_state = 0;
                     $$ = NEW_BLOCK($body, &@$);
-                /*% ripper: paren!($:body) %*/
+                {VALUE v1=get_value($:body), v2=dispatch1(paren,v1); p->s_lvalue=v2;}
                 }
             | primary_value[recv] tCOLON2[op] tCONSTANT[name]
                 {
                     $$ = NEW_COLON2($recv, $name, &@$, &@op, &@name);
-                /*% ripper: const_path_ref!($:recv, $:name) %*/
+                {VALUE v1=get_value($:recv), v2=get_value($:name), v3=dispatch2(const_path_ref,v1,v2); p->s_lvalue=v3;}
                 }
             | tCOLON3[top] tCONSTANT[name]
                 {
                     $$ = NEW_COLON3($name, &@$, &@top, &@name);
-                /*% ripper: top_const_ref!($:name) %*/
+                {VALUE v1=get_value($:name), v2=dispatch1(top_const_ref,v1); p->s_lvalue=v2;}
                 }
             | tLBRACK aref_args[args] ']'
                 {
                     $$ = make_list($args, &@$);
-                /*% ripper: array!($:args) %*/
+                {VALUE v1=get_value($:args), v2=dispatch1(array,v1); p->s_lvalue=v2;}
                 }
             | tLBRACE assoc_list[list] '}'
                 {
                     $$ = new_hash(p, $list, &@$);
                     RNODE_HASH($$)->nd_brace = TRUE;
-                /*% ripper: hash!($:list) %*/
+                {VALUE v1=get_value($:list), v2=dispatch1(hash,v1); p->s_lvalue=v2;}
                 }
             | k_return[kw]
                 {
                     $$ = NEW_RETURN(0, &@$, &@kw);
-                /*% ripper: return0! %*/
+                {VALUE v1=dispatch0(return0); p->s_lvalue=v1;}
                 }
             | k_yield[kw] '('[lpar] call_args[args] rparen[rpar]
                 {
                     $$ = NEW_YIELD($args, &@$, &@kw, &@lpar, &@rpar);
-                /*% ripper: yield!(paren!($:args)) %*/
+                {VALUE v1=get_value($:args), v2=dispatch1(paren,v1), v3=dispatch1(yield,v2); p->s_lvalue=v3;}
                 }
             | k_yield[kw] '('[lpar] rparen[rpar]
                 {
                     $$ = NEW_YIELD(0, &@$, &@kw, &@lpar, &@rpar);
-                /*% ripper: yield!(paren!(args_new!)) %*/
+                {VALUE v1=dispatch0(args_new), v2=dispatch1(paren,v1), v3=dispatch1(yield,v2); p->s_lvalue=v3;}
                 }
             | k_yield[kw]
                 {
                     $$ = NEW_YIELD(0, &@$, &@kw, &NULL_LOC, &NULL_LOC);
-                /*% ripper: yield0! %*/
+                {VALUE v1=dispatch0(yield0); p->s_lvalue=v1;}
                 }
             | keyword_defined[kw] '\n'? '(' begin_defined[ctxt] expr[arg] rparen
                 {
                     p->ctxt.in_defined = $ctxt.in_defined;
                     $$ = new_defined(p, $arg, &@$, &@kw);
                     p->ctxt.has_trailing_semicolon = $ctxt.has_trailing_semicolon;
-                /*% ripper: defined!($:arg) %*/
+                {VALUE v1=get_value($:arg), v2=dispatch1(defined,v1); p->s_lvalue=v2;}
                 }
             | keyword_not[kw] '(' expr[arg] rparen
                 {
                     $$ = call_uni_op(p, method_cond(p, $arg, &@arg), METHOD_NOT, &@kw, &@$);
-                /*% ripper: unary!(ID2VAL(idNOT), $:arg) %*/
+                {VALUE v1=get_value($:arg), v2=ID2VAL(idNOT), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                 }
             | keyword_not[kw] '('[lpar] rparen
                 {
                     $$ = call_uni_op(p, method_cond(p, NEW_NIL(&@lpar), &@lpar), METHOD_NOT, &@kw, &@$);
-                /*% ripper: unary!(ID2VAL(idNOT), Qnil) %*/
+                {VALUE v1=ID2VAL(idNOT), v2=Qnil, v3=dispatch2(unary,v1,v2); p->s_lvalue=v3;}
                 }
             | fcall[call] brace_block[block]
                 {
                     $$ = method_add_block(p, (NODE *)$call, $block, &@$);
-                /*% ripper: method_add_block!(method_add_arg!(fcall!($:call), args_new!), $:block) %*/
+                {VALUE v1=get_value($:call), v2=get_value($:block), v3=dispatch1(fcall,v1), v4=dispatch0(args_new), v5=dispatch2(method_add_arg,v3,v4), v6=dispatch2(method_add_block,v5,v2); p->s_lvalue=v6;}
                 }
             | method_call
             | method_call[call] brace_block[block]
                 {
                     block_dup_check(p, get_nd_args(p, $call), $block);
                     $$ = method_add_block(p, $call, $block, &@$);
-                /*% ripper: method_add_block!($:call, $:block) %*/
+                {VALUE v1=get_value($:call), v2=get_value($:block), v3=dispatch2(method_add_block,v1,v2); p->s_lvalue=v3;}
                 }
             | lambda
             | k_if[kw] expr_value[cond] then[then]
@@ -5164,7 +5164,7 @@ primary		: inline_primary
 
                     $$ = new_if(p, $cond, $body, $tail, &@$, &@kw, &@then, &@k_end);
                     fixpos($$, $cond);
-                /*% ripper: if!($:cond, $:body, $:tail) %*/
+                {VALUE v1=get_value($:cond), v2=get_value($:body), v3=get_value($:tail), v4=dispatch3(if,v1,v2,v3); p->s_lvalue=v4;}
                 }
             | k_unless[kw] expr_value[cond] then[then]
               compstmt(stmts)[body]
@@ -5173,7 +5173,7 @@ primary		: inline_primary
                 {
                     $$ = new_unless(p, $cond, $body, $tail, &@$, &@kw, &@then, &@k_end);
                     fixpos($$, $cond);
-                /*% ripper: unless!($:cond, $:body, $:tail) %*/
+                {VALUE v1=get_value($:cond), v2=get_value($:body), v3=get_value($:tail), v4=dispatch3(unless,v1,v2,v3); p->s_lvalue=v4;}
                 }
             | k_while[kw] expr_value_do[cond]
               compstmt(stmts)[body]
@@ -5182,7 +5182,7 @@ primary		: inline_primary
                     restore_block_exit(p, $kw);
                     $$ = NEW_WHILE(cond(p, $cond, &@cond), $body, 1, &@$, &@kw, &@k_end);
                     fixpos($$, $cond);
-                /*% ripper: while!($:cond, $:body) %*/
+                {VALUE v1=get_value($:cond), v2=get_value($:body), v3=dispatch2(while,v1,v2); p->s_lvalue=v3;}
                 }
             | k_until[kw] expr_value_do[cond]
               compstmt(stmts)[body]
@@ -5191,7 +5191,7 @@ primary		: inline_primary
                     restore_block_exit(p, $kw);
                     $$ = NEW_UNTIL(cond(p, $cond, &@cond), $body, 1, &@$, &@kw, &@k_end);
                     fixpos($$, $cond);
-                /*% ripper: until!($:cond, $:body) %*/
+                {VALUE v1=get_value($:cond), v2=get_value($:body), v3=dispatch2(until,v1,v2); p->s_lvalue=v3;}
                 }
             | k_case[k_case] expr_value[expr] terms?
                 {
@@ -5205,7 +5205,7 @@ primary		: inline_primary
                     p->case_labels = $labels;
                     $$ = NEW_CASE($expr, $body, &@$, &@k_case, &@k_end);
                     fixpos($$, $expr);
-                /*% ripper: case!($:expr, $:body) %*/
+                {VALUE v1=get_value($:expr), v2=get_value($:body), v3=dispatch2(case,v1,v2); p->s_lvalue=v3;}
                 }
             | k_case[k_case] terms?
                 {
@@ -5218,14 +5218,14 @@ primary		: inline_primary
                     if (p->case_labels) st_free_table(p->case_labels);
                     p->case_labels = $labels;
                     $$ = NEW_CASE2($body, &@$, &@k_case, &@k_end);
-                /*% ripper: case!(Qnil, $:body) %*/
+                {VALUE v1=get_value($:body), v2=Qnil, v3=dispatch2(case,v2,v1); p->s_lvalue=v3;}
                 }
             | k_case[k_case] expr_value[expr] terms?
               p_case_body[body]
               k_end[k_end]
                 {
                     $$ = NEW_CASE3($expr, $body, &@$, &@k_case, &@k_end);
-                /*% ripper: case!($:expr, $:body) %*/
+                {VALUE v1=get_value($:expr), v2=get_value($:body), v3=dispatch2(case,v1,v2); p->s_lvalue=v3;}
                 }
             | k_for[k_for] for_var[for_var] keyword_in[keyword_in]
               {COND_PUSH(1);} expr_value[expr_value] do[do] {COND_POP();}
@@ -5271,7 +5271,7 @@ primary		: inline_primary
                     RNODE_SCOPE(scope)->nd_parent = $$;
                     fixpos($$, $for_var);
                     if ($do == keyword_do_cond) p->lex.do_nest--;
-                /*% ripper: for!($:for_var, $:expr_value, $:compstmt) %*/
+                {VALUE v1=get_value($:for_var), v2=get_value($:expr_value), v3=get_value($:compstmt), v4=dispatch3(for,v1,v2,v3); p->s_lvalue=v4;}
                 }
             | k_class cpath superclass
                 {
@@ -5289,7 +5289,7 @@ primary		: inline_primary
                     nd_set_line(RNODE_CLASS($$)->nd_body, @k_end.end_pos.lineno);
                     set_line_body($bodystmt, @superclass.end_pos.lineno);
                     nd_set_line($$, @superclass.end_pos.lineno);
-                /*% ripper: class!($:cpath, $:superclass, $:bodystmt) %*/
+                {VALUE v1=get_value($:cpath), v2=get_value($:superclass), v3=get_value($:bodystmt), v4=dispatch3(class,v1,v2,v3); p->s_lvalue=v4;}
                     local_pop(p);
                     p->ctxt.in_class = $k_class.in_class;
                     p->ctxt.cant_return = $k_class.cant_return;
@@ -5307,7 +5307,7 @@ primary		: inline_primary
                     nd_set_line(RNODE_SCLASS($$)->nd_body, @k_end.end_pos.lineno);
                     set_line_body($bodystmt, nd_line($expr_value));
                     fixpos($$, $expr_value);
-                /*% ripper: sclass!($:expr_value, $:bodystmt) %*/
+                {VALUE v1=get_value($:expr_value), v2=get_value($:bodystmt), v3=dispatch2(sclass,v1,v2); p->s_lvalue=v3;}
                     local_pop(p);
                     p->ctxt.in_def = $k_class.in_def;
                     p->ctxt.in_class = $k_class.in_class;
@@ -5325,7 +5325,7 @@ primary		: inline_primary
                     nd_set_line(RNODE_MODULE($$)->nd_body, @k_end.end_pos.lineno);
                     set_line_body($bodystmt, @cpath.end_pos.lineno);
                     nd_set_line($$, @cpath.end_pos.lineno);
-                /*% ripper: module!($:cpath, $:bodystmt) %*/
+                {VALUE v1=get_value($:cpath), v2=get_value($:bodystmt), v3=dispatch2(module,v1,v2); p->s_lvalue=v3;}
                     local_pop(p);
                     p->ctxt.in_class = $k_module.in_class;
                     p->ctxt.cant_return = $k_module.cant_return;
@@ -5343,7 +5343,7 @@ primary		: inline_primary
                     ($$ = $head->nd_def)->nd_loc = @$;
                     $bodystmt = new_scope_body(p, $args, $bodystmt, $$, &@$);
                     RNODE_DEFN($$)->nd_defn = $bodystmt;
-                /*% ripper: def!($:head, $:args, $:bodystmt) %*/
+                {VALUE v1=get_value($:head), v2=get_value($:args), v3=get_value($:bodystmt), v4=dispatch3(def,v1,v2,v3); p->s_lvalue=v4;}
                     local_pop(p);
                 }
             | defs_head[head]
@@ -5358,23 +5358,23 @@ primary		: inline_primary
                     ($$ = $head->nd_def)->nd_loc = @$;
                     $bodystmt = new_scope_body(p, $args, $bodystmt, $$, &@$);
                     RNODE_DEFS($$)->nd_defn = $bodystmt;
-                /*% ripper: defs!(*$:head[0..2], $:args, $:bodystmt) %*/
+                {VALUE v1=get_value($:head), v2=get_value($:args), v3=get_value($:bodystmt), v4=rb_ary_entry(v1, 0), v5=rb_ary_entry(v1, 1), v6=rb_ary_entry(v1, 2), v7=dispatch5(defs,v4,v5,v6,v2,v3); p->s_lvalue=v7;}
                     local_pop(p);
                 }
             | keyword_break[kw]
                 {
                     $$ = add_block_exit(p, NEW_BREAK(0, &@$, &@kw));
-                /*% ripper: break!(args_new!) %*/
+                {VALUE v1=dispatch0(args_new), v2=dispatch1(break,v1); p->s_lvalue=v2;}
                 }
             | keyword_next[kw]
                 {
                     $$ = add_block_exit(p, NEW_NEXT(0, &@$, &@kw));
-                /*% ripper: next!(args_new!) %*/
+                {VALUE v1=dispatch0(args_new), v2=dispatch1(next,v1); p->s_lvalue=v2;}
                 }
             | keyword_redo[kw]
                 {
                     $$ = add_block_exit(p, NEW_REDO(&@$, &@kw));
-                /*% ripper: redo! %*/
+                {VALUE v1=dispatch0(redo); p->s_lvalue=v1;}
                 }
             | keyword_retry[kw]
                 {
@@ -5387,7 +5387,7 @@ primary		: inline_primary
                         }
                     }
                     $$ = NEW_RETRY(&@$);
-                /*% ripper: retry! %*/
+                {VALUE v1=dispatch0(retry); p->s_lvalue=v1;}
                 }
             ;
 
@@ -5583,7 +5583,7 @@ if_tail		: opt_else
                     {
                         $$ = new_if(p, $2, $4, $5, &@$, &@1, &@3, &NULL_LOC);
                         fixpos($$, $2);
-                    /*% ripper: elsif!($:2, $:4, $:5) %*/
+                    {VALUE v1=get_value($:2), v2=get_value($:4), v3=get_value($:5), v4=dispatch3(elsif,v1,v2,v3); p->s_lvalue=v4;}
                     }
                 ;
 
@@ -5591,7 +5591,7 @@ opt_else	: none
                 | k_else compstmt(stmts)
                     {
                         $$ = $2;
-                    /*% ripper: else!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(else,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -5607,7 +5607,7 @@ f_marg		: f_norm_arg
                 | tLPAREN f_margs rparen
                     {
                         $$ = (NODE *)$2;
-                    /*% ripper: mlhs_paren!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(mlhs_paren,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -5615,40 +5615,40 @@ f_marg		: f_norm_arg
 f_margs		: mlhs_items(f_marg)
                     {
                         $$ = NEW_MASGN($1, 0, &@$);
-                    /*% ripper: $:1 %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=v1;}
                     }
                 | mlhs_items(f_marg) ',' f_rest_marg
                     {
                         $$ = NEW_MASGN($1, $3, &@$);
-                    /*% ripper: mlhs_add_star!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(mlhs_add_star,v1,v2); p->s_lvalue=v3;}
                     }
                 | mlhs_items(f_marg) ',' f_rest_marg ',' mlhs_items(f_marg)
                     {
                         $$ = NEW_MASGN($1, NEW_POSTARG($3, $5, &@$), &@$);
-                    /*% ripper: mlhs_add_post!(mlhs_add_star!($:1, $:3), $:5) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=get_value($:5), v4=dispatch2(mlhs_add_star,v1,v2), v5=dispatch2(mlhs_add_post,v4,v3); p->s_lvalue=v5;}
                     }
                 | f_rest_marg
                     {
                         $$ = NEW_MASGN(0, $1, &@$);
-                    /*% ripper: mlhs_add_star!(mlhs_new!, $:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(mlhs_new), v3=dispatch2(mlhs_add_star,v2,v1); p->s_lvalue=v3;}
                     }
                 | f_rest_marg ',' mlhs_items(f_marg)
                     {
                         $$ = NEW_MASGN(0, NEW_POSTARG($1, $3, &@$), &@$);
-                    /*% ripper: mlhs_add_post!(mlhs_add_star!(mlhs_new!, $:1), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch0(mlhs_new), v4=dispatch2(mlhs_add_star,v3,v1), v5=dispatch2(mlhs_add_post,v4,v2); p->s_lvalue=v5;}
                     }
                 ;
 
 f_rest_marg	: tSTAR f_norm_arg
                     {
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                         $$ = assignable(p, $2, 0, &@$);
                         mark_lvar_used(p, $$);
                     }
                 | tSTAR
                     {
                         $$ = NODE_SPECIAL_NO_NAME_REST;
-                    /*% ripper: Qnil %*/
+                    {p->s_lvalue=Qnil;}
                     }
                 ;
 
@@ -5656,7 +5656,7 @@ f_any_kwrest	: f_kwrest
                 | f_no_kwarg
                     {
                         $$ = idNil;
-                    /*% ripper: ID2VAL(idNil) %*/
+                    {p->s_lvalue=ID2VAL(idNil);}
                     }
                 ;
 
@@ -5669,7 +5669,7 @@ excessed_comma	: ','
                     {
                         /* magic number for rest_id in iseq_set_arguments() */
                         $$ = NODE_SPECIAL_EXCESSIVE_COMMA;
-                    /*% ripper: excessed_comma! %*/
+                    {VALUE v1=dispatch0(excessed_comma); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -5678,12 +5678,12 @@ block_param	: args-list(primary_value, opt_args_tail(block_args_tail, none))
                     {
                         $$ = new_empty_args_tail(p, &@excessed_comma);
                         $$ = new_args(p, $pre, 0, $excessed_comma, 0, $$, &@$);
-                    /*% ripper: params!($:pre, Qnil, $:excessed_comma, Qnil, Qnil, Qnil, Qnil) %*/
+                    {VALUE v1=get_value($:pre), v2=get_value($:excessed_comma), v3=Qnil, v4=Qnil, v5=Qnil, v6=Qnil, v7=Qnil, v8=dispatch7(params,v1,v3,v2,v4,v5,v6,v7); p->s_lvalue=v8;}
                     }
                 | f_arg[pre] opt_args_tail(block_args_tail, none)[tail]
                     {
                         $$ = new_args(p, $pre, 0, 0, 0, $tail, &@$);
-                    /*% ripper: params!($:pre, Qnil, Qnil, Qnil, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:pre), v2=get_value($:tail), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v6,v7,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
                 | tail-only-args(block_args_tail)
                 ;
@@ -5705,14 +5705,14 @@ block_param_def	: '|'
                         p->max_numparam = ORDINAL_PARAM;
                         p->ctxt.in_argdef = 0;
                         $$ = $opt_block_param;
-                    /*% ripper: block_var!($:opt_block_param, $:opt_bv_decl) %*/
+                    {VALUE v1=get_value($:opt_block_param), v2=get_value($:opt_bv_decl), v3=dispatch2(block_var,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
 opt_block_param	: /* none */
                     {
                         $$ = 0;
-                    /*% ripper: params!(Qnil,Qnil,Qnil,Qnil,Qnil,Qnil,Qnil) %*/
+                    {VALUE v1=Qnil, v2=Qnil, v3=Qnil, v4=Qnil, v5=Qnil, v6=Qnil, v7=Qnil, v8=dispatch7(params,v1,v2,v3,v4,v5,v6,v7); p->s_lvalue=v8;}
                     }
                 | block_param
                 ;
@@ -5720,25 +5720,25 @@ opt_block_param	: /* none */
 opt_bv_decl	: '\n'?
                     {
                         $$ = 0;
-                    /*% ripper: Qfalse %*/
+                    {p->s_lvalue=Qfalse;}
                     }
                 | '\n'? ';' bv_decls '\n'?
                     {
                         $$ = 0;
-                    /*% ripper: $:3 %*/
+                    {VALUE v1=get_value($:3); p->s_lvalue=v1;}
                     }
                 ;
 
 bv_decls	: bvar
-                    /*% ripper[brace]: rb_ary_new3(1, $:1) %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new3(1, v1);}
                 | bv_decls ',' bvar
-                    /*% ripper[brace]: rb_ary_push($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3); p->s_lvalue=rb_ary_push(v1, v2);}
                 ;
 
 bvar		: tIDENTIFIER
                     {
                         new_bv(p, $1);
-                    /*% ripper: $:1 %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=v1;}
                     }
                 | f_bad_arg
                 ;
@@ -5788,7 +5788,7 @@ lambda		: tLAMBDA[lpar]
                             nd_set_first_loc($$, @lpar.beg_pos);
                             xfree($body);
                         }
-                    /*% ripper: lambda!($:args, $:body) %*/
+                    {VALUE v1=get_value($:args), v2=get_value($:body), v3=dispatch2(lambda,v1,v2); p->s_lvalue=v3;}
                         numparam_pop(p, $numparam);
                         dyna_pop(p, $dyna);
                     }
@@ -5799,7 +5799,7 @@ f_larglist	: '(' f_largs[args] opt_bv_decl ')'
                         p->ctxt.in_argdef = 0;
                         $$ = $args;
                         p->max_numparam = ORDINAL_PARAM;
-                    /*% ripper: paren!($:args) %*/
+                    {VALUE v1=get_value($:args), v2=dispatch1(paren,v1); p->s_lvalue=v2;}
                     }
                 | f_largs[args]
                     {
@@ -5814,7 +5814,7 @@ lambda_body	: tLAMBEG compstmt(stmts) '}'
                     {
                         token_info_pop(p, "}", &@3);
                         $$ = new_locations_lambda_body(p, $2, &@2, &@1, &@3);
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 | keyword_do_LAMBDA
                     {
@@ -5823,7 +5823,7 @@ lambda_body	: tLAMBEG compstmt(stmts) '}'
                   bodystmt k_end
                     {
                         $$ = new_locations_lambda_body(p, $3, &@3, &@1, &@4);
-                    /*% ripper: $:3 %*/
+                    {VALUE v1=get_value($:3); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -5832,7 +5832,7 @@ do_block	: k_do_block do_body k_end
                         $$ = $2;
                         set_embraced_location($$, &@1, &@3);
                         p->lex.do_nest--;
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -5846,34 +5846,34 @@ block_call	: command do_block
                         }
                         $$ = method_add_block(p, $1, $2, &@$);
                         fixpos($$, $1);
-                    /*% ripper: method_add_block!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(method_add_block,v1,v2); p->s_lvalue=v3;}
                     }
                 | block_call call_op2 operation2 opt_paren_args
                     {
                         bool has_args = $4 != 0;
                         if (NODE_EMPTY_ARGS_P($4)) $4 = 0;
                         $$ = new_qcall(p, $2, $1, $3, $4, &@3, &@$);
-                    /*% ripper: call!($:1, $:2, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=dispatch3(call,v1,v2,v3); p->s_lvalue=v4;}
                         if (has_args) {
-                        /*% ripper: method_add_arg!($:$, $:4) %*/
+                        {VALUE v1=get_value($:4), v2=p->s_lvalue, v3=dispatch2(method_add_arg,v2,v1); p->s_lvalue=v3;}
                         }
                     }
                 | block_call call_op2 operation2 opt_paren_args brace_block
                     {
                         if (NODE_EMPTY_ARGS_P($4)) $4 = 0;
                         $$ = new_command_qcall(p, $2, $1, $3, $4, $5, &@3, &@$);
-                    /*% ripper: method_add_block!(command_call!($:1, $:2, $:3, $:4), $:5) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=get_value($:4), v5=get_value($:5), v6=dispatch4(command_call,v1,v2,v3,v4), v7=dispatch2(method_add_block,v6,v5); p->s_lvalue=v7;}
                     }
                 | block_call call_op2 operation2 command_args do_block
                     {
                         $$ = new_command_qcall(p, $2, $1, $3, $4, $5, &@3, &@$);
-                    /*% ripper: method_add_block!(command_call!($:1, $:2, $:3, $:4), $:5) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=get_value($:4), v5=get_value($:5), v6=dispatch4(command_call,v1,v2,v3,v4), v7=dispatch2(method_add_block,v6,v5); p->s_lvalue=v7;}
                     }
                 | block_call call_op2 paren_args
                     {
                         $$ = new_qcall(p, $2, $1, idCall, $3, &@2, &@$);
                         nd_set_line($$, @2.end_pos.lineno);
-                    /*% ripper: method_add_arg!(call!($:1, $:2, ID2VAL(idCall)), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=ID2VAL(idCall), v5=dispatch3(call,v1,v2,v4), v6=dispatch2(method_add_arg,v5,v3); p->s_lvalue=v6;}
                     }
                 ;
 
@@ -5882,7 +5882,7 @@ method_call	: fcall paren_args
                         $1->nd_args = $2;
                         $$ = (NODE *)$1;
                         nd_set_last_loc($1, @2.end_pos);
-                    /*% ripper: method_add_arg!(fcall!($:1), $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch1(fcall,v1), v4=dispatch2(method_add_arg,v3,v2); p->s_lvalue=v4;}
                     }
                 | primary_value call_op operation2 opt_paren_args
                     {
@@ -5890,27 +5890,27 @@ method_call	: fcall paren_args
                         if (NODE_EMPTY_ARGS_P($4)) $4 = 0;
                         $$ = new_qcall(p, $2, $1, $3, $4, &@3, &@$);
                         nd_set_line($$, @3.end_pos.lineno);
-                    /*% ripper: call!($:1, $:2, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=dispatch3(call,v1,v2,v3); p->s_lvalue=v4;}
                         if (has_args) {
-                        /*% ripper: method_add_arg!($:$, $:4) %*/
+                        {VALUE v1=get_value($:4), v2=p->s_lvalue, v3=dispatch2(method_add_arg,v2,v1); p->s_lvalue=v3;}
                         }
                     }
                 | primary_value tCOLON2 operation2 paren_args
                     {
                         $$ = new_qcall(p, idCOLON2, $1, $3, $4, &@3, &@$);
                         nd_set_line($$, @3.end_pos.lineno);
-                    /*% ripper: method_add_arg!(call!($:1, $:2, $:3), $:4) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=get_value($:4), v5=dispatch3(call,v1,v2,v3), v6=dispatch2(method_add_arg,v5,v4); p->s_lvalue=v6;}
                     }
                 | primary_value tCOLON2 operation3
                     {
                         $$ = new_qcall(p, idCOLON2, $1, $3, 0, &@3, &@$);
-                    /*% ripper: call!($:1, $:2, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=dispatch3(call,v1,v2,v3); p->s_lvalue=v4;}
                     }
                 | primary_value call_op2 paren_args
                     {
                         $$ = new_qcall(p, $2, $1, idCall, $3, &@2, &@$);
                         nd_set_line($$, @2.end_pos.lineno);
-                    /*% ripper: method_add_arg!(call!($:1, $:2, ID2VAL(idCall)), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:3), v4=ID2VAL(idCall), v5=dispatch3(call,v1,v2,v4), v6=dispatch2(method_add_arg,v5,v3); p->s_lvalue=v6;}
                     }
                 | keyword_super paren_args
                     {
@@ -5920,18 +5920,18 @@ method_call	: fcall paren_args
                         rparen_loc.beg_pos.column = rparen_loc.end_pos.column - 1;
 
                         $$ = NEW_SUPER($2, &@$, &@1, &lparen_loc, &rparen_loc);
-                    /*% ripper: super!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(super,v1); p->s_lvalue=v2;}
                     }
                 | keyword_super
                     {
                         $$ = NEW_ZSUPER(&@$);
-                    /*% ripper: zsuper! %*/
+                    {VALUE v1=dispatch0(zsuper); p->s_lvalue=v1;}
                     }
                 | primary_value '[' opt_call_args rbracket
                     {
                         $$ = NEW_CALL($1, tAREF, $3, &@$);
                         fixpos($$, $1);
-                    /*% ripper: aref!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(aref,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -5939,14 +5939,14 @@ brace_block	: '{' brace_body '}'
                     {
                         $$ = $2;
                         set_embraced_location($$, &@1, &@3);
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 | k_do do_body k_end
                     {
                         $$ = $2;
                         set_embraced_location($$, &@1, &@3);
                         p->lex.do_nest--;
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -5960,7 +5960,7 @@ brace_body	: {$$ = dyna_push(p);}[dyna]<vars>
                         p->it_id = $it_id;
                         $args = args_with_numbered(p, $args, max_numparam, it_id);
                         $$ = NEW_ITER($args, $compstmt, &@$);
-                    /*% ripper: brace_block!($:args, $:compstmt) %*/
+                    {VALUE v1=get_value($:args), v2=get_value($:compstmt), v3=dispatch2(brace_block,v1,v2); p->s_lvalue=v3;}
                         restore_block_exit(p, $allow_exits);
                         numparam_pop(p, $numparam);
                         dyna_pop(p, $dyna);
@@ -5980,7 +5980,7 @@ do_body 	:   {
                         p->it_id = $it_id;
                         $args = args_with_numbered(p, $args, max_numparam, it_id);
                         $$ = NEW_ITER($args, $bodystmt, &@$);
-                    /*% ripper: do_block!($:args, $:bodystmt) %*/
+                    {VALUE v1=get_value($:args), v2=get_value($:bodystmt), v3=dispatch2(do_block,v1,v2); p->s_lvalue=v3;}
                         CMDARG_POP();
                         restore_block_exit(p, $allow_exits);
                         numparam_pop(p, $numparam);
@@ -5992,23 +5992,23 @@ case_args	: arg_value
                     {
                         check_literal_when(p, $arg_value, &@arg_value);
                         $$ = NEW_LIST($arg_value, &@$);
-                    /*% ripper: args_add!(args_new!, $:arg_value) %*/
+                    {VALUE v1=get_value($:arg_value), v2=dispatch0(args_new), v3=dispatch2(args_add,v2,v1); p->s_lvalue=v3;}
                     }
                 | tSTAR arg_value
                     {
                         $$ = NEW_SPLAT($arg_value, &@$, &@tSTAR);
-                    /*% ripper: args_add_star!(args_new!, $:arg_value) %*/
+                    {VALUE v1=get_value($:arg_value), v2=dispatch0(args_new), v3=dispatch2(args_add_star,v2,v1); p->s_lvalue=v3;}
                     }
                 | case_args[non_last_args] ',' arg_value
                     {
                         check_literal_when(p, $arg_value, &@arg_value);
                         $$ = last_arg_append(p, $non_last_args, $arg_value, &@$);
-                    /*% ripper: args_add!($:non_last_args, $:arg_value) %*/
+                    {VALUE v1=get_value($:non_last_args), v2=get_value($:arg_value), v3=dispatch2(args_add,v1,v2); p->s_lvalue=v3;}
                     }
                 | case_args[non_last_args] ',' tSTAR arg_value
                     {
                         $$ = rest_arg_append(p, $non_last_args, $arg_value, &@$);
-                    /*% ripper: args_add_star!($:non_last_args, $:arg_value) %*/
+                    {VALUE v1=get_value($:non_last_args), v2=get_value($:arg_value), v3=dispatch2(args_add_star,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -6018,7 +6018,7 @@ case_body	: k_when case_args then
                     {
                         $$ = NEW_WHEN($2, $4, $5, &@$, &@1, &@3);
                         fixpos($$, $2);
-                    /*% ripper: when!($:2, $:4, $:5) %*/
+                    {VALUE v1=get_value($:2), v2=get_value($:4), v3=get_value($:5), v4=dispatch3(when,v1,v2,v3); p->s_lvalue=v4;}
                     }
                 ;
 
@@ -6053,7 +6053,7 @@ p_case_body	: keyword_in
                   p_cases[cases]
                     {
                         $$ = NEW_IN($expr, $compstmt, $cases, &@$, &@keyword_in, &@then, &NULL_LOC);
-                    /*% ripper: in!($:expr, $:compstmt, $:cases) %*/
+                    {VALUE v1=get_value($:expr), v2=get_value($:compstmt), v3=get_value($:cases), v4=dispatch3(in,v1,v2,v3); p->s_lvalue=v4;}
                     }
                 ;
 
@@ -6066,13 +6066,13 @@ p_top_expr	: p_top_expr_body
                     {
                         $$ = new_if(p, $3, $1, 0, &@$, &@2, &NULL_LOC, &NULL_LOC);
                         fixpos($$, $3);
-                    /*% ripper: if_mod!($:3, $:1) %*/
+                    {VALUE v1=get_value($:3), v2=get_value($:1), v3=dispatch2(if_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 | p_top_expr_body modifier_unless expr_value
                     {
                         $$ = new_unless(p, $3, $1, 0, &@$, &@2, &NULL_LOC, &NULL_LOC);
                         fixpos($$, $3);
-                    /*% ripper: unless_mod!($:3, $:1) %*/
+                    {VALUE v1=get_value($:3), v2=get_value($:1), v3=dispatch2(unless_mod,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -6081,28 +6081,28 @@ p_top_expr_body : p_expr
                     {
                         $$ = new_array_pattern_tail(p, 0, 1, 0, 0, &@$);
                         $$ = new_array_pattern(p, 0, $1, $$, &@$);
-                    /*% ripper: aryptn!(Qnil, [$:1], Qnil, Qnil) %*/
+                    {VALUE v1=get_value($:1), v2=Qnil, v3=rb_ary_new_from_args(1, v1), v4=Qnil, v5=Qnil, v6=dispatch4(aryptn,v2,v3,v4,v5); p->s_lvalue=v6;}
                     }
                 | p_expr ',' p_args
                     {
                         $$ = new_array_pattern(p, 0, $1, $3, &@$);
                         nd_set_first_loc($$, @1.beg_pos);
-                    /*% ripper: aryptn!(Qnil, aryptn_pre_args(p, $:1, $:3[0]), *$:3[1..2]) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=aryptn_pre_args(p, v1, v3), v8=dispatch4(aryptn,v6,v7,v4,v5); p->s_lvalue=v8;}
                     }
                 | p_find
                     {
                         $$ = new_find_pattern(p, 0, $1, &@$);
-                    /*% ripper: fndptn!(Qnil, *$:1[0..2]) %*/
+                    {VALUE v1=get_value($:1), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=dispatch4(fndptn,v5,v2,v3,v4); p->s_lvalue=v6;}
                     }
                 | p_args_tail
                     {
                         $$ = new_array_pattern(p, 0, 0, $1, &@$);
-                    /*% ripper: aryptn!(Qnil, *$:1[0..2]) %*/
+                    {VALUE v1=get_value($:1), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=dispatch4(aryptn,v5,v2,v3,v4); p->s_lvalue=v6;}
                     }
                 | p_kwargs
                     {
                         $$ = new_hash_pattern(p, 0, $1, &@$);
-                    /*% ripper: hshptn!(Qnil, *$:1[0..1]) %*/
+                    {VALUE v1=get_value($:1), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=Qnil, v5=dispatch3(hshptn,v4,v2,v3); p->s_lvalue=v5;}
                     }
                 ;
 
@@ -6114,7 +6114,7 @@ p_as		: p_expr tASSOC p_variable
                         NODE *n = NEW_LIST($1, &@$);
                         n = list_append(p, n, $3);
                         $$ = new_hash(p, n, &@$);
-                    /*% ripper: binary!($:1, ID2VAL((id_assoc)), $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=ID2VAL(id_assoc), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | p_alt
                 ;
@@ -6130,7 +6130,7 @@ p_alt		: p_alt[left] '|'[alt]
                         }
                         p->ctxt.in_alt_pattern = 0;
                         $$ = NEW_OR($left, $right, &@$, &@alt);
-                    /*% ripper: binary!($:left, ID2VAL(idOr), $:right) %*/
+                    {VALUE v1=get_value($:left), v2=get_value($:right), v3=ID2VAL(idOr), v4=dispatch3(binary,v1,v3,v2); p->s_lvalue=v4;}
                     }
                 | p_expr_basic
                 ;
@@ -6142,7 +6142,7 @@ p_lparen	: '('
                   p_pktbl
                     {
                         $$ = $3;
-                    /*% ripper: $:3 %*/
+                    {VALUE v1=get_value($:3); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -6153,7 +6153,7 @@ p_lbracket	: '['
                   p_pktbl
                     {
                         $$ = $3;
-                    /*% ripper: $:3 %*/
+                    {VALUE v1=get_value($:3); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -6164,70 +6164,70 @@ p_expr_basic	: p_value
                         pop_pktbl(p, $p_pktbl);
                         $$ = new_array_pattern(p, $p_const, 0, $p_args, &@$);
                         nd_set_first_loc($$, @p_const.beg_pos);
-                    /*% ripper: aryptn!($:p_const, *$:p_args[0..2]) %*/
+                    {VALUE v1=get_value($:p_const), v2=get_value($:p_args), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=dispatch4(aryptn,v1,v3,v4,v5); p->s_lvalue=v6;}
                     }
                 | p_const p_lparen[p_pktbl] p_find rparen
                     {
                         pop_pktbl(p, $p_pktbl);
                         $$ = new_find_pattern(p, $p_const, $p_find, &@$);
                         nd_set_first_loc($$, @p_const.beg_pos);
-                    /*% ripper: fndptn!($:p_const, *$:p_find[0..2]) %*/
+                    {VALUE v1=get_value($:p_const), v2=get_value($:p_find), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=dispatch4(fndptn,v1,v3,v4,v5); p->s_lvalue=v6;}
                     }
                 | p_const p_lparen[p_pktbl] p_kwargs rparen
                     {
                         pop_pktbl(p, $p_pktbl);
                         $$ = new_hash_pattern(p, $p_const, $p_kwargs, &@$);
                         nd_set_first_loc($$, @p_const.beg_pos);
-                    /*% ripper: hshptn!($:p_const, *$:p_kwargs[0..1]) %*/
+                    {VALUE v1=get_value($:p_const), v2=get_value($:p_kwargs), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=dispatch3(hshptn,v1,v3,v4); p->s_lvalue=v5;}
                     }
                 | p_const '(' rparen
                     {
                         $$ = new_array_pattern_tail(p, 0, 0, 0, 0, &@$);
                         $$ = new_array_pattern(p, $p_const, 0, $$, &@$);
-                        /*% ripper: aryptn!($:p_const, Qnil, Qnil, Qnil) %*/
+                        {VALUE v1=get_value($:p_const), v2=Qnil, v3=Qnil, v4=Qnil, v5=dispatch4(aryptn,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
                 | p_const p_lbracket[p_pktbl] p_args rbracket
                     {
                         pop_pktbl(p, $p_pktbl);
                         $$ = new_array_pattern(p, $p_const, 0, $p_args, &@$);
                         nd_set_first_loc($$, @p_const.beg_pos);
-                    /*% ripper: aryptn!($:p_const, *$:p_args[0..2]) %*/
+                    {VALUE v1=get_value($:p_const), v2=get_value($:p_args), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=dispatch4(aryptn,v1,v3,v4,v5); p->s_lvalue=v6;}
                     }
                 | p_const p_lbracket[p_pktbl] p_find rbracket
                     {
                         pop_pktbl(p, $p_pktbl);
                         $$ = new_find_pattern(p, $p_const, $p_find, &@$);
                         nd_set_first_loc($$, @p_const.beg_pos);
-                    /*% ripper: fndptn!($:p_const, *$:p_find[0..2]) %*/
+                    {VALUE v1=get_value($:p_const), v2=get_value($:p_find), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=dispatch4(fndptn,v1,v3,v4,v5); p->s_lvalue=v6;}
                     }
                 | p_const p_lbracket[p_pktbl] p_kwargs rbracket
                     {
                         pop_pktbl(p, $p_pktbl);
                         $$ = new_hash_pattern(p, $p_const, $p_kwargs, &@$);
                         nd_set_first_loc($$, @p_const.beg_pos);
-                    /*% ripper: hshptn!($:p_const, *$:p_kwargs[0..1]) %*/
+                    {VALUE v1=get_value($:p_const), v2=get_value($:p_kwargs), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=dispatch3(hshptn,v1,v3,v4); p->s_lvalue=v5;}
                     }
                 | p_const '[' rbracket
                     {
                         $$ = new_array_pattern_tail(p, 0, 0, 0, 0, &@$);
                         $$ = new_array_pattern(p, $p_const, 0, $$, &@$);
-                    /*% ripper: aryptn!($:p_const, Qnil, Qnil, Qnil) %*/
+                    {VALUE v1=get_value($:p_const), v2=Qnil, v3=Qnil, v4=Qnil, v5=dispatch4(aryptn,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
                 | tLBRACK p_args rbracket
                     {
                         $$ = new_array_pattern(p, 0, 0, $p_args, &@$);
-                    /*% ripper: aryptn!(Qnil, *$:p_args[0..2]) %*/
+                    {VALUE v1=get_value($:p_args), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=dispatch4(aryptn,v5,v2,v3,v4); p->s_lvalue=v6;}
                     }
                 | tLBRACK p_find rbracket
                     {
                         $$ = new_find_pattern(p, 0, $p_find, &@$);
-                    /*% ripper: fndptn!(Qnil, *$:p_find[0..2]) %*/
+                    {VALUE v1=get_value($:p_find), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=dispatch4(fndptn,v5,v2,v3,v4); p->s_lvalue=v6;}
                     }
                 | tLBRACK rbracket
                     {
                         $$ = new_array_pattern_tail(p, 0, 0, 0, 0, &@$);
                         $$ = new_array_pattern(p, 0, 0, $$, &@$);
-                    /*% ripper: aryptn!(Qnil, Qnil, Qnil, Qnil) %*/
+                    {VALUE v1=Qnil, v2=Qnil, v3=Qnil, v4=Qnil, v5=dispatch4(aryptn,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
                 | tLBRACE p_pktbl lex_ctxt[ctxt]
                     {
@@ -6238,19 +6238,19 @@ p_expr_basic	: p_value
                         pop_pktbl(p, $p_pktbl);
                         p->ctxt.in_kwarg = $ctxt.in_kwarg;
                         $$ = new_hash_pattern(p, 0, $p_kwargs, &@$);
-                    /*% ripper: hshptn!(Qnil, *$:p_kwargs[0..1]) %*/
+                    {VALUE v1=get_value($:p_kwargs), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=Qnil, v5=dispatch3(hshptn,v4,v2,v3); p->s_lvalue=v5;}
                     }
                 | tLBRACE rbrace
                     {
                         $$ = new_hash_pattern_tail(p, 0, 0, &@$);
                         $$ = new_hash_pattern(p, 0, $$, &@$);
-                    /*% ripper: hshptn!(Qnil, Qnil, Qnil) %*/
+                    {VALUE v1=Qnil, v2=Qnil, v3=Qnil, v4=dispatch3(hshptn,v1,v2,v3); p->s_lvalue=v4;}
                     }
                 | tLPAREN p_pktbl p_expr rparen
                     {
                         pop_pktbl(p, $p_pktbl);
                         $$ = $p_expr;
-                    /*% ripper: $:p_expr %*/
+                    {VALUE v1=get_value($:p_expr); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -6258,27 +6258,27 @@ p_args		: p_expr
                     {
                         NODE *pre_args = NEW_LIST($1, &@$);
                         $$ = new_array_pattern_tail(p, pre_args, 0, 0, 0, &@$);
-                    /*% ripper: [[$:1], Qnil, Qnil] %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new_from_args(3, rb_ary_new_from_args(1, v1), Qnil, Qnil);}
                     }
                 | p_args_head
                     {
                         $$ = new_array_pattern_tail(p, $1, 1, 0, 0, &@$);
-                    /*% ripper: [$:1, Qnil, Qnil] %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new_from_args(3, v1, Qnil, Qnil);}
                     }
                 | p_args_head p_arg
                     {
                         $$ = new_array_pattern_tail(p, list_concat($1, $2), 0, 0, 0, &@$);
-                    /*% ripper: [rb_ary_concat($:1, $:2), Qnil, Qnil] %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2); p->s_lvalue=rb_ary_new_from_args(3, rb_ary_concat(v1, v2), Qnil, Qnil);}
                     }
                 | p_args_head p_rest
                     {
                         $$ = new_array_pattern_tail(p, $1, 1, $2, 0, &@$);
-                    /*% ripper: [$:1, $:2, Qnil] %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, Qnil);}
                     }
                 | p_args_head p_rest ',' p_args_post
                     {
                         $$ = new_array_pattern_tail(p, $1, 1, $2, $4, &@$);
-                    /*% ripper: [$:1, $:2, $:4] %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=get_value($:4); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, v3);}
                     }
                 | p_args_tail
                 ;
@@ -6287,26 +6287,26 @@ p_args_head	: p_arg ','
                 | p_args_head p_arg ','
                     {
                         $$ = list_concat($1, $2);
-                    /*% ripper: rb_ary_concat($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2); p->s_lvalue=rb_ary_concat(v1, v2);}
                     }
                 ;
 
 p_args_tail	: p_rest
                     {
                         $$ = new_array_pattern_tail(p, 0, 1, $1, 0, &@$);
-                    /*% ripper: [Qnil, $:1, Qnil] %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, Qnil);}
                     }
                 | p_rest ',' p_args_post
                     {
                         $$ = new_array_pattern_tail(p, 0, 1, $1, $3, &@$);
-                    /*% ripper: [Qnil, $:1, $:3] %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, v2);}
                     }
                 ;
 
 p_find		: p_rest ',' p_args_post ',' p_rest
                     {
                         $$ = new_find_pattern_tail(p, $1, $3, $5, &@$);
-                    /*% ripper: [$:1, $:3, $:5] %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=get_value($:5); p->s_lvalue=rb_ary_new_from_args(3, v1, v2, v3);}
                     }
                 ;
 
@@ -6314,13 +6314,13 @@ p_find		: p_rest ',' p_args_post ',' p_rest
 p_rest		: tSTAR tIDENTIFIER
                     {
                         error_duplicate_pattern_variable(p, $2, &@2);
-                    /*% ripper: var_field!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         $$ = assignable(p, $2, 0, &@$);
                     }
                 | tSTAR
                     {
                         $$ = 0;
-                    /*% ripper: var_field!(Qnil) %*/
+                    {VALUE v1=Qnil, v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -6328,45 +6328,45 @@ p_args_post	: p_arg
                 | p_args_post ',' p_arg
                     {
                         $$ = list_concat($1, $3);
-                    /*% ripper: rb_ary_concat($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3); p->s_lvalue=rb_ary_concat(v1, v2);}
                     }
                 ;
 
 p_arg		: p_expr
                     {
                         $$ = NEW_LIST($1, &@$);
-                    /*% ripper: [$:1] %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new_from_args(1, v1);}
                     }
                 ;
 
 p_kwargs	: p_kwarg ',' p_any_kwrest
                     {
                         $$ =  new_hash_pattern_tail(p, new_unique_key_hash(p, $1, &@$), $3, &@$);
-                    /*% ripper: [$:1, $:3] %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3); p->s_lvalue=rb_ary_new_from_args(2, v1, v2);}
                     }
                 | p_kwarg
                     {
                         $$ =  new_hash_pattern_tail(p, new_unique_key_hash(p, $1, &@$), 0, &@$);
-                    /*% ripper: [$:1, Qnil] %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new_from_args(2, v1, Qnil);}
                     }
                 | p_kwarg ','
                     {
                         $$ =  new_hash_pattern_tail(p, new_unique_key_hash(p, $1, &@$), 0, &@$);
-                    /*% ripper: [$:1, Qnil] %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new_from_args(2, v1, Qnil);}
                     }
                 | p_any_kwrest
                     {
                         $$ =  new_hash_pattern_tail(p, new_hash(p, 0, &@$), $1, &@$);
-                    /*% ripper: [[], $:1] %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new_from_args(2, rb_ary_new(), v1);}
                     }
                 ;
 
 p_kwarg 	: p_kw
-                    /*% ripper[brace]: [$:1] %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new_from_args(1, v1);}
                 | p_kwarg ',' p_kw
                     {
                         $$ = list_concat($1, $3);
-                    /*% ripper: rb_ary_push($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
                 ;
 
@@ -6374,7 +6374,7 @@ p_kw		: p_kw_label p_expr
                     {
                         error_duplicate_pattern_key(p, $1, &@1);
                         $$ = list_append(p, NEW_LIST(NEW_SYM(rb_id2str($1), &@1), &@$), $2);
-                    /*% ripper: [$:1, $:2] %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2); p->s_lvalue=rb_ary_new_from_args(2, v1, v2);}
                     }
                 | p_kw_label
                     {
@@ -6384,7 +6384,7 @@ p_kw		: p_kw_label p_expr
                         }
                         error_duplicate_pattern_variable(p, $1, &@1);
                         $$ = list_append(p, NEW_LIST(NEW_SYM(rb_id2str($1), &@$), &@$), assignable(p, $1, 0, &@$));
-                    /*% ripper: [$:1, Qnil] %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new_from_args(2, v1, Qnil);}
                     }
                 ;
 
@@ -6400,19 +6400,19 @@ p_kw_label	: tLABEL
                             yyerror1(&loc, "symbol literal with interpolation is not allowed");
                             $$ = rb_intern_str(STR_NEW0());
                         }
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 ;
 
 p_kwrest	: kwrest_mark tIDENTIFIER
                     {
                         $$ = $2;
-                    /*% ripper: var_field!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                     }
                 | kwrest_mark
                     {
                         $$ = 0;
-                    /*% ripper: Qnil %*/
+                    {p->s_lvalue=Qnil;}
                     }
                 ;
 
@@ -6426,7 +6426,7 @@ p_any_kwrest	: p_kwrest
                 | p_kwnorest
                     {
                         $$ = idNil;
-                    /*% ripper: var_field!(ID2VAL(idNil)) %*/
+                    {VALUE v1=ID2VAL(idNil), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -6441,7 +6441,7 @@ p_primitive	: inline_primary
                 | keyword_variable
                     {
                         if (!($$ = gettable(p, $1, &@$))) $$ = NEW_ERROR(&@$);
-                    /*% ripper: var_ref!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                     }
                 | lambda
                 ;
@@ -6449,7 +6449,7 @@ p_primitive	: inline_primary
 p_variable	: tIDENTIFIER
                     {
                         error_duplicate_pattern_variable(p, $1, &@1);
-                    /*% ripper: var_field!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         $$ = assignable(p, $1, 0, &@$);
                     }
                 ;
@@ -6464,36 +6464,36 @@ p_var_ref	: '^' tIDENTIFIER
                             compile_error(p, "%"PRIsVALUE": no such local variable", rb_id2str($2));
                         }
                         $$ = n;
-                    /*% ripper: var_ref!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                     }
                 | '^' nonlocal_var
                     {
                         if (!($$ = gettable(p, $2, &@$))) $$ = NEW_ERROR(&@$);
-                    /*% ripper: var_ref!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                     }
                 ;
 
 p_expr_ref	: '^' tLPAREN expr_value rparen
                     {
                         $$ = NEW_BLOCK($3, &@$);
-                    /*% ripper: begin!($:3) %*/
+                    {VALUE v1=get_value($:3), v2=dispatch1(begin,v1); p->s_lvalue=v2;}
                     }
                 ;
 
 p_const 	: tCOLON3 cname
                     {
                         $$ = NEW_COLON3($2, &@$, &@1, &@2);
-                    /*% ripper: top_const_ref!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(top_const_ref,v1); p->s_lvalue=v2;}
                     }
                 | p_const tCOLON2 cname
                     {
                         $$ = NEW_COLON2($1, $3, &@$, &@2, &@3);
-                    /*% ripper: const_path_ref!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(const_path_ref,v1,v2); p->s_lvalue=v3;}
                     }
                 | tCONSTANT
                    {
                         $$ = gettable(p, $1, &@$);
-                    /*% ripper: var_ref!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                    }
                 ;
 
@@ -6516,7 +6516,7 @@ opt_rescue	: k_rescue exc_list exc_var then
                         else {
                             fixpos($$, $5);
                         }
-                    /*% ripper: rescue!($:2, $:3, $:5, $:6) %*/
+                    {VALUE v1=get_value($:2), v2=get_value($:3), v3=get_value($:5), v4=get_value($:6), v5=dispatch4(rescue,v1,v2,v3,v4); p->s_lvalue=v5;}
                     }
                 | none
                 ;
@@ -6524,7 +6524,7 @@ opt_rescue	: k_rescue exc_list exc_var then
 exc_list	: arg_value
                     {
                         $$ = NEW_LIST($1, &@$);
-                    /*% ripper: rb_ary_new3(1, $:1) %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new3(1, v1);}
                     }
                 | mrhs
                     {
@@ -6536,7 +6536,7 @@ exc_list	: arg_value
 exc_var		: tASSOC lhs
                     {
                         $$ = $2;
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 | none
                 ;
@@ -6546,7 +6546,7 @@ opt_ensure	: k_ensure stmts terms?
                         p->ctxt.in_rescue = $1.in_rescue;
                         $$ = $2;
                         void_expr(p, void_stmts(p, $$));
-                    /*% ripper: ensure!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(ensure,v1); p->s_lvalue=v2;}
                     }
                 | none
                 ;
@@ -6563,7 +6563,7 @@ strings		: string
                         else {
                             $$ = evstr2dstr(p, $1);
                         }
-                    /*% ripper: $:1 %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -6572,7 +6572,7 @@ string		: tCHAR
                 | string string1
                     {
                         $$ = literal_concat(p, $1, $2, &@$);
-                    /*% ripper: string_concat!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(string_concat,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -6580,31 +6580,31 @@ string1		: tSTRING_BEG string_contents tSTRING_END
                     {
                         $$ = heredoc_dedent(p, $2);
                         if ($$) nd_set_loc($$, &@$);
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                         if (p->heredoc_indent > 0) {
-                        /*% ripper: heredoc_dedent!($:$, INT2NUM(%{p->heredoc_indent})) %*/
+                        {VALUE v1=p->s_lvalue, v2=INT2NUM(p->heredoc_indent), v3=dispatch2(heredoc_dedent,v1,v2); p->s_lvalue=v3;}
                             p->heredoc_indent = 0;
                         }
-                    /*% ripper: string_literal!($:$) %*/
+                    {VALUE v1=p->s_lvalue, v2=dispatch1(string_literal,v1); p->s_lvalue=v2;}
                     }
                 ;
 
 xstring		: tXSTRING_BEG xstring_contents tSTRING_END
                     {
                         $$ = new_xstring(p, heredoc_dedent(p, $2), &@$);
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                         if (p->heredoc_indent > 0) {
-                        /*% ripper: heredoc_dedent!($:$, INT2NUM(%{p->heredoc_indent})) %*/
+                        {VALUE v1=p->s_lvalue, v2=INT2NUM(p->heredoc_indent), v3=dispatch2(heredoc_dedent,v1,v2); p->s_lvalue=v3;}
                             p->heredoc_indent = 0;
                         }
-                    /*% ripper: xstring_literal!($:$) %*/
+                    {VALUE v1=p->s_lvalue, v2=dispatch1(xstring_literal,v1); p->s_lvalue=v2;}
                     }
                 ;
 
 regexp		: tREGEXP_BEG regexp_contents tREGEXP_END
                     {
                         $$ = new_regexp(p, $2, $3, &@$, &@1, &@2, &@3);
-                    /*% ripper: regexp_literal!($:2, $:3) %*/
+                    {VALUE v1=get_value($:2), v2=get_value($:3), v3=dispatch2(regexp_literal,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -6614,21 +6614,21 @@ words		: words(tWORDS_BEG, word_list)
 word_list	: /* none */
                     {
                         $$ = 0;
-                    /*% ripper: words_new! %*/
+                    {VALUE v1=dispatch0(words_new); p->s_lvalue=v1;}
                     }
                 | word_list word ' '+
                     {
                         $$ = list_append(p, $1, evstr2dstr(p, $2));
-                    /*% ripper: words_add!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(words_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
 word		: string_content
-                    /*% ripper[brace]: word_add!(word_new!, $:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch0(word_new), v3=dispatch2(word_add,v2,v1); p->s_lvalue=v3;}
                 | word string_content
                     {
                         $$ = literal_concat(p, $1, $2, &@$);
-                    /*% ripper: word_add!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(word_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -6638,12 +6638,12 @@ symbols 	: words(tSYMBOLS_BEG, symbol_list)
 symbol_list	: /* none */
                     {
                         $$ = 0;
-                    /*% ripper: symbols_new! %*/
+                    {VALUE v1=dispatch0(symbols_new); p->s_lvalue=v1;}
                     }
                 | symbol_list word ' '+
                     {
                         $$ = symbol_append(p, $1, evstr2dstr(p, $2));
-                    /*% ripper: symbols_add!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(symbols_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -6656,55 +6656,55 @@ qsymbols	: words(tQSYMBOLS_BEG, qsym_list)
 qword_list	: /* none */
                     {
                         $$ = 0;
-                    /*% ripper: qwords_new! %*/
+                    {VALUE v1=dispatch0(qwords_new); p->s_lvalue=v1;}
                     }
                 | qword_list tSTRING_CONTENT ' '+
                     {
                         $$ = list_append(p, $1, $2);
-                    /*% ripper: qwords_add!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(qwords_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
 qsym_list	: /* none */
                     {
                         $$ = 0;
-                    /*% ripper: qsymbols_new! %*/
+                    {VALUE v1=dispatch0(qsymbols_new); p->s_lvalue=v1;}
                     }
                 | qsym_list tSTRING_CONTENT ' '+
                     {
                         $$ = symbol_append(p, $1, $2);
-                    /*% ripper: qsymbols_add!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(qsymbols_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
 string_contents	: /* none */
                     {
                         $$ = 0;
-                    /*% ripper: string_content! %*/
+                    {VALUE v1=dispatch0(string_content); p->s_lvalue=v1;}
                     }
                 | string_contents string_content
                     {
                         $$ = literal_concat(p, $1, $2, &@$);
-                    /*% ripper: string_add!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(string_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
 xstring_contents: /* none */
                     {
                         $$ = 0;
-                    /*% ripper: xstring_new! %*/
+                    {VALUE v1=dispatch0(xstring_new); p->s_lvalue=v1;}
                     }
                 | xstring_contents string_content
                     {
                         $$ = literal_concat(p, $1, $2, &@$);
-                    /*% ripper: xstring_add!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(xstring_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
 regexp_contents	: /* none */
                     {
                         $$ = 0;
-                    /*% ripper: regexp_new! %*/
+                    {VALUE v1=dispatch0(regexp_new); p->s_lvalue=v1;}
                     }
                 | regexp_contents string_content
                     {
@@ -6728,12 +6728,12 @@ regexp_contents	: /* none */
                             }
                             $$ = list_append(p, head, tail);
                         }
-                    /*% ripper: regexp_add!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(regexp_add,v1,v2); p->s_lvalue=v3;}
                     }
                 ;
 
 string_content	: tSTRING_CONTENT[content]
-                    /*% ripper[brace]: $:content %*/
+                    {VALUE v1=get_value($:content); p->s_lvalue=v1;}
                 | tSTRING_DVAR[state]
                     {
                         /* need to backup p->lex.strterm so that a string literal `%&foo,#$&,bar&` can be parsed */
@@ -6745,7 +6745,7 @@ string_content	: tSTRING_CONTENT[content]
                         p->lex.strterm = $strterm;
                         $$ = NEW_EVSTR($dvar, &@$, &@state, &NULL_LOC);
                         nd_set_line($$, @dvar.end_pos.lineno);
-                    /*% ripper: string_dvar!($:dvar) %*/
+                    {VALUE v1=get_value($:dvar), v2=dispatch1(string_dvar,v1); p->s_lvalue=v2;}
                     }
                 | tSTRING_DBEG[state]
                     {
@@ -6773,7 +6773,7 @@ string_content	: tSTRING_CONTENT[content]
                         p->heredoc_line_indent = -1;
                         if ($compstmt) nd_unset_fl_newline($compstmt);
                         $$ = new_evstr(p, $compstmt, &@$, &@state, &@string_dend);
-                    /*% ripper: string_embexpr!($:compstmt) %*/
+                    {VALUE v1=get_value($:compstmt), v2=dispatch1(string_embexpr,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -6784,7 +6784,7 @@ string_dend	: tSTRING_DEND
 string_dvar	: nonlocal_var
                     {
                         if (!($$ = gettable(p, $1, &@$))) $$ = NEW_ERROR(&@$);
-                    /*% ripper: var_ref!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                     }
                 | backref
                 ;
@@ -6805,7 +6805,7 @@ ssym		: tSYMBEG sym
                          */
                         if (!str) str = STR_NEW0();
                         $$ = NEW_SYM(str, &@$);
-                    /*% ripper: symbol_literal!(symbol!($:2)) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(symbol,v1), v3=dispatch1(symbol_literal,v2); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -6816,7 +6816,7 @@ sym		: fname
 dsym		: tSYMBEG string_contents tSTRING_END
                     {
                         $$ = dsym_node(p, $2, &@$);
-                    /*% ripper: dyna_symbol!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(dyna_symbol,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -6825,7 +6825,7 @@ numeric 	: simple_numeric
                     {
                         $$ = $2;
                         negate_lit(p, $$, &@$);
-                    /*% ripper: unary!(ID2VAL(idUMinus), $:2) %*/
+                    {VALUE v1=get_value($:2), v2=ID2VAL(idUMinus), v3=dispatch2(unary,v2,v1); p->s_lvalue=v3;}
                     }
                 ;
 
@@ -6857,22 +6857,22 @@ var_ref		: user_variable
                     {
                         if (!($$ = gettable(p, $1, &@$))) $$ = NEW_ERROR(&@$);
                         if (ifdef_ripper(id_is_var(p, $1), false)) {
-                        /*% ripper: var_ref!($:1) %*/
+                        {VALUE v1=get_value($:1), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                         }
                         else {
-                        /*% ripper: vcall!($:1) %*/
+                        {VALUE v1=get_value($:1), v2=dispatch1(vcall,v1); p->s_lvalue=v2;}
                         }
                     }
                 | keyword_variable
                     {
                         if (!($$ = gettable(p, $1, &@$))) $$ = NEW_ERROR(&@$);
-                    /*% ripper: var_ref!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(var_ref,v1); p->s_lvalue=v2;}
                     }
                 ;
 
 var_lhs		: user_or_keyword_variable
                     {
-                    /*% ripper: var_field!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(var_field,v1); p->s_lvalue=v2;}
                         $$ = assignable(p, $1, 0, &@$);
                     }
                 ;
@@ -6888,7 +6888,7 @@ superclass	: '<'
                   expr_value term
                     {
                         $$ = $3;
-                    /*% ripper: $:3 %*/
+                    {VALUE v1=get_value($:3); p->s_lvalue=v1;}
                     }
                 | none
                 ;
@@ -6904,14 +6904,14 @@ f_empty_arg	: /* none */
                     {
                         $$ = new_empty_args_tail(p, &@$);
                         $$ = new_args(p, 0, 0, 0, 0, $$, &@$);
-                    /*% ripper: params!(Qnil, Qnil, Qnil, Qnil, Qnil, Qnil, Qnil) %*/
+                    {VALUE v1=Qnil, v2=Qnil, v3=Qnil, v4=Qnil, v5=Qnil, v6=Qnil, v7=Qnil, v8=dispatch7(params,v1,v2,v3,v4,v5,v6,v7); p->s_lvalue=v8;}
                     }
                 ;
 
 f_paren_args	: '(' f_args rparen
                     {
                         $$ = $2;
-                    /*% ripper: paren!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(paren,v1); p->s_lvalue=v2;}
                         p->command_start = TRUE;
                         p->ctxt.in_argdef = 0;
                     }
@@ -6929,7 +6929,7 @@ f_arglist	: f_paren_args
                         p->ctxt.in_argdef = 0;
                         $$ = $2;
                         p->command_start = TRUE;
-                    /*% ripper: $:2 %*/
+                    {VALUE v1=get_value($:2); p->s_lvalue=v1;}
                     }
                 ;
 
@@ -6939,7 +6939,7 @@ args_tail	: args_tail_basic(arg_value, opt_comma)
                         add_forwarding_args(p);
                         $$ = new_args_tail(p, 0, $args_forward, arg_FWD_BLOCK, &@args_forward);
                         $$->nd_ainfo.forwarding = 1;
-                    /*% ripper: [Qnil, $:args_forward, Qnil] %*/
+                    {VALUE v1=get_value($:args_forward); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, Qnil);}
                     }
                 ;
 
@@ -6949,7 +6949,7 @@ largs_tail	: args_tail_basic(arg_value, none)
                         yyerror1(&@args_forward, "unexpected ... in lambda argument");
                         $$ = new_args_tail(p, 0, 0, 0, &@args_forward);
                         $$->nd_ainfo.forwarding = 1;
-                    /*% ripper: [Qnil, $:args_forward, Qnil] %*/
+                    {VALUE v1=get_value($:args_forward); p->s_lvalue=rb_ary_new_from_args(3, Qnil, v1, Qnil);}
                     }
                 ;
 
@@ -6957,62 +6957,62 @@ largs_tail	: args_tail_basic(arg_value, none)
                 : f_arg[pre] ',' f_opt_arg(value)[opt] ',' f_rest_arg[rest] tail
                     {
                         $$ = new_args(p, $pre, $opt, $rest, 0, $tail, &@$);
-                    /*% ripper: params!($:pre, $:opt, $:rest, Qnil, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:pre), v2=get_value($:opt), v3=get_value($:rest), v4=get_value($:tail), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v2,v3,v8,v5,v6,v7); p->s_lvalue=v9;}
                     }
                 | f_arg[pre] ',' f_opt_arg(value)[opt] ',' f_rest_arg[rest] ',' f_arg[post] tail
                     {
                         $$ = new_args(p, $pre, $opt, $rest, $post, $tail, &@$);
-                    /*% ripper: params!($:pre, $:opt, $:rest, $:post, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:pre), v2=get_value($:opt), v3=get_value($:rest), v4=get_value($:post), v5=get_value($:tail), v6=rb_ary_entry(v5, 0), v7=rb_ary_entry(v5, 1), v8=rb_ary_entry(v5, 2), v9=dispatch7(params,v1,v2,v3,v4,v6,v7,v8); p->s_lvalue=v9;}
                     }
                 | f_arg[pre] ',' f_opt_arg(value)[opt] tail
                     {
                         $$ = new_args(p, $pre, $opt, 0, 0, $tail, &@$);
-                    /*% ripper: params!($:pre, $:opt, Qnil, Qnil, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:pre), v2=get_value($:opt), v3=get_value($:tail), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v2,v7,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
                 | f_arg[pre] ',' f_opt_arg(value)[opt] ',' f_arg[post] tail
                     {
                         $$ = new_args(p, $pre, $opt, 0, $post, $tail, &@$);
-                    /*% ripper: params!($:pre, $:opt, Qnil, $:post, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:pre), v2=get_value($:opt), v3=get_value($:post), v4=get_value($:tail), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v2,v8,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
                 | f_arg[pre] ',' f_rest_arg[rest] tail
                     {
                         $$ = new_args(p, $pre, 0, $rest, 0, $tail, &@$);
-                    /*% ripper: params!($:pre, Qnil, $:rest, Qnil, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:pre), v2=get_value($:rest), v3=get_value($:tail), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v7,v2,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
                 | f_arg[pre] ',' f_rest_arg[rest] ',' f_arg[post] tail
                     {
                         $$ = new_args(p, $pre, 0, $rest, $post, $tail, &@$);
-                    /*% ripper: params!($:pre, Qnil, $:rest, $:post, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:pre), v2=get_value($:rest), v3=get_value($:post), v4=get_value($:tail), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v1,v8,v2,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
                 | f_opt_arg(value)[opt] ',' f_rest_arg[rest] tail
                     {
                         $$ = new_args(p, 0, $opt, $rest, 0, $tail, &@$);
-                    /*% ripper: params!(Qnil, $:opt, $:rest, Qnil, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:opt), v2=get_value($:rest), v3=get_value($:tail), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v1,v2,v8,v4,v5,v6); p->s_lvalue=v9;}
                     }
                 | f_opt_arg(value)[opt] ',' f_rest_arg[rest] ',' f_arg[post] tail
                     {
                         $$ = new_args(p, 0, $opt, $rest, $post, $tail, &@$);
-                    /*% ripper: params!(Qnil, $:opt, $:rest, $:post, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:opt), v2=get_value($:rest), v3=get_value($:post), v4=get_value($:tail), v5=rb_ary_entry(v4, 0), v6=rb_ary_entry(v4, 1), v7=rb_ary_entry(v4, 2), v8=Qnil, v9=dispatch7(params,v8,v1,v2,v3,v5,v6,v7); p->s_lvalue=v9;}
                     }
                 | f_opt_arg(value)[opt] tail
                     {
                         $$ = new_args(p, 0, $opt, 0, 0, $tail, &@$);
-                    /*% ripper: params!(Qnil, $:opt, Qnil, Qnil, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:opt), v2=get_value($:tail), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v6,v1,v7,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
                 | f_opt_arg(value)[opt] ',' f_arg[post] tail
                     {
                         $$ = new_args(p, 0, $opt, 0, $post, $tail, &@$);
-                    /*% ripper: params!(Qnil, $:opt, Qnil, $:post, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:opt), v2=get_value($:post), v3=get_value($:tail), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v1,v8,v2,v4,v5,v6); p->s_lvalue=v9;}
                     }
                 | f_rest_arg[rest] tail
                     {
                         $$ = new_args(p, 0, 0, $rest, 0, $tail, &@$);
-                    /*% ripper: params!(Qnil, Qnil, $:rest, Qnil, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:rest), v2=get_value($:tail), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v6,v7,v1,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
                 | f_rest_arg[rest] ',' f_arg[post] tail
                     {
                         $$ = new_args(p, 0, 0, $rest, $post, $tail, &@$);
-                    /*% ripper: params!(Qnil, Qnil, $:rest, $:post, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:rest), v2=get_value($:post), v3=get_value($:tail), v4=rb_ary_entry(v3, 0), v5=rb_ary_entry(v3, 1), v6=rb_ary_entry(v3, 2), v7=Qnil, v8=Qnil, v9=dispatch7(params,v7,v8,v1,v2,v4,v5,v6); p->s_lvalue=v9;}
                     }
                 ;
 
@@ -7020,7 +7020,7 @@ largs_tail	: args_tail_basic(arg_value, none)
                 : tail
                     {
                         $$ = new_args(p, 0, 0, 0, 0, $tail, &@$);
-                    /*% ripper: params!(Qnil, Qnil, Qnil, Qnil, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:tail), v2=rb_ary_entry(v1, 0), v3=rb_ary_entry(v1, 1), v4=rb_ary_entry(v1, 2), v5=Qnil, v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v5,v6,v7,v8,v2,v3,v4); p->s_lvalue=v9;}
                     }
                 ;
 
@@ -7029,7 +7029,7 @@ largs_tail	: args_tail_basic(arg_value, none)
                 | f_arg[pre] opt_args_tail(tail, trailing)[tail]
                     {
                         $$ = new_args(p, $pre, 0, 0, 0, $tail, &@$);
-                    /*% ripper: params!($:pre, Qnil, Qnil, Qnil, *$:tail[0..2]) %*/
+                    {VALUE v1=get_value($:pre), v2=get_value($:tail), v3=rb_ary_entry(v2, 0), v4=rb_ary_entry(v2, 1), v5=rb_ary_entry(v2, 2), v6=Qnil, v7=Qnil, v8=Qnil, v9=dispatch7(params,v1,v6,v7,v8,v3,v4,v5); p->s_lvalue=v9;}
                     }
                 | tail-only-args(tail)
                 | f_empty_arg
@@ -7044,45 +7044,45 @@ f_largs		: f_args-list(largs_tail, none)
 args_forward	: tBDOT3
                     {
                         $$ = idFWD_KWREST;
-                    /*% ripper: args_forward! %*/
+                    {VALUE v1=dispatch0(args_forward); p->s_lvalue=v1;}
                     }
                 ;
 
 f_bad_arg	: tCONSTANT
                     {
                         static const char mesg[] = "formal argument cannot be a constant";
-                    /*%%%*/
+#if 0
                         yyerror1(&@1, mesg);
-                    /*% %*/
+#endif
                         $$ = 0;
-                    /*% ripper[error]: param_error!(ERR_MESG(), $:1) %*/
+                    {VALUE v1=get_value($:1), v2=ERR_MESG(), v3=dispatch2(param_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
                 | tIVAR
                     {
                         static const char mesg[] = "formal argument cannot be an instance variable";
-                    /*%%%*/
+#if 0
                         yyerror1(&@1, mesg);
-                    /*% %*/
+#endif
                         $$ = 0;
-                    /*% ripper[error]: param_error!(ERR_MESG(), $:1) %*/
+                    {VALUE v1=get_value($:1), v2=ERR_MESG(), v3=dispatch2(param_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
                 | tGVAR
                     {
                         static const char mesg[] = "formal argument cannot be a global variable";
-                    /*%%%*/
+#if 0
                         yyerror1(&@1, mesg);
-                    /*% %*/
+#endif
                         $$ = 0;
-                    /*% ripper[error]: param_error!(ERR_MESG(), $:1) %*/
+                    {VALUE v1=get_value($:1), v2=ERR_MESG(), v3=dispatch2(param_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
                 | tCVAR
                     {
                         static const char mesg[] = "formal argument cannot be a class variable";
-                    /*%%%*/
+#if 0
                         yyerror1(&@1, mesg);
-                    /*% %*/
+#endif
                         $$ = 0;
-                    /*% ripper[error]: param_error!(ERR_MESG(), $:1) %*/
+                    {VALUE v1=get_value($:1), v2=ERR_MESG(), v3=dispatch2(param_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                     }
                 ;
 
@@ -7091,7 +7091,7 @@ f_norm_arg	: f_bad_arg
                     {
                         VALUE e = formal_argument_error(p, $$ = $1);
                         if (e) {
-                            /*% ripper[error]: param_error!(?e, $:1) %*/
+                            {VALUE v1=get_value($:1), v2=e, v3=dispatch2(param_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                         }
                         p->max_numparam = ORDINAL_PARAM;
                     }
@@ -7107,7 +7107,7 @@ f_arg_asgn	: f_norm_arg
 f_arg_item	: f_arg_asgn
                     {
                         $$ = NEW_ARGS_AUX($1, 1, &NULL_LOC);
-                    /*% ripper: $:1 %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=v1;}
                     }
                 | tLPAREN f_margs rparen
                     {
@@ -7124,19 +7124,19 @@ f_arg_item	: f_arg_asgn
                         }
                         $$ = NEW_ARGS_AUX(tid, 1, &NULL_LOC);
                         $$->nd_next = (NODE *)$2;
-                    /*% ripper: mlhs_paren!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(mlhs_paren,v1); p->s_lvalue=v2;}
                     }
                 ;
 
 f_arg		: f_arg_item
-                    /*% ripper[brace]: rb_ary_new3(1, $:1) %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new3(1, v1);}
                 | f_arg ',' f_arg_item
                     {
                         $$ = $1;
                         $$->nd_plen++;
                         $$->nd_next = block_append(p, $$->nd_next, $3->nd_next);
                         rb_discard_node(p, (NODE *)$3);
-                    /*% ripper: rb_ary_push($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
                 ;
 
@@ -7146,7 +7146,7 @@ f_label 	: tLABEL
                         VALUE e = formal_argument_error(p, $$ = $1);
                         if (e) {
                             $$ = 0;
-                            /*% ripper[error]: param_error!(?e, $:1) %*/
+                            {VALUE v1=get_value($:1), v2=e, v3=dispatch2(param_error,v2,v1); p->s_lvalue=v3;ripper_error(p);}
                         }
                         /*
                          * Workaround for Prism::ParseTest#test_filepath for
@@ -7155,7 +7155,7 @@ f_label 	: tLABEL
                          * See the discussion on https://github.com/ruby/ruby/pull/9923
                          */
                         arg_var(p, ifdef_ripper(0, $1));
-                        /*% ripper: $:1 %*/
+                        {VALUE v1=get_value($:1); p->s_lvalue=v1;}
                         p->max_numparam = ORDINAL_PARAM;
                         p->ctxt.in_argdef = 0;
                     }
@@ -7167,7 +7167,7 @@ kwrest_mark	: tPOW
 
 f_no_kwarg	: p_kwnorest
                     {
-                    /*% ripper: nokw_param!(Qnil) %*/
+                    {VALUE v1=Qnil, v2=dispatch1(nokw_param,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -7175,13 +7175,13 @@ f_kwrest	: kwrest_mark tIDENTIFIER
                     {
                         arg_var(p, shadowing_lvar(p, $2));
                         $$ = $2;
-                    /*% ripper: kwrest_param!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(kwrest_param,v1); p->s_lvalue=v2;}
                     }
                 | kwrest_mark
                     {
                         arg_var(p, idFWD_KWREST);
                         $$ = idFWD_KWREST;
-                    /*% ripper: kwrest_param!(Qnil) %*/
+                    {VALUE v1=Qnil, v2=dispatch1(kwrest_param,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -7193,13 +7193,13 @@ f_rest_arg	: restarg_mark tIDENTIFIER
                     {
                         arg_var(p, shadowing_lvar(p, $2));
                         $$ = $2;
-                    /*% ripper: rest_param!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(rest_param,v1); p->s_lvalue=v2;}
                     }
                 | restarg_mark
                     {
                         arg_var(p, idFWD_REST);
                         $$ = idFWD_REST;
-                    /*% ripper: rest_param!(Qnil) %*/
+                    {VALUE v1=Qnil, v2=dispatch1(rest_param,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -7211,25 +7211,25 @@ f_block_arg	: blkarg_mark tIDENTIFIER
                     {
                         arg_var(p, shadowing_lvar(p, $2));
                         $$ = $2;
-                    /*% ripper: blockarg!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(blockarg,v1); p->s_lvalue=v2;}
                     }
                 | blkarg_mark keyword_nil
                     {
                         $$ = idNil;
-                    /*% ripper: blockarg!(ID2VAL(idNil)) %*/
+                    {VALUE v1=ID2VAL(idNil), v2=dispatch1(blockarg,v1); p->s_lvalue=v2;}
                     }
                 | blkarg_mark
                     {
                         arg_var(p, idFWD_BLOCK);
                         $$ = idFWD_BLOCK;
-                    /*% ripper: blockarg!(Qnil) %*/
+                    {VALUE v1=Qnil, v2=dispatch1(blockarg,v1); p->s_lvalue=v2;}
                     }
                 ;
 
 opt_comma	: ','?
                     {
                         $$ = 0;
-                    /*% ripper: Qnil %*/
+                    {p->s_lvalue=Qnil;}
                     }
                 ;
 
@@ -7273,7 +7273,7 @@ singleton_expr	: var_ref
                     {
                         p->ctxt.in_argdef = 1;
                         $$ = $3;
-                    /*% ripper: paren!($:3) %*/
+                    {VALUE v1=get_value($:3), v2=dispatch1(paren,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -7281,12 +7281,12 @@ assoc_list	: none
                 | assocs trailer
                     {
                         $$ = $1;
-                    /*% ripper: assoclist_from_args!($:1) %*/
+                    {VALUE v1=get_value($:1), v2=dispatch1(assoclist_from_args,v1); p->s_lvalue=v2;}
                     }
                 ;
 
 assocs		: assoc
-                    /*% ripper[brace]: rb_ary_new3(1, $:1) %*/
+                    {VALUE v1=get_value($:1); p->s_lvalue=rb_ary_new3(1, v1);}
                 | assocs ',' assoc
                     {
                         NODE *assocs = $1;
@@ -7308,44 +7308,44 @@ assocs		: assoc
                             }
                         }
                         $$ = assocs;
-                    /*% ripper: rb_ary_push($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3); p->s_lvalue=rb_ary_push(v1, v2);}
                     }
                 ;
 
 assoc		: arg_value tASSOC arg_value
                     {
                         $$ = list_append(p, NEW_LIST($1, &@$), $3);
-                    /*% ripper: assoc_new!($:1, $:3) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:3), v3=dispatch2(assoc_new,v1,v2); p->s_lvalue=v3;}
                     }
                 | tLABEL arg_value
                     {
                         $$ = list_append(p, NEW_LIST(NEW_SYM(rb_id2str($1), &@1), &@$), $2);
-                    /*% ripper: assoc_new!($:1, $:2) %*/
+                    {VALUE v1=get_value($:1), v2=get_value($:2), v3=dispatch2(assoc_new,v1,v2); p->s_lvalue=v3;}
                     }
                 | tLABEL
                     {
                         NODE *val = gettable(p, $1, &@$);
                         if (!val) val = NEW_ERROR(&@$);
                         $$ = list_append(p, NEW_LIST(NEW_SYM(rb_id2str($1), &@1), &@$), val);
-                    /*% ripper: assoc_new!($:1, Qnil) %*/
+                    {VALUE v1=get_value($:1), v2=Qnil, v3=dispatch2(assoc_new,v1,v2); p->s_lvalue=v3;}
                     }
                 | tSTRING_BEG string_contents tLABEL_END arg_value
                     {
                         YYLTYPE loc = code_loc_gen(&@1, &@3);
                         $$ = list_append(p, NEW_LIST(dsym_node(p, $2, &loc), &loc), $4);
-                    /*% ripper: assoc_new!(dyna_symbol!($:2), $:4) %*/
+                    {VALUE v1=get_value($:2), v2=get_value($:4), v3=dispatch1(dyna_symbol,v1), v4=dispatch2(assoc_new,v3,v2); p->s_lvalue=v4;}
                     }
                 | tDSTAR arg_value
                     {
                         $$ = list_append(p, NEW_LIST(0, &@$), $2);
-                    /*% ripper: assoc_splat!($:2) %*/
+                    {VALUE v1=get_value($:2), v2=dispatch1(assoc_splat,v1); p->s_lvalue=v2;}
                     }
                 | tDSTAR
                     {
                         forwarding_arg_check(p, idFWD_KWREST, idFWD_ALL, "keyword rest");
                         $$ = list_append(p, NEW_LIST(0, &@$),
                                          NEW_LVAR(idFWD_KWREST, &@$));
-                    /*% ripper: assoc_splat!(Qnil) %*/
+                    {VALUE v1=Qnil, v2=dispatch1(assoc_splat,v1); p->s_lvalue=v2;}
                     }
                 ;
 
@@ -7410,7 +7410,7 @@ terms		: term
 none		: /* none */
                     {
                         $$ = 0;
-                    /*% ripper: Qnil %*/
+                    {p->s_lvalue=Qnil;}
                     }
                 ;
 %%
