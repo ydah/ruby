@@ -11647,7 +11647,10 @@ parser_yylex(struct parser_params *p)
             set_yylval_id('+');
             return tOP_ASGN;
         }
-        {
+        if (LAST_TOKEN_IS_VALUE(p)) {
+            /* After a value, + is binary. */
+        }
+        else {
             ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
             if (scan.token == tUPLUS ||
                 parser_pslr_lex_beg_like_p(p) ||
@@ -11680,7 +11683,10 @@ parser_yylex(struct parser_params *p)
             p->lex.lpar_beg = p->lex.paren_nest;
             return tLAMBDA;
         }
-        {
+        if (LAST_TOKEN_IS_VALUE(p)) {
+            /* After a value, - is binary. */
+        }
+        else {
             ruby_pslr_scan_result scan = parser_pslr_scan(p, p->lex.ptok);
             if (scan.token == tUMINUS ||
                 parser_pslr_lex_beg_like_p(p) ||
