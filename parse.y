@@ -3338,6 +3338,11 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token-pattern tLBRACK /\[/
 %token-pattern tLBRACE /\{/
 %token-pattern tLBRACE_ARG /\{/
+%token-pattern tSTAR /\*/
+%token-pattern tAMPER /&/
+%token-pattern tCOLON3 /::/
+%token-pattern tSYMBEG /:/
+%token-pattern tREGEXP_BEG /\//
 /* tOP_ASGN token-pattern removed: compound alternation pattern is not
    supported by Lrama's regex lexer.  Compound assignment operators are
    handled by the handwritten lexer. */
