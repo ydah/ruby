@@ -391,6 +391,18 @@ RBIMPL_WARNING_POP()
 #define IS_lex_state(ls)	IS_lex_state_for(p->lex.state, (ls))
 #define IS_lex_state_all(ls)	IS_lex_state_all_for(p->lex.state, (ls))
 
+#define PARSER_STATE_ACCEPTS(p, tok) \
+    yy_state_accepts_token((p)->current_parser_state, (tok))
+#define PARSER_STATE_EVENTUALLY_ACCEPTS(p, tok) \
+    yy_state_eventually_accepts_token((p)->current_parser_state, (tok))
+
+#ifdef PARSER_DEBUG_PSLR_SHADOW
+# define PSLR_SHADOW_ASSERT(new_cond, old_cond) \
+    (RUBY_ASSERT(!!(new_cond) == !!(old_cond)), !!(new_cond))
+#else
+# define PSLR_SHADOW_ASSERT(new_cond, old_cond) (!!(new_cond))
+#endif
+
 # define SET_LEX_STATE(ls) \
     parser_set_lex_state(p, ls, __LINE__)
 static inline enum lex_state_e parser_set_lex_state(struct parser_params *p, enum lex_state_e ls, int line);
@@ -495,6 +507,7 @@ typedef struct parser_string_buffer {
 struct parser_params {
     YYSTYPE *lval;
     YYLTYPE *yylloc;
+    int current_parser_state;
 
     struct {
         rb_strterm_t *strterm;
@@ -2615,6 +2628,10 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 
 %expect 0
 %define api.pure
+%define lr.type pslr
+%define api.pslr.state-member current_parser_state
+/* Keep token acquisition timing unchanged during the lex_state migration. */
+%define parse.lac none
 %define parse.error verbose
 %printer {
     if ((NODE *)$$ == (NODE *)-1) {

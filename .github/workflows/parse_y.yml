@@ -33,6 +33,8 @@ jobs:
           - test_task: check
           - test_task: test-bundler-parallel
           - test_task: test-bundled-gems
+          - test_task: check
+            cppflags: -DRUBY_DEBUG -DPARSER_DEBUG_PSLR_SHADOW
       fail-fast: false
 
     env:
@@ -74,7 +76,7 @@ jobs:
           bundled-gems-src-cache: ${{ matrix.test_task == 'test-bundled-gems' }}
 
       - name: Run configure
-        run: ../src/configure -C --disable-install-doc cppflags=-DRUBY_DEBUG --with-parser=parse.y
+        run: ../src/configure -C --disable-install-doc cppflags="${{ matrix.cppflags || '-DRUBY_DEBUG' }}" --with-parser=parse.y
 
       - run: make
 
