@@ -574,6 +574,16 @@ static const <%= output.int_type_for(output.context.yystos) %> yystos[] =
 <%= output.int_array_to_string(output.context.yystos) %>
 };
 
+<%- if output.pslr_enabled? -%>
+static int YY_ATTRIBUTE_UNUSED
+yy_state_accessed_by_token (int yystate, int yychar)
+{
+  if (yystate < 0 || YYNSTATES <= yystate)
+    return 0;
+  return yystos[yystate] == YYTRANSLATE (yychar);
+}
+<%- end -%>
+
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const <%= output.int_type_for(output.context.yyr1) %> yyr1[] =
 {

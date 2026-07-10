@@ -435,6 +435,7 @@ RBIMPL_WARNING_POP()
         p->current_parser_recovering = YYRECOVERING(); \
         p->parser_stack_base = yyss; \
         p->parser_stack_top = yyssp; \
+        p->parser_value_stack_top = yyvsp; \
     } while (0)
 
 # define SET_LEX_STATE(ls) \
@@ -545,6 +546,7 @@ struct parser_params {
     int current_parser_recovering;
     const void *parser_stack_base;
     const void *parser_stack_top;
+    const void *parser_value_stack_top;
 
     struct {
         rb_strterm_t *strterm;
@@ -2933,10 +2935,11 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %lexer-context BEG '\n' tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term superclass k_else k_ensure allow_exits block_open opt_bv_decl tLAMBEG keyword_do_LAMBDA
 %lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
 %lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' '|' opt_block_param_def p_pktbl f_label
-%lexer-context END k_END keyword_defined keyword_self keyword_nil keyword_true keyword_false primary method_call string user_variable keyword_variable backref rparen rbracket rbrace tIDENTIFIER tCONSTANT
+%lexer-context END k_END keyword_self keyword_nil keyword_true keyword_false primary method_call string simple_numeric user_variable keyword_variable backref rparen rbracket rbrace tIDENTIFIER tCONSTANT
 %lexer-context LABEL tLBRACE
 %lexer-context PREFIX k_return keyword_break keyword_next
 %lexer-context CLASS keyword_class keyword_module k_class k_module
+%lexer-context ARG keyword_defined keyword_not keyword_super keyword_yield k_yield p_const
 
 /*
  *	precedence table
@@ -8628,12 +8631,69 @@ parser_peek_variable_name(struct parser_params *p)
     return 0;
 }
 
-#define IS_ARG() IS_lex_state(EXPR_ARG_ANY)
-#define IS_END() IS_lex_state(EXPR_END_ANY)
+static int
+parser_state_previous_state(struct parser_params *p)
+{
+    const short *base = p->parser_stack_base;
+    const short *top = p->parser_stack_top;
+
+    return base && top && base < top ? top[-1] : -1;
+}
+
+static int
+parser_state_identifier_arg_p(struct parser_params *p)
+{
+    int state = p->current_parser_state;
+    int previous_state;
+    int accessing_symbol = yystos[state];
+
+    if (!yy_state_accessed_by_token(state, tIDENTIFIER) &&
+        !yy_state_accessed_by_token(state, tCONSTANT) &&
+        !yy_state_accessed_by_token(state, tFID) &&
+        accessing_symbol != YYSYMBOL_operation2) {
+        return 0;
+    }
+
+    previous_state = parser_state_previous_state(p);
+    if (previous_state < 0 || PARSER_STATE_FNAME_AT(previous_state)) return 0;
+    if (PARSER_STATE_DOT_AT(previous_state)) return 1;
+    if (yy_state_accessed_by_token(state, tIDENTIFIER)) {
+        const YYSTYPE *top = p->parser_value_stack_top;
+        ID id = top->id;
+        if (lvar_defined(p, id) || NUMPARAM_ID_P(id)) return 0;
+    }
+    return !yy_lexer_context_is(previous_state, YY_CTX_END);
+}
+
+static int
+parser_state_arg_p(struct parser_params *p)
+{
+    return parser_state_identifier_arg_p(p) ||
+           yy_lexer_context_is(p->current_parser_state, YY_CTX_ARG);
+}
+
+static int
+parser_state_end_p(struct parser_params *p)
+{
+    int state = p->current_parser_state;
+
+    if (yy_state_accessed_by_token(state, tIDENTIFIER) ||
+        yy_state_accessed_by_token(state, tCONSTANT) ||
+        yy_state_accessed_by_token(state, tFID) ||
+        yystos[state] == YYSYMBOL_operation2) {
+        return !parser_state_identifier_arg_p(p);
+    }
+    return yy_lexer_context_is(state, YY_CTX_END);
+}
+
+#define OLD_IS_ARG() IS_lex_state(EXPR_ARG_ANY)
+#define OLD_IS_END() IS_lex_state(EXPR_END_ANY)
+#define IS_ARG() PSLR_SHADOW_ASSERT(parser_state_arg_p(p), OLD_IS_ARG())
+#define IS_END() PSLR_SHADOW_ASSERT(parser_state_end_p(p), OLD_IS_END())
 #define IS_BEG() (IS_lex_state(EXPR_BEG_ANY) || IS_lex_state_all(EXPR_ARG|EXPR_LABELED))
 #define IS_SPCARG(c) (IS_ARG() && space_seen && !ISSPACE(c))
 #define OLD_LABEL_POSSIBLE() \
-    ((IS_lex_state(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || IS_ARG())
+    ((IS_lex_state(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || OLD_IS_ARG())
 #define IS_LABEL_POSSIBLE(tok) \
     PSLR_SHADOW_ASSERT(PARSER_STATE_DEEPLY_ACCEPTS(p, (tok)) || \
                        yy_lexer_context_is(p->current_parser_state, YY_CTX_LABEL), \
