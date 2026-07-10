@@ -441,7 +441,10 @@ RBIMPL_WARNING_POP()
         p->parser_value_stack_top = yyvsp; \
     } while (0)
 #define YYSETSHIFTTOKEN_CONTEXT(CurrentToken) \
-    (p->parser_last_shifted_token = (CurrentToken))
+    do { \
+        p->parser_last_shifted_token = (CurrentToken); \
+        p->parser_last_shifted_cmdarg = p->lexed_identifier_cmdarg; \
+    } while (0)
 
 # define SET_LEX_STATE(ls) \
     parser_set_lex_state(p, ls, __LINE__)
@@ -553,6 +556,8 @@ struct parser_params {
     const void *parser_stack_top;
     const void *parser_value_stack_top;
     int parser_last_shifted_token;
+    int parser_last_shifted_cmdarg;
+    int lexed_identifier_cmdarg;
 
     struct {
         rb_strterm_t *strterm;
@@ -2938,9 +2943,9 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token tIGNORED_NL tCOMMENT tEMBDOC_BEG tEMBDOC tEMBDOC_END
 %token tHEREDOC_BEG tHEREDOC_END k__END__
 
-%lexer-context BEG '\n' tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term superclass k_else k_ensure allow_exits block_open opt_bv_decl tLAMBEG keyword_do_LAMBDA
+%lexer-context BEG '\n' '+' tLSHFT tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term terms lex_ctxt superclass k_else k_ensure allow_exits block_open opt_bv_decl tLAMBEG keyword_do_LAMBDA
 %lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
-%lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' '|' opt_block_param_def p_pktbl f_label
+%lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' '|' opt_block_param_def p_pktbl p_kw_label f_label
 %lexer-context END k_END keyword_self keyword_nil keyword_true keyword_false primary method_call string simple_numeric user_variable keyword_variable backref rparen rbracket rbrace tIDENTIFIER tCONSTANT
 %lexer-context LABEL tLBRACE
 %lexer-context PREFIX k_return keyword_break keyword_next
@@ -8688,6 +8693,18 @@ parser_state_identifier_arg_p(struct parser_params *p)
 }
 
 static int
+parser_state_identifier_sets_arg_p(struct parser_params *p)
+{
+    int state = p->current_parser_state;
+
+    return !PARSER_STATE_FNAME_AT(state) &&
+           !parser_state_endfn_p(p) &&
+           p->parser_last_shifted_token != tLAMBDA &&
+           (!yy_lexer_context_is(state, YY_CTX_END) ||
+            parser_state_identifier_arg_p(p));
+}
+
+static int
 parser_state_arg_p(struct parser_params *p)
 {
     return parser_state_identifier_arg_p(p) ||
@@ -10479,6 +10496,44 @@ parse_atmark(struct parser_params *p, int parser_state, const enum lex_state_e l
     return result;
 }
 
+static int
+keyword_starts_command(enum yytokentype token)
+{
+    switch (token) {
+      case keyword_and:
+      case keyword_begin:
+      case keyword_case:
+      case keyword_do:
+      case keyword_else:
+      case keyword_elsif:
+      case keyword_ensure:
+      case keyword_for:
+      case keyword_if:
+      case keyword_in:
+      case keyword_module:
+      case keyword_or:
+      case keyword_then:
+      case keyword_unless:
+      case keyword_until:
+      case keyword_when:
+      case keyword_while:
+        return 1;
+      default:
+        return 0;
+    }
+}
+
+static int
+parser_state_keyword_primary_p(struct parser_params *p)
+{
+    return yy_lexer_context_is(p->current_parser_state,
+                               YY_CTX_BEG | YY_CTX_LABELED | YY_CTX_CLASS) ||
+           p->parser_last_shifted_token == keyword_do_cond ||
+           p->parser_last_shifted_token == '\n' ||
+           p->parser_last_shifted_token == tLBRACK ||
+           p->parser_last_shifted_token == '[';
+}
+
 static enum yytokentype
 parse_ident(struct parser_params *p, int c, int cmd_state)
 {
@@ -10500,7 +10555,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     }
     else if (c == '=' &&
              PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
-                                IS_lex_state(EXPR_FNAME)) &&
+                                IS_lex_state_for(last_state, EXPR_FNAME)) &&
              (!peek(p, '~') && !peek(p, '>') && (!peek(p, '=') || (peek_n(p, '>', 1))))) {
         result = tIDENTIFIER;
         tokadd(p, c);
@@ -10556,16 +10611,16 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
             PSLR_SHADOW_ASSERT(
                 enforce_keyword_end ||
                 !PARSER_STATE_DOT_AT(parser_state),
-                !IS_lex_state(EXPR_DOT) || enforce_keyword_end)) {
-            enum lex_state_e state = p->lex.state;
+                !IS_lex_state_for(last_state, EXPR_DOT) || enforce_keyword_end)) {
             if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
-                                   IS_lex_state_for(state, EXPR_FNAME))) {
+                                   IS_lex_state_for(last_state, EXPR_FNAME))) {
                 SET_LEX_STATE(EXPR_ENDFN);
                 set_yylval_name(rb_intern2(tok(p), toklen(p)));
                 return kw->id[0];
             }
             SET_LEX_STATE(kw->state);
-            if (IS_lex_state(EXPR_BEG)) {
+            if (PSLR_SHADOW_ASSERT(keyword_starts_command(kw->id[0]),
+                                   IS_lex_state_for(kw->state, EXPR_BEG))) {
                 p->command_start = TRUE;
             }
             if (kw->id[0] == keyword_do) {
@@ -10574,21 +10629,31 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                     return keyword_do_LAMBDA;
                 }
                 if (COND_P()) return keyword_do_cond;
-                if (CMDARG_P() && !IS_lex_state_for(state, EXPR_CMDARG))
+                if (CMDARG_P() &&
+                    PSLR_SHADOW_ASSERT(
+                        !p->parser_last_shifted_cmdarg,
+                        !IS_lex_state_for(last_state, EXPR_CMDARG)))
                     return keyword_do_block;
                 return keyword_do;
             }
-            if (IS_lex_state_for(state, (EXPR_BEG | EXPR_LABELED | EXPR_CLASS)))
+            if (kw->id[0] == kw->id[1]) return kw->id[0];
+            if (PSLR_SHADOW_ASSERT(
+                    parser_state_keyword_primary_p(p),
+                    IS_lex_state_for(last_state,
+                                     EXPR_BEG | EXPR_LABELED | EXPR_CLASS)))
                 return kw->id[0];
             else {
-                if (kw->id[0] != kw->id[1])
-                    SET_LEX_STATE(EXPR_BEG | EXPR_LABEL);
+                SET_LEX_STATE(EXPR_BEG | EXPR_LABEL);
                 return kw->id[1];
             }
         }
     }
 
-    if (IS_lex_state(EXPR_BEG_ANY | EXPR_ARG_ANY | EXPR_DOT)) {
+    if (PSLR_SHADOW_ASSERT(
+            parser_state_identifier_sets_arg_p(p),
+            IS_lex_state_for(last_state,
+                             EXPR_BEG_ANY | EXPR_ARG_ANY | EXPR_DOT))) {
+        p->lexed_identifier_cmdarg = cmd_state;
         if (cmd_state) {
             SET_LEX_STATE(EXPR_CMDARG);
         }
@@ -10596,7 +10661,9 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
             SET_LEX_STATE(EXPR_ARG);
         }
     }
-    else if (p->lex.state == EXPR_FNAME) {
+    else if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state) &&
+                                !PARSER_STATE_FITEM_AT(parser_state),
+                                last_state == EXPR_FNAME)) {
         SET_LEX_STATE(EXPR_ENDFN);
     }
     else {
@@ -10605,7 +10672,10 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 
     ident = tokenize_ident(p);
     if (result == tCONSTANT && is_local_id(ident)) result = tIDENTIFIER;
-    if (!IS_lex_state_for(last_state, EXPR_DOT|EXPR_FNAME) &&
+    if (PSLR_SHADOW_ASSERT(
+            !PARSER_STATE_DOT_AT(parser_state) &&
+            !PARSER_STATE_FNAME_AT(parser_state),
+            !IS_lex_state_for(last_state, EXPR_DOT|EXPR_FNAME)) &&
         (result == tIDENTIFIER) && /* not EXPR_FNAME, not attrasgn */
         (lvar_defined(p, ident) || NUMPARAM_ID_P(ident))) {
         SET_LEX_STATE(EXPR_END|EXPR_LABEL);
@@ -10633,6 +10703,8 @@ parser_yylex(struct parser_params *p)
     enum lex_state_e last_state;
     int fallthru = FALSE;
     int token_seen = p->token_seen;
+
+    p->lexed_identifier_cmdarg = FALSE;
 
     if (p->lex.strterm) {
         if (strterm_is_heredoc(p->lex.strterm)) {
