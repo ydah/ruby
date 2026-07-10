@@ -10878,11 +10878,13 @@ parser_yylex(struct parser_params *p)
         return tSTRING_BEG;
 
       case '`':
-        if (IS_lex_state(EXPR_FNAME)) {
+        if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(p->current_parser_state),
+                               IS_lex_state(EXPR_FNAME))) {
             SET_LEX_STATE(EXPR_ENDFN);
             return c;
         }
-        if (IS_lex_state(EXPR_DOT)) {
+        if (PSLR_SHADOW_ASSERT(PARSER_STATE_DOT_AT(p->current_parser_state),
+                               IS_lex_state(EXPR_DOT))) {
             if (cmd_state)
                 SET_LEX_STATE(EXPR_CMDARG);
             else
