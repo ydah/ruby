@@ -607,7 +607,7 @@ static const <%= output.int_type_for(output.context.yyr2) %> yyr2[] =
 #endif
 <%- end -%>
 
-int
+static int YY_ATTRIBUTE_UNUSED
 yy_state_accepts_token (int yystate, int yychar)
 {
   yysymbol_kind_t yytoken = YYTRANSLATE (yychar);
@@ -636,7 +636,7 @@ yy_state_accepts_token (int yystate, int yychar)
  * Returns 1 if the token would be accepted in the current state or in a
  * state reachable via a chain of empty default reductions; 0 otherwise.
  */
-int
+static int YY_ATTRIBUTE_UNUSED
 yy_state_eventually_accepts_token (int yystate, int yychar)
 {
   yysymbol_kind_t yytoken = YYTRANSLATE (yychar);
@@ -700,7 +700,7 @@ yy_state_eventually_accepts_token (int yystate, int yychar)
  * stack_base and stack_top point to the parser's state stack (yy_state_t).
  * Returns 1 if the token is reachable; 0 otherwise.
  */
-int
+static int YY_ATTRIBUTE_UNUSED
 yy_state_deep_accepts_token (int yystate, int yychar,
                              const void *stack_base_v, const void *stack_top_v)
 {

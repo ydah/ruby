@@ -72,7 +72,7 @@ struct YYLTYPE
 int yyparse (<%= output.parse_param %>);
 
 <%- if output.pslr_enabled? -%>
-<%= output.pslr_function_declarations %>
+<%= output.pslr_header_declarations %>
 <%- end -%>
 
 
