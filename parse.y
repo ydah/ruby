@@ -416,7 +416,8 @@ RBIMPL_WARNING_POP()
 #define PARSER_STATE_BEG_TOKEN(p, prefix_tok, binary_tok) \
     (yy_lexer_context_is((p)->current_parser_state, \
                          YY_CTX_BEG | YY_CTX_LABELED | YY_CTX_LABEL | YY_CTX_PREFIX) || \
-     (PARSER_STATE_DEEPLY_ACCEPTS((p), (prefix_tok)) && \
+     (!yy_lexer_context_is((p)->current_parser_state, YY_CTX_END) && \
+      PARSER_STATE_DEEPLY_ACCEPTS((p), (prefix_tok)) && \
       !PARSER_STATE_DEEPLY_ACCEPTS((p), (binary_tok))))
 
 #ifdef PARSER_DEBUG_PSLR_SHADOW
@@ -2928,7 +2929,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %lexer-context BEG tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term superclass k_else k_ensure allow_exits tLAMBEG keyword_do_LAMBDA
 %lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
 %lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' '|' opt_block_param_def p_pktbl
-%lexer-context END k_END primary method_call string user_variable keyword_variable backref tIDENTIFIER tCONSTANT
+%lexer-context END k_END keyword_defined primary method_call string user_variable keyword_variable backref rparen rbracket rbrace tIDENTIFIER tCONSTANT
 %lexer-context LABEL tLBRACE
 %lexer-context PREFIX k_return keyword_break keyword_next
 
@@ -11169,13 +11170,16 @@ parser_yylex(struct parser_params *p)
         return '~';
 
       case '(':
-        if (IS_BEG()) {
+        if (PSLR_SHADOW_ASSERT(PARSER_STATE_BEG_TOKEN(p, tLPAREN, '(') &&
+                               !(PARSER_STATE_ACCEPTS(p, tLPAREN) &&
+                                 PARSER_STATE_ACCEPTS(p, '(')), IS_BEG())) {
             c = tLPAREN;
         }
         else if (!space_seen) {
             /* foo( ... ) => method call, no ambiguity */
         }
-        else if (IS_ARG() || IS_lex_state_all(EXPR_END|EXPR_LABEL)) {
+        else if (PSLR_SHADOW_ASSERT(PARSER_STATE_DEEPLY_ACCEPTS(p, tLPAREN_ARG),
+                                    IS_ARG() || IS_lex_state_all(EXPR_END|EXPR_LABEL))) {
             c = tLPAREN_ARG;
         }
         else if (IS_lex_state(EXPR_ENDFN) && !lambda_beginning_p()) {
@@ -11204,7 +11208,7 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_ARG|EXPR_LABEL);
             return '[';
         }
-        else if (IS_BEG()) {
+        else if (PSLR_SHADOW_ASSERT(PARSER_STATE_BEG_TOKEN(p, tLBRACK, '['), IS_BEG())) {
             c = tLBRACK;
         }
         else if (IS_ARG() && (space_seen || IS_lex_state(EXPR_LABELED))) {
