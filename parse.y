@@ -11102,7 +11102,11 @@ parser_yylex(struct parser_params *p)
       case ':':
         c = nextc(p);
         if (c == ':') {
-            if (IS_BEG() || IS_lex_state(EXPR_CLASS) || IS_SPCARG(-1)) {
+            if (PSLR_SHADOW_ASSERT(
+                    PARSER_STATE_BEG_TOKEN(p, tSYMBEG, ':') ||
+                    yy_lexer_context_is(p->current_parser_state, YY_CTX_CLASS),
+                    IS_BEG() || IS_lex_state(EXPR_CLASS)) ||
+                IS_SPCARG(-1)) {
                 SET_LEX_STATE(EXPR_BEG);
                 return tCOLON3;
             }
