@@ -2920,11 +2920,12 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token tIGNORED_NL tCOMMENT tEMBDOC_BEG tEMBDOC tEMBDOC_END
 %token tHEREDOC_BEG tHEREDOC_END k__END__
 
-%lexer-context BEG tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin expr_value_do f_arglist then term superclass k_else k_ensure allow_exits tLAMBEG keyword_do_LAMBDA
+%lexer-context BEG tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term superclass k_else k_ensure allow_exits tLAMBEG keyword_do_LAMBDA
 %lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
 %lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' opt_block_param_def
 %lexer-context END k_END primary method_call string user_variable keyword_variable backref tIDENTIFIER tCONSTANT
 %lexer-context LABEL tLBRACE
+%lexer-context PREFIX k_return
 
 /*
  *	precedence table
@@ -10966,7 +10967,10 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_BEG);
             return tOP_ASGN;
         }
-        if (IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
+        if (PSLR_SHADOW_ASSERT(yy_lexer_context_is(p->current_parser_state, YY_CTX_BEG | YY_CTX_PREFIX) ||
+                               (PARSER_STATE_DEEPLY_ACCEPTS(p, tUPLUS) &&
+                                !PARSER_STATE_DEEPLY_ACCEPTS(p, '+')), IS_BEG()) ||
+            (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
             SET_LEX_STATE(EXPR_BEG);
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
@@ -10999,7 +11003,10 @@ parser_yylex(struct parser_params *p)
             p->lex.lpar_beg = p->lex.paren_nest;
             return tLAMBDA;
         }
-        if (IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
+        if (PSLR_SHADOW_ASSERT(yy_lexer_context_is(p->current_parser_state, YY_CTX_BEG | YY_CTX_PREFIX) ||
+                               (PARSER_STATE_DEEPLY_ACCEPTS(p, tUMINUS) &&
+                                !PARSER_STATE_DEEPLY_ACCEPTS(p, '-')), IS_BEG()) ||
+            (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
             SET_LEX_STATE(EXPR_BEG);
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
