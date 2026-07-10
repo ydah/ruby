@@ -2930,12 +2930,13 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token tIGNORED_NL tCOMMENT tEMBDOC_BEG tEMBDOC tEMBDOC_END
 %token tHEREDOC_BEG tHEREDOC_END k__END__
 
-%lexer-context BEG tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term superclass k_else k_ensure allow_exits block_open tLAMBEG keyword_do_LAMBDA
+%lexer-context BEG '\n' tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term superclass k_else k_ensure allow_exits block_open opt_bv_decl tLAMBEG keyword_do_LAMBDA
 %lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
-%lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' '|' opt_block_param_def p_pktbl
+%lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' '|' opt_block_param_def p_pktbl f_label
 %lexer-context END k_END keyword_defined primary method_call string user_variable keyword_variable backref rparen rbracket rbrace tIDENTIFIER tCONSTANT
 %lexer-context LABEL tLBRACE
 %lexer-context PREFIX k_return keyword_break keyword_next
+%lexer-context CLASS keyword_class keyword_module k_class k_module
 
 /*
  *	precedence table
@@ -10619,7 +10620,7 @@ parser_yylex(struct parser_params *p)
         const int parser_context_continuation =
             yy_lexer_context_is(p->current_parser_state, YY_CTX_BEG | YY_CTX_DOT);
         const int parser_context_labeled =
-            yy_lexer_context_is(p->current_parser_state, YY_CTX_LABELED);
+            yy_lexer_context_is(p->current_parser_state, YY_CTX_LABELED | YY_CTX_LABEL);
         const int parser_context_end =
             yy_lexer_context_is(p->current_parser_state, YY_CTX_END);
         const int ignore_newline = PSLR_SHADOW_ASSERT(
@@ -10813,9 +10814,12 @@ parser_yylex(struct parser_params *p)
       case '<':
         c = nextc(p);
         if (c == '<' &&
-            !IS_lex_state(EXPR_DOT | EXPR_CLASS) &&
-            !IS_END() &&
-            (!IS_ARG() || IS_lex_state(EXPR_LABELED) || space_seen)) {
+            PSLR_SHADOW_ASSERT(
+                !PARSER_STATE_DOT_AT(p->current_parser_state) &&
+                !yy_lexer_context_is(p->current_parser_state, YY_CTX_CLASS),
+                !IS_lex_state(EXPR_DOT | EXPR_CLASS)) &&
+                !IS_END() &&
+                (!IS_ARG() || IS_lex_state(EXPR_LABELED) || space_seen)) {
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
         }
