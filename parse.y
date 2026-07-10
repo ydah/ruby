@@ -386,10 +386,10 @@ RBIMPL_WARNING_POP()
         {p->ruby_sourceline, (int)(p->lex.pcur - p->lex.pbeg)}, \
     }
 
-#define IS_lex_state_for(x, ls)	((x) & (ls))
-#define IS_lex_state_all_for(x, ls) (((x) & (ls)) == (ls))
-#define IS_lex_state(ls)	IS_lex_state_for(p->lex.state, (ls))
-#define IS_lex_state_all(ls)	IS_lex_state_all_for(p->lex.state, (ls))
+#define OBSERVED_STATE_HAS_FOR(x, ls)	((x) & (ls))
+#define OBSERVED_STATE_HAS_ALL_FOR(x, ls) (((x) & (ls)) == (ls))
+#define OBSERVED_STATE_HAS(ls)	OBSERVED_STATE_HAS_FOR(p->lex.observed_state, (ls))
+#define OBSERVED_STATE_HAS_ALL(ls)	OBSERVED_STATE_HAS_ALL_FOR(p->lex.observed_state, (ls))
 
 #define PARSER_STATE_ACCEPTS_AT(state, tok) \
     yy_state_accepts_token((state), (tok))
@@ -446,9 +446,9 @@ RBIMPL_WARNING_POP()
         p->parser_last_shifted_cmdarg = p->lexed_identifier_cmdarg; \
     } while (0)
 
-# define SET_LEX_STATE(ls) \
-    parser_set_lex_state(p, ls, __LINE__)
-static inline enum lex_state_e parser_set_lex_state(struct parser_params *p, enum lex_state_e ls, int line);
+# define OBSERVED_LEX_STATE_SET(ls) \
+    parser_set_observed_lex_state(p, ls, __LINE__)
+static inline enum lex_state_e parser_set_observed_lex_state(struct parser_params *p, enum lex_state_e ls, int line);
 
 typedef VALUE stack_type;
 
@@ -570,7 +570,7 @@ struct parser_params {
         const char *pcur;
         const char *pend;
         const char *ptok;
-        enum lex_state_e state;
+        enum lex_state_e observed_state;
         /* track the nest level of any parens "()[]{}" */
         int paren_nest;
         /* keep p->lex.paren_nest at the beginning of lambda "->" to detect tLAMBEG and keyword_do_LAMBDA */
@@ -678,7 +678,7 @@ struct parser_params {
 static inline enum lex_state_e
 parser_observed_lex_state(const struct parser_params *p)
 {
-    return p->lex.state;
+    return p->lex.observed_state;
 }
 
 #define NUMPARAM_ID_P(id) numparam_id_p(p, id)
@@ -2761,7 +2761,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
     const struct vtable *vars;
     struct rb_strterm_struct *strterm;
     struct lex_context ctxt;
-    enum lex_state_e state;
+    enum lex_state_e observed_state;
 }
 
 %token <id>
@@ -2937,7 +2937,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token tQSYMBOLS_BEG	"verbatim symbol list"
 %token tSTRING_END	"terminator"
 %token tSTRING_DEND	"'}'"
-%token <state> tSTRING_DBEG "'#{'"
+%token <observed_state> tSTRING_DBEG "'#{'"
 %token tSTRING_DVAR tLAMBEG tLABEL_END
 
 %token tIGNORED_NL tCOMMENT tEMBDOC_BEG tEMBDOC tEMBDOC_END
@@ -3251,7 +3251,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 
 %%
 program		:  {
-                        SET_LEX_STATE(EXPR_BEG);
+                        OBSERVED_LEX_STATE_SET(EXPR_BEG);
                         local_push(p, ifndef_ripper(1)+0);
                         /* jumps are possible in the top-level loop. */
                         if (!ifndef_ripper(p->do_loop) + 0) init_block_exit(p);
@@ -3387,7 +3387,7 @@ k_END		: keyword_END lex_ctxt
                     /*% ripper: $:2 %*/
                     };
 
-stmt		: keyword_alias[kw] fitem[new] {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fitem[old]
+stmt		: keyword_alias[kw] fitem[new] {OBSERVED_LEX_STATE_SET(EXPR_FNAME|EXPR_FITEM);} fitem[old]
                     {
                         $$ = NEW_ALIAS($new, $old, &@$, &@kw);
                     /*% ripper: alias!($:new, $:old) %*/
@@ -3613,11 +3613,11 @@ defn_head	: k_def def_name
 
 defs_head	: k_def singleton dot_or_colon
                     {
-                        SET_LEX_STATE(EXPR_FNAME);
+                        OBSERVED_LEX_STATE_SET(EXPR_FNAME);
                     }
                   def_name
                     {
-                        SET_LEX_STATE(EXPR_ENDFN|EXPR_LABEL); /* force for args */
+                        OBSERVED_LEX_STATE_SET(EXPR_ENDFN|EXPR_LABEL); /* force for args */
                         $$ = def_head_save(p, $k_def);
                         $$->nd_mid = $def_name;
                         $$->nd_def = NEW_DEFS($singleton, $def_name, 0, &@$);
@@ -3941,7 +3941,7 @@ cpath		: tCOLON3 cname
 fname		: operation
                 | op
                     {
-                        SET_LEX_STATE(EXPR_ENDFN);
+                        OBSERVED_LEX_STATE_SET(EXPR_ENDFN);
                         $$ = $1;
                     }
                 | reswords
@@ -3960,7 +3960,7 @@ undef_list	: fitem
                         $$ = NEW_UNDEF($1, &@$);
                     /*% ripper: rb_ary_new3(1, $:1) %*/
                     }
-                | undef_list ',' {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fitem
+                | undef_list ',' {OBSERVED_LEX_STATE_SET(EXPR_FNAME|EXPR_FITEM);} fitem
                     {
                         nd_set_last_loc($1, @4.end_pos);
                         rb_parser_ary_push_node(p, RNODE_UNDEF($1)->nd_undefs, $4);
@@ -4478,7 +4478,7 @@ primary		: inline_primary
                     nd_set_line($$, @kw.end_pos.lineno);
                 /*% ripper: begin!($:body) %*/
                 }
-            | tLPAREN_ARG compstmt(stmts)[body] {SET_LEX_STATE(EXPR_ENDARG);} ')'
+            | tLPAREN_ARG compstmt(stmts)[body] {OBSERVED_LEX_STATE_SET(EXPR_ENDARG);} ')'
                 {
                     if (nd_type_p($body, NODE_SELF)) RNODE_SELF($body)->nd_state = 0;
                     $$ = $body;
@@ -5422,7 +5422,7 @@ p_pktbl 	: {$$ = p->pktbl; p->pktbl = 0;};
 
 p_in_kwarg	:   {
                         $$ = p->ctxt;
-                        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+                        OBSERVED_LEX_STATE_SET(EXPR_BEG|EXPR_LABEL);
                         p->command_start = FALSE;
                         p->ctxt.in_kwarg = 1;
                         p->ctxt.in_alt_pattern = 0;
@@ -6122,7 +6122,7 @@ string_content	: tSTRING_CONTENT[content]
                         /* need to backup p->lex.strterm so that a string literal `%&foo,#$&,bar&` can be parsed */
                         $$ = p->lex.strterm;
                         p->lex.strterm = 0;
-                        SET_LEX_STATE(EXPR_BEG);
+                        OBSERVED_LEX_STATE_SET(EXPR_BEG);
                     }[strterm]<strterm>
                   string_dvar[dvar]
                     {
@@ -6131,14 +6131,14 @@ string_content	: tSTRING_CONTENT[content]
                         nd_set_line($$, @dvar.end_pos.lineno);
                     /*% ripper: string_dvar!($:dvar) %*/
                     }
-                | tSTRING_DBEG[state]
+                | tSTRING_DBEG[dbeg]
                     {
                         CMDARG_PUSH(0);
                         COND_PUSH(0);
                         /* need to backup p->lex.strterm so that a string literal `%!foo,#{ !0 },bar!` can be parsed */
                         $$ = p->lex.strterm;
                         p->lex.strterm = 0;
-                        SET_LEX_STATE(EXPR_BEG);
+                        OBSERVED_LEX_STATE_SET(EXPR_BEG);
                     }[term]<strterm>
                     {
                         $$ = p->lex.brace_nest;
@@ -6157,13 +6157,13 @@ string_content	: tSTRING_CONTENT[content]
                         COND_POP();
                         CMDARG_POP();
                         p->lex.strterm = $term;
-                        SET_LEX_STATE($state);
+                        OBSERVED_LEX_STATE_SET($dbeg);
                         p->lex.brace_nest = $brace;
                         p->lex.lpar_beg = $lpar;
                         p->heredoc_indent = $indent;
                         p->heredoc_line_indent = -1;
                         if ($compstmt) nd_unset_fl_newline($compstmt);
-                        $$ = new_evstr(p, $compstmt, &@$, &@state, &@string_dend);
+                        $$ = new_evstr(p, $compstmt, &@$, &@dbeg, &@string_dend);
                     /*% ripper: string_embexpr!($:compstmt) %*/
                     }
                 ;
@@ -6186,7 +6186,7 @@ symbol		: ssym
 
 ssym		: tSYMBEG sym
                     {
-                        SET_LEX_STATE(EXPR_END);
+                        OBSERVED_LEX_STATE_SET(EXPR_END);
                         VALUE str = rb_id2str($2);
                         /*
                          * TODO:
@@ -6206,7 +6206,7 @@ sym		: fname
 
 dsym		: tSYMBEG string_contents tSTRING_END
                     {
-                        SET_LEX_STATE(EXPR_END);
+                        OBSERVED_LEX_STATE_SET(EXPR_END);
                         $$ = dsym_node(p, $2, &@$);
                     /*% ripper: dyna_symbol!($:2) %*/
                     }
@@ -6275,7 +6275,7 @@ backref		: tNTH_REF
 
 superclass	: '<'
                     {
-                        SET_LEX_STATE(EXPR_BEG);
+                        OBSERVED_LEX_STATE_SET(EXPR_BEG);
                         p->command_start = TRUE;
                     }
                   expr_value term
@@ -6305,7 +6305,7 @@ f_paren_args	: '(' f_args rparen
                     {
                         $$ = $2;
                     /*% ripper: paren!($:2) %*/
-                        SET_LEX_STATE(EXPR_BEG);
+                        OBSERVED_LEX_STATE_SET(EXPR_BEG);
                         p->command_start = TRUE;
                         p->ctxt.in_argdef = 0;
                     }
@@ -6316,14 +6316,14 @@ f_arglist	: f_paren_args
                         $$ = p->ctxt;
                         p->ctxt.in_kwarg = 1;
                         p->ctxt.in_argdef = 1;
-                        SET_LEX_STATE(p->lex.state|EXPR_LABEL); /* force for args */
+                        OBSERVED_LEX_STATE_SET(p->lex.observed_state|EXPR_LABEL); /* force for args */
                     }<ctxt>
                   f_args term
                     {
                         p->ctxt.in_kwarg = $1.in_kwarg;
                         p->ctxt.in_argdef = 0;
                         $$ = $2;
-                        SET_LEX_STATE(EXPR_BEG);
+                        OBSERVED_LEX_STATE_SET(EXPR_BEG);
                         p->command_start = TRUE;
                     /*% ripper: $:2 %*/
                     }
@@ -6663,7 +6663,7 @@ singleton	: value_expr(singleton_expr)
 singleton_expr	: var_ref
                 | '('
                     {
-                        SET_LEX_STATE(EXPR_BEG);
+                        OBSERVED_LEX_STATE_SET(EXPR_BEG);
                         p->ctxt.in_argdef = 0;
                     }
                   expr rparen
@@ -8632,7 +8632,7 @@ parser_peek_variable_name(struct parser_params *p)
       case '{':
         p->lex.pcur = ptr;
         p->command_start = TRUE;
-        yylval.state = p->lex.state;
+        yylval.observed_state = p->lex.observed_state;
         return tSTRING_DBEG;
       default:
         return 0;
@@ -8726,7 +8726,7 @@ parser_state_end_p(struct parser_params *p)
 }
 
 static int
-parser_state_warn_balanced_p(struct parser_params *p, enum lex_state_e last_state)
+parser_state_warn_balanced_p(struct parser_params *p, enum lex_state_e last_observed_state)
 {
     int new_cond =
         !yy_lexer_context_is(p->current_parser_state, YY_CTX_CLASS) &&
@@ -8734,19 +8734,19 @@ parser_state_warn_balanced_p(struct parser_params *p, enum lex_state_e last_stat
         !parser_state_endfn_p(p) &&
         p->parser_last_shifted_token != ')';
     int old_cond =
-        !IS_lex_state_for(last_state, EXPR_CLASS|EXPR_DOT|EXPR_FNAME|EXPR_ENDFN);
+        !OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_CLASS|EXPR_DOT|EXPR_FNAME|EXPR_ENDFN);
 
     return PSLR_SHADOW_ASSERT(new_cond, old_cond);
 }
 
-#define OLD_IS_ARG() IS_lex_state(EXPR_ARG_ANY)
-#define OLD_IS_END() IS_lex_state(EXPR_END_ANY)
+#define OLD_IS_ARG() OBSERVED_STATE_HAS(EXPR_ARG_ANY)
+#define OLD_IS_END() OBSERVED_STATE_HAS(EXPR_END_ANY)
 #define IS_ARG() PSLR_SHADOW_ASSERT(parser_state_arg_p(p), OLD_IS_ARG())
 #define IS_END() PSLR_SHADOW_ASSERT(parser_state_end_p(p), OLD_IS_END())
-#define IS_BEG() (IS_lex_state(EXPR_BEG_ANY) || IS_lex_state_all(EXPR_ARG|EXPR_LABELED))
+#define IS_BEG() (OBSERVED_STATE_HAS(EXPR_BEG_ANY) || OBSERVED_STATE_HAS_ALL(EXPR_ARG|EXPR_LABELED))
 #define IS_SPCARG(c) (IS_ARG() && space_seen && !ISSPACE(c))
 #define OLD_LABEL_POSSIBLE() \
-    ((IS_lex_state(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || OLD_IS_ARG())
+    ((OBSERVED_STATE_HAS(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || OLD_IS_ARG())
 #define IS_LABEL_POSSIBLE(tok) \
     PSLR_SHADOW_ASSERT(PARSER_STATE_DEEPLY_ACCEPTS(p, (tok)) || \
                        yy_lexer_context_is(p->current_parser_state, YY_CTX_LABEL), \
@@ -8754,7 +8754,7 @@ parser_state_warn_balanced_p(struct parser_params *p, enum lex_state_e last_stat
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
 #define IS_AFTER_OPERATOR() \
     PSLR_SHADOW_ASSERT(PARSER_STATE_AFTER_OPERATOR_AT(p->current_parser_state), \
-                       IS_lex_state(EXPR_FNAME | EXPR_DOT))
+                       OBSERVED_STATE_HAS(EXPR_FNAME | EXPR_DOT))
 
 static inline enum yytokentype
 parser_string_term(struct parser_params *p, int func)
@@ -8764,17 +8764,17 @@ parser_string_term(struct parser_params *p, int func)
     if (func & STR_FUNC_REGEXP) {
         set_yylval_num(regx_options(p));
         dispatch_scan_event(p, tREGEXP_END);
-        SET_LEX_STATE(EXPR_END);
+        OBSERVED_LEX_STATE_SET(EXPR_END);
         return tREGEXP_END;
     }
     if (IS_LABEL_SUFFIX(0) &&
         PSLR_SHADOW_ASSERT(PARSER_STATE_ACCEPTS(p, tLABEL_END),
                            func & STR_FUNC_LABEL)) {
         nextc(p);
-        SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
+        OBSERVED_LEX_STATE_SET(EXPR_ARG|EXPR_LABELED);
         return tLABEL_END;
     }
-    SET_LEX_STATE(EXPR_END);
+    OBSERVED_LEX_STATE_SET(EXPR_END);
     return tSTRING_END;
 }
 
@@ -8791,7 +8791,7 @@ parse_string(struct parser_params *p, rb_strterm_literal_t *quote)
 
     if (func & STR_FUNC_TERM) {
         if (func & STR_FUNC_QWORDS) nextc(p); /* delayed term */
-        SET_LEX_STATE(EXPR_END);
+        OBSERVED_LEX_STATE_SET(EXPR_END);
         xfree(p->lex.strterm);
         p->lex.strterm = 0;
         return func & STR_FUNC_REGEXP ? tREGEXP_END : tSTRING_END;
@@ -9158,7 +9158,7 @@ set_number_literal(struct parser_params *p, enum yytokentype type, int suffix, i
       default:
         rb_bug("unexpected token: %d", type);
     }
-    SET_LEX_STATE(EXPR_END);
+    OBSERVED_LEX_STATE_SET(EXPR_END);
     return type;
 }
 
@@ -9234,7 +9234,7 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
         compile_error(p, "can't find string \"%.*s\" anywhere before EOF",
                       (int)len, eos);
         token_flush(p);
-        SET_LEX_STATE(EXPR_END);
+        OBSERVED_LEX_STATE_SET(EXPR_END);
         return tSTRING_END;
     }
     bol = was_bol(p);
@@ -9253,7 +9253,7 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
       restore:
         heredoc_restore(p, &p->lex.strterm->u.heredoc);
         token_flush(p);
-        SET_LEX_STATE(EXPR_END);
+        OBSERVED_LEX_STATE_SET(EXPR_END);
         return tSTRING_END;
     }
 
@@ -9838,7 +9838,7 @@ parser_prepare(struct parser_params *p)
     dispatch2(operator_ambiguous, TOKEN2VAL(tok), rb_str_new_cstr(syn))
 #endif
 #define warn_balanced(tok, op, syn) ((void) \
-    (parser_state_warn_balanced_p(p, last_state) && \
+    (parser_state_warn_balanced_p(p, last_observed_state) && \
      space_seen && !ISSPACE(c) && \
      (ambiguous_operator(tok, op, syn), 0)), \
      (enum yytokentype)(tok))
@@ -9859,7 +9859,7 @@ parse_numeric(struct parser_params *p, int c)
     int suffix;
 
     is_float = seen_point = seen_e = nondigit = 0;
-    SET_LEX_STATE(EXPR_END);
+    OBSERVED_LEX_STATE_SET(EXPR_END);
     newtok(p);
     if (c == '-' || c == '+') {
         tokadd(p, c);
@@ -10096,7 +10096,7 @@ parse_qmark(struct parser_params *p, int space_seen)
     const char *start = p->lex.pcur;
 
     if (IS_END()) {
-        SET_LEX_STATE(EXPR_VALUE);
+        OBSERVED_LEX_STATE_SET(EXPR_VALUE);
         return '?';
     }
     c = nextc(p);
@@ -10113,7 +10113,7 @@ parse_qmark(struct parser_params *p, int space_seen)
         }
       ternary:
         pushback(p, c);
-        SET_LEX_STATE(EXPR_VALUE);
+        OBSERVED_LEX_STATE_SET(EXPR_VALUE);
         return '?';
     }
     newtok(p);
@@ -10155,12 +10155,12 @@ parse_qmark(struct parser_params *p, int space_seen)
     tokfix(p);
     lit = STR_NEW3(tok(p), toklen(p), enc, 0);
     set_yylval_str(lit);
-    SET_LEX_STATE(EXPR_END);
+    OBSERVED_LEX_STATE_SET(EXPR_END);
     return tCHAR;
 }
 
 static enum yytokentype
-parse_percent(struct parser_params *p, const int space_seen, const enum lex_state_e last_state)
+parse_percent(struct parser_params *p, const int space_seen, const enum lex_state_e last_observed_state)
 {
     register int c;
     const char *ptok = p->lex.pcur;
@@ -10237,7 +10237,7 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
 
           case 's':
             p->lex.strterm = NEW_STRTERM(str_ssym, term, paren);
-            SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);
+            OBSERVED_LEX_STATE_SET(EXPR_FNAME|EXPR_FITEM);
             return tSYMBEG;
 
           default:
@@ -10247,15 +10247,15 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
     }
     if ((c = nextc(p)) == '=') {
         set_yylval_id('%');
-        SET_LEX_STATE(EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(EXPR_BEG);
         return tOP_ASGN;
     }
     if (IS_SPCARG(c) ||
         (PSLR_SHADOW_ASSERT(PARSER_STATE_FITEM_AT(p->current_parser_state),
-                            IS_lex_state(EXPR_FITEM)) && c == 's')) {
+                            OBSERVED_STATE_HAS(EXPR_FITEM)) && c == 's')) {
         goto quotation;
     }
-    SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+    OBSERVED_LEX_STATE_SET(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
     pushback(p, c);
     return warn_balanced('%', "%%", "string literal");
 }
@@ -10303,14 +10303,14 @@ parse_numvar(struct parser_params *p)
 }
 
 static enum yytokentype
-parse_gvar(struct parser_params *p, int parser_state, const enum lex_state_e last_state)
+parse_gvar(struct parser_params *p, int parser_state, const enum lex_state_e last_observed_state)
 {
     const char *ptr = p->lex.pcur;
     register int c;
 
-    (void)last_state;
+    (void)last_observed_state;
 
-    SET_LEX_STATE(EXPR_END);
+    OBSERVED_LEX_STATE_SET(EXPR_END);
     p->lex.ptok = ptr - 1; /* from '$' */
     newtok(p);
     c = nextc(p);
@@ -10366,7 +10366,7 @@ parse_gvar(struct parser_params *p, int parser_state, const enum lex_state_e las
       case '\'':	/* $': string after last match */
       case '+': 	/* $+: string matches last paren. */
         if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
-                               IS_lex_state_for(last_state, EXPR_FNAME))) {
+                               OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_FNAME))) {
             tokadd(p, '$');
             tokadd(p, c);
             goto gvar;
@@ -10384,7 +10384,7 @@ parse_gvar(struct parser_params *p, int parser_state, const enum lex_state_e las
         } while (c != -1 && ISDIGIT(c));
         pushback(p, c);
         if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
-                               IS_lex_state_for(last_state, EXPR_FNAME))) goto gvar;
+                               OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_FNAME))) goto gvar;
         tokfix(p);
         c = parse_numvar(p);
         set_yylval_node(NEW_NTH_REF(c, &_cur_loc));
@@ -10410,7 +10410,7 @@ parse_gvar(struct parser_params *p, int parser_state, const enum lex_state_e las
     }
 
     if (tokadd_ident(p, c)) return 0;
-    SET_LEX_STATE(EXPR_END);
+    OBSERVED_LEX_STATE_SET(EXPR_END);
     if (VALID_SYMNAME_P(tok(p), toklen(p), p->enc, ID_GLOBAL)) {
         tokenize_ident(p);
     }
@@ -10444,7 +10444,7 @@ parser_numbered_param(struct parser_params *p, int n)
 }
 
 static enum yytokentype
-parse_atmark(struct parser_params *p, int parser_state, const enum lex_state_e last_state)
+parse_atmark(struct parser_params *p, int parser_state, const enum lex_state_e last_observed_state)
 {
     const char *ptr = p->lex.pcur;
     enum yytokentype result = tIVAR;
@@ -10459,8 +10459,8 @@ parse_atmark(struct parser_params *p, int parser_state, const enum lex_state_e l
         tokadd(p, '@');
         c = nextc(p);
     }
-    SET_LEX_STATE(PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
-                                     IS_lex_state_for(last_state, EXPR_FNAME)) ?
+    OBSERVED_LEX_STATE_SET(PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
+                                     OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_FNAME)) ?
                   EXPR_ENDFN : EXPR_END);
     if (c == -1 || !parser_is_identchar(p)) {
         pushback(p, c);
@@ -10473,7 +10473,7 @@ parse_atmark(struct parser_params *p, int parser_state, const enum lex_state_e l
         }
         parser_show_error_line(p, &loc);
         set_yylval_noname();
-        SET_LEX_STATE(EXPR_END);
+        OBSERVED_LEX_STATE_SET(EXPR_END);
         return result;
     }
     else if (ISDIGIT(c)) {
@@ -10487,7 +10487,7 @@ parse_atmark(struct parser_params *p, int parser_state, const enum lex_state_e l
         }
         parser_show_error_line(p, &loc);
         set_yylval_noname();
-        SET_LEX_STATE(EXPR_END);
+        OBSERVED_LEX_STATE_SET(EXPR_END);
         return result;
     }
 
@@ -10540,7 +10540,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     enum yytokentype result;
     bool is_ascii = true;
     const int parser_state = p->current_parser_state;
-    const enum lex_state_e last_state = p->lex.state;
+    const enum lex_state_e last_observed_state = p->lex.observed_state;
     ID ident;
     int enforce_keyword_end = 0;
 
@@ -10555,7 +10555,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     }
     else if (c == '=' &&
              PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
-                                IS_lex_state_for(last_state, EXPR_FNAME)) &&
+                                OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_FNAME)) &&
              (!peek(p, '~') && !peek(p, '>') && (!peek(p, '=') || (peek_n(p, '>', 1))))) {
         result = tIDENTIFIER;
         tokadd(p, c);
@@ -10567,7 +10567,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     tokfix(p);
 
     if (IS_LABEL_SUFFIX(0) && IS_LABEL_POSSIBLE(tLABEL)) {
-        SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
+        OBSERVED_LEX_STATE_SET(EXPR_ARG|EXPR_LABELED);
         nextc(p);
         tokenize_ident(p);
         return tLABEL;
@@ -10592,7 +10592,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
             const struct kwtable *kw;
 
             if (PSLR_SHADOW_ASSERT(PARSER_STATE_DOT_AT(parser_state),
-                                   IS_lex_state(EXPR_DOT)) &&
+                                   OBSERVED_STATE_HAS(EXPR_DOT)) &&
                 (kw = rb_reserved_word(tok(p), toklen(p))) &&
                 kw->id[0] == keyword_end) {
                 if (p->debug) rb_parser_printf(p, "enforce_keyword_end is enabled\n");
@@ -10611,16 +10611,16 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
             PSLR_SHADOW_ASSERT(
                 enforce_keyword_end ||
                 !PARSER_STATE_DOT_AT(parser_state),
-                !IS_lex_state_for(last_state, EXPR_DOT) || enforce_keyword_end)) {
+                !OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_DOT) || enforce_keyword_end)) {
             if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
-                                   IS_lex_state_for(last_state, EXPR_FNAME))) {
-                SET_LEX_STATE(EXPR_ENDFN);
+                                   OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_FNAME))) {
+                OBSERVED_LEX_STATE_SET(EXPR_ENDFN);
                 set_yylval_name(rb_intern2(tok(p), toklen(p)));
                 return kw->id[0];
             }
-            SET_LEX_STATE(kw->state);
+            OBSERVED_LEX_STATE_SET(kw->state);
             if (PSLR_SHADOW_ASSERT(keyword_starts_command(kw->id[0]),
-                                   IS_lex_state_for(kw->state, EXPR_BEG))) {
+                                   OBSERVED_STATE_HAS_FOR(kw->state, EXPR_BEG))) {
                 p->command_start = TRUE;
             }
             if (kw->id[0] == keyword_do) {
@@ -10632,18 +10632,18 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
                 if (CMDARG_P() &&
                     PSLR_SHADOW_ASSERT(
                         !p->parser_last_shifted_cmdarg,
-                        !IS_lex_state_for(last_state, EXPR_CMDARG)))
+                        !OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_CMDARG)))
                     return keyword_do_block;
                 return keyword_do;
             }
             if (kw->id[0] == kw->id[1]) return kw->id[0];
             if (PSLR_SHADOW_ASSERT(
                     parser_state_keyword_primary_p(p),
-                    IS_lex_state_for(last_state,
+                    OBSERVED_STATE_HAS_FOR(last_observed_state,
                                      EXPR_BEG | EXPR_LABELED | EXPR_CLASS)))
                 return kw->id[0];
             else {
-                SET_LEX_STATE(EXPR_BEG | EXPR_LABEL);
+                OBSERVED_LEX_STATE_SET(EXPR_BEG | EXPR_LABEL);
                 return kw->id[1];
             }
         }
@@ -10651,23 +10651,23 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 
     if (PSLR_SHADOW_ASSERT(
             parser_state_identifier_sets_arg_p(p),
-            IS_lex_state_for(last_state,
+            OBSERVED_STATE_HAS_FOR(last_observed_state,
                              EXPR_BEG_ANY | EXPR_ARG_ANY | EXPR_DOT))) {
         p->lexed_identifier_cmdarg = cmd_state;
         if (cmd_state) {
-            SET_LEX_STATE(EXPR_CMDARG);
+            OBSERVED_LEX_STATE_SET(EXPR_CMDARG);
         }
         else {
-            SET_LEX_STATE(EXPR_ARG);
+            OBSERVED_LEX_STATE_SET(EXPR_ARG);
         }
     }
     else if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state) &&
                                 !PARSER_STATE_FITEM_AT(parser_state),
-                                last_state == EXPR_FNAME)) {
-        SET_LEX_STATE(EXPR_ENDFN);
+                                last_observed_state == EXPR_FNAME)) {
+        OBSERVED_LEX_STATE_SET(EXPR_ENDFN);
     }
     else {
-        SET_LEX_STATE(EXPR_END);
+        OBSERVED_LEX_STATE_SET(EXPR_END);
     }
 
     ident = tokenize_ident(p);
@@ -10675,10 +10675,10 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     if (PSLR_SHADOW_ASSERT(
             !PARSER_STATE_DOT_AT(parser_state) &&
             !PARSER_STATE_FNAME_AT(parser_state),
-            !IS_lex_state_for(last_state, EXPR_DOT|EXPR_FNAME)) &&
+            !OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_DOT|EXPR_FNAME)) &&
         (result == tIDENTIFIER) && /* not EXPR_FNAME, not attrasgn */
         (lvar_defined(p, ident) || NUMPARAM_ID_P(ident))) {
-        SET_LEX_STATE(EXPR_END|EXPR_LABEL);
+        OBSERVED_LEX_STATE_SET(EXPR_END|EXPR_LABEL);
     }
     return result;
 }
@@ -10700,7 +10700,7 @@ parser_yylex(struct parser_params *p)
     int space_seen = 0;
     int cmd_state;
     int label;
-    enum lex_state_e last_state;
+    enum lex_state_e last_observed_state;
     int fallthru = FALSE;
     int token_seen = p->token_seen;
 
@@ -10723,7 +10723,7 @@ parser_yylex(struct parser_params *p)
     token_flush(p);
 #endif
   retry:
-    last_state = p->lex.state;
+    last_observed_state = p->lex.observed_state;
     switch (c = nextc(p)) {
       case '\0':		/* NUL */
       case '\004':		/* ^D */
@@ -10794,9 +10794,9 @@ parser_yylex(struct parser_params *p)
         const int ignore_newline = PSLR_SHADOW_ASSERT(
             parser_context_continuation || parser_context_labeled ||
             (!parser_context_end && !PARSER_STATE_DEEPLY_ACCEPTS(p, '\n')),
-            ((IS_lex_state(EXPR_BEG|EXPR_CLASS|EXPR_FNAME|EXPR_DOT) &&
-              !IS_lex_state(EXPR_LABELED)) ||
-             IS_lex_state_all(EXPR_ARG|EXPR_LABELED)));
+            ((OBSERVED_STATE_HAS(EXPR_BEG|EXPR_CLASS|EXPR_FNAME|EXPR_DOT) &&
+              !OBSERVED_STATE_HAS(EXPR_LABELED)) ||
+             OBSERVED_STATE_HAS_ALL(EXPR_ARG|EXPR_LABELED)));
         if (ignore_newline) {
             if (!fallthru) {
                 dispatch_scan_event(p, tIGNORED_NL);
@@ -10865,14 +10865,14 @@ parser_yylex(struct parser_params *p)
         }
       normal_newline:
         p->command_start = TRUE;
-        SET_LEX_STATE(EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(EXPR_BEG);
         return '\n';
 
       case '*':
         if ((c = nextc(p)) == '*') {
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idPow);
-                SET_LEX_STATE(EXPR_BEG);
+                OBSERVED_LEX_STATE_SET(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -10892,7 +10892,7 @@ parser_yylex(struct parser_params *p)
         else {
             if (c == '=') {
                 set_yylval_id('*');
-                SET_LEX_STATE(EXPR_BEG);
+                OBSERVED_LEX_STATE_SET(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -10909,19 +10909,19 @@ parser_yylex(struct parser_params *p)
                 c = warn_balanced('*', "*", "argument prefix");
             }
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         return c;
 
       case '!':
         c = nextc(p);
         if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
+            OBSERVED_LEX_STATE_SET(EXPR_ARG);
             if (c == '@') {
                 return '!';
             }
         }
         else {
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
         }
         if (c == '=') {
             return tNEQ;
@@ -10962,7 +10962,7 @@ parser_yylex(struct parser_params *p)
             }
         }
 
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         if ((c = nextc(p)) == '=') {
             if ((c = nextc(p)) == '=') {
                 return tEQQ;
@@ -10988,21 +10988,21 @@ parser_yylex(struct parser_params *p)
                 (!parser_state_arg_p(p) ||
                  yy_lexer_context_is(p->current_parser_state, YY_CTX_LABELED) ||
                  space_seen),
-                !IS_lex_state(EXPR_DOT | EXPR_CLASS) &&
+                !OBSERVED_STATE_HAS(EXPR_DOT | EXPR_CLASS) &&
                 !OLD_IS_END() &&
-                (!OLD_IS_ARG() || IS_lex_state(EXPR_LABELED) || space_seen))) {
+                (!OLD_IS_ARG() || OBSERVED_STATE_HAS(EXPR_LABELED) || space_seen))) {
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
         }
         if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
+            OBSERVED_LEX_STATE_SET(EXPR_ARG);
         }
         else {
             if (PSLR_SHADOW_ASSERT(
                     yy_lexer_context_is(p->current_parser_state, YY_CTX_CLASS),
-                    IS_lex_state(EXPR_CLASS)))
+                    OBSERVED_STATE_HAS(EXPR_CLASS)))
                 p->command_start = TRUE;
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
         }
         if (c == '=') {
             if ((c = nextc(p)) == '>') {
@@ -11014,7 +11014,7 @@ parser_yylex(struct parser_params *p)
         if (c == '<') {
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idLTLT);
-                SET_LEX_STATE(EXPR_BEG);
+                OBSERVED_LEX_STATE_SET(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -11024,14 +11024,14 @@ parser_yylex(struct parser_params *p)
         return '<';
 
       case '>':
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         if ((c = nextc(p)) == '=') {
             return tGEQ;
         }
         if (c == '>') {
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idGTGT);
-                SET_LEX_STATE(EXPR_BEG);
+                OBSERVED_LEX_STATE_SET(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -11052,16 +11052,16 @@ parser_yylex(struct parser_params *p)
 
       case '`':
         if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(p->current_parser_state),
-                               IS_lex_state(EXPR_FNAME))) {
-            SET_LEX_STATE(EXPR_ENDFN);
+                               OBSERVED_STATE_HAS(EXPR_FNAME))) {
+            OBSERVED_LEX_STATE_SET(EXPR_ENDFN);
             return c;
         }
         if (PSLR_SHADOW_ASSERT(PARSER_STATE_DOT_AT(p->current_parser_state),
-                               IS_lex_state(EXPR_DOT))) {
+                               OBSERVED_STATE_HAS(EXPR_DOT))) {
             if (cmd_state)
-                SET_LEX_STATE(EXPR_CMDARG);
+                OBSERVED_LEX_STATE_SET(EXPR_CMDARG);
             else
-                SET_LEX_STATE(EXPR_ARG);
+                OBSERVED_LEX_STATE_SET(EXPR_ARG);
             return c;
         }
         p->lex.strterm = NEW_STRTERM(str_xquote, '`', 0);
@@ -11082,10 +11082,10 @@ parser_yylex(struct parser_params *p)
 
       case '&':
         if ((c = nextc(p)) == '&') {
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idANDOP);
-                SET_LEX_STATE(EXPR_BEG);
+                OBSERVED_LEX_STATE_SET(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -11093,12 +11093,12 @@ parser_yylex(struct parser_params *p)
         }
         else if (c == '=') {
             set_yylval_id('&');
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             return tOP_ASGN;
         }
         else if (c == '.') {
             set_yylval_id(idANDDOT);
-            SET_LEX_STATE(EXPR_DOT);
+            OBSERVED_LEX_STATE_SET(EXPR_DOT);
             return tANDDOT;
         }
         pushback(p, c);
@@ -11119,21 +11119,21 @@ parser_yylex(struct parser_params *p)
         else {
             c = warn_balanced('&', "&", "argument prefix");
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         return c;
 
       case '|':
         if ((c = nextc(p)) == '|') {
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idOROP);
-                SET_LEX_STATE(EXPR_BEG);
+                OBSERVED_LEX_STATE_SET(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
             if (PSLR_SHADOW_ASSERT(
                     yy_lexer_context_is(p->current_parser_state, YY_CTX_BEG),
-                    IS_lex_state_for(last_state, EXPR_BEG))) {
+                    OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_BEG))) {
                 c = '|';
                 pushback(p, '|');
                 return c;
@@ -11142,17 +11142,17 @@ parser_yylex(struct parser_params *p)
         }
         if (c == '=') {
             set_yylval_id('|');
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             return tOP_ASGN;
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG|EXPR_LABEL);
+        OBSERVED_LEX_STATE_SET(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG|EXPR_LABEL);
         pushback(p, c);
         return '|';
 
       case '+':
         c = nextc(p);
         if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
+            OBSERVED_LEX_STATE_SET(EXPR_ARG);
             if (c == '@') {
                 return tUPLUS;
             }
@@ -11161,7 +11161,7 @@ parser_yylex(struct parser_params *p)
         }
         if (c == '=') {
             set_yylval_id('+');
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             return tOP_ASGN;
         }
         int plus_beg = PARSER_STATE_BEG_TOKEN(p, tUPLUS, '+');
@@ -11170,21 +11170,21 @@ parser_yylex(struct parser_params *p)
                                IS_BEG() ||
                                (OLD_IS_ARG() && space_seen && !ISSPACE(c)))) {
             if (!plus_beg && plus_spcarg) arg_ambiguous(p, '+');
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
                 return parse_numeric(p, '+');
             }
             return tUPLUS;
         }
-        SET_LEX_STATE(EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(EXPR_BEG);
         pushback(p, c);
         return warn_balanced('+', "+", "unary operator");
 
       case '-':
         c = nextc(p);
         if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
+            OBSERVED_LEX_STATE_SET(EXPR_ARG);
             if (c == '@') {
                 return tUMINUS;
             }
@@ -11193,11 +11193,11 @@ parser_yylex(struct parser_params *p)
         }
         if (c == '=') {
             set_yylval_id('-');
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             return tOP_ASGN;
         }
         if (c == '>') {
-            SET_LEX_STATE(EXPR_ENDFN);
+            OBSERVED_LEX_STATE_SET(EXPR_ENDFN);
             yylval.num = p->lex.lpar_beg;
             p->lex.lpar_beg = p->lex.paren_nest;
             return tLAMBDA;
@@ -11208,31 +11208,31 @@ parser_yylex(struct parser_params *p)
                                IS_BEG() ||
                                (OLD_IS_ARG() && space_seen && !ISSPACE(c)))) {
             if (!minus_beg && minus_spcarg) arg_ambiguous(p, '-');
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
                 return tUMINUS_NUM;
             }
             return tUMINUS;
         }
-        SET_LEX_STATE(EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(EXPR_BEG);
         pushback(p, c);
         return warn_balanced('-', "-", "unary operator");
 
       case '.': {
         int parser_beg2 = PARSER_STATE_BEG_TOKEN(p, tBDOT2, tDOT2);
         int parser_beg3 = PARSER_STATE_BEG_TOKEN(p, tBDOT3, tDOT3);
-        SET_LEX_STATE(EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(EXPR_BEG);
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
                 if (p->ctxt.in_argdef || OLD_LABEL_POSSIBLE()) {
-                    SET_LEX_STATE(EXPR_ENDARG);
+                    OBSERVED_LEX_STATE_SET(EXPR_ENDARG);
                     return tBDOT3;
                 }
                 int is_beg3 = PSLR_SHADOW_ASSERT(
                     parser_beg3,
-                    IS_lex_state_for(last_state, EXPR_BEG_ANY) ||
-                    IS_lex_state_all_for(last_state, EXPR_ARG|EXPR_LABELED));
+                    OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_BEG_ANY) ||
+                    OBSERVED_STATE_HAS_ALL_FOR(last_observed_state, EXPR_ARG|EXPR_LABELED));
                 if (p->lex.paren_nest == 0 && looking_at_eol_p(p)) {
                     rb_warn0("... at EOL, should be parenthesized?");
                 }
@@ -11241,8 +11241,8 @@ parser_yylex(struct parser_params *p)
             pushback(p, c);
             int is_beg2 = PSLR_SHADOW_ASSERT(
                 parser_beg2,
-                IS_lex_state_for(last_state, EXPR_BEG_ANY) ||
-                IS_lex_state_all_for(last_state, EXPR_ARG|EXPR_LABELED));
+                OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_BEG_ANY) ||
+                OBSERVED_STATE_HAS_ALL_FOR(last_observed_state, EXPR_ARG|EXPR_LABELED));
             return is_beg2 ? tBDOT2 : tDOT2;
         }
         pushback(p, c);
@@ -11255,12 +11255,12 @@ parser_yylex(struct parser_params *p)
             else {
                 yyerror0("no .<digit> floating literal anymore; put 0 before dot");
             }
-            SET_LEX_STATE(EXPR_END);
+            OBSERVED_LEX_STATE_SET(EXPR_END);
             p->lex.ptok = p->lex.pcur;
             goto retry;
         }
         set_yylval_id('.');
-        SET_LEX_STATE(EXPR_DOT);
+        OBSERVED_LEX_STATE_SET(EXPR_DOT);
         return '.';
       }
 
@@ -11271,14 +11271,14 @@ parser_yylex(struct parser_params *p)
       case ')':
         COND_POP();
         CMDARG_POP();
-        SET_LEX_STATE(EXPR_ENDFN);
+        OBSERVED_LEX_STATE_SET(EXPR_ENDFN);
         p->lex.paren_nest--;
         return c;
 
       case ']':
         COND_POP();
         CMDARG_POP();
-        SET_LEX_STATE(EXPR_END);
+        OBSERVED_LEX_STATE_SET(EXPR_END);
         p->lex.paren_nest--;
         return c;
 
@@ -11287,7 +11287,7 @@ parser_yylex(struct parser_params *p)
         if (!p->lex.brace_nest--) return tSTRING_DEND;
         COND_POP();
         CMDARG_POP();
-        SET_LEX_STATE(EXPR_END);
+        OBSERVED_LEX_STATE_SET(EXPR_END);
         p->lex.paren_nest--;
         return c;
 
@@ -11298,19 +11298,19 @@ parser_yylex(struct parser_params *p)
                     PARSER_STATE_BEG_TOKEN(p, tSYMBEG, ':') ||
                     yy_lexer_context_is(p->current_parser_state, YY_CTX_CLASS) ||
                     (parser_state_arg_p(p) && space_seen),
-                    IS_BEG() || IS_lex_state(EXPR_CLASS) ||
+                    IS_BEG() || OBSERVED_STATE_HAS(EXPR_CLASS) ||
                     (OLD_IS_ARG() && space_seen))) {
-                SET_LEX_STATE(EXPR_BEG);
+                OBSERVED_LEX_STATE_SET(EXPR_BEG);
                 return tCOLON3;
             }
             set_yylval_id(idCOLON2);
-            SET_LEX_STATE(EXPR_DOT);
+            OBSERVED_LEX_STATE_SET(EXPR_DOT);
             return tCOLON2;
         }
         if (IS_END() || ISSPACE(c) || c == '#') {
             pushback(p, c);
             c = warn_balanced(':', ":", "symbol literal");
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             return c;
         }
         switch (c) {
@@ -11324,7 +11324,7 @@ parser_yylex(struct parser_params *p)
             pushback(p, c);
             break;
         }
-        SET_LEX_STATE(EXPR_FNAME);
+        OBSERVED_LEX_STATE_SET(EXPR_FNAME);
         return tSYMBEG;
 
       case '/':
@@ -11334,7 +11334,7 @@ parser_yylex(struct parser_params *p)
         }
         if ((c = nextc(p)) == '=') {
             set_yylval_id('/');
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             return tOP_ASGN;
         }
         pushback(p, c);
@@ -11342,26 +11342,26 @@ parser_yylex(struct parser_params *p)
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
             return tREGEXP_BEG;
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         return warn_balanced('/', "/", "regexp literal");
 
       case '^':
         if ((c = nextc(p)) == '=') {
             set_yylval_id('^');
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
             return tOP_ASGN;
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         pushback(p, c);
         return '^';
 
       case ';':
-        SET_LEX_STATE(EXPR_BEG);
+        OBSERVED_LEX_STATE_SET(EXPR_BEG);
         p->command_start = TRUE;
         return ';';
 
       case ',':
-        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+        OBSERVED_LEX_STATE_SET(EXPR_BEG|EXPR_LABEL);
         return ',';
 
       case '~':
@@ -11369,10 +11369,10 @@ parser_yylex(struct parser_params *p)
             if ((c = nextc(p)) != '@') {
                 pushback(p, c);
             }
-            SET_LEX_STATE(EXPR_ARG);
+            OBSERVED_LEX_STATE_SET(EXPR_ARG);
         }
         else {
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
         }
         return '~';
 
@@ -11386,19 +11386,19 @@ parser_yylex(struct parser_params *p)
             /* foo( ... ) => method call, no ambiguity */
         }
         else if (PSLR_SHADOW_ASSERT(PARSER_STATE_DEEPLY_ACCEPTS(p, tLPAREN_ARG),
-                                    OLD_IS_ARG() || IS_lex_state_all(EXPR_END|EXPR_LABEL))) {
+                                    OLD_IS_ARG() || OBSERVED_STATE_HAS_ALL(EXPR_END|EXPR_LABEL))) {
             c = tLPAREN_ARG;
         }
         else if (!lambda_beginning_p() &&
                  PSLR_SHADOW_ASSERT(parser_state_endfn_p(p),
-                                    IS_lex_state(EXPR_ENDFN))) {
+                                    OBSERVED_STATE_HAS(EXPR_ENDFN))) {
             rb_warning0("parentheses after method name is interpreted as "
                         "an argument list, not a decomposed argument");
         }
         p->lex.paren_nest++;
         COND_PUSH(0);
         CMDARG_PUSH(0);
-        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+        OBSERVED_LEX_STATE_SET(EXPR_BEG|EXPR_LABEL);
         return c;
 
       case '[':
@@ -11406,7 +11406,7 @@ parser_yylex(struct parser_params *p)
         if (IS_AFTER_OPERATOR()) {
             if ((c = nextc(p)) == ']') {
                 p->lex.paren_nest--;
-                SET_LEX_STATE(EXPR_ARG);
+                OBSERVED_LEX_STATE_SET(EXPR_ARG);
                 if ((c = nextc(p)) == '=') {
                     return tASET;
                 }
@@ -11414,7 +11414,7 @@ parser_yylex(struct parser_params *p)
                 return tAREF;
             }
             pushback(p, c);
-            SET_LEX_STATE(EXPR_ARG|EXPR_LABEL);
+            OBSERVED_LEX_STATE_SET(EXPR_ARG|EXPR_LABEL);
             return '[';
         }
         else if (PSLR_SHADOW_ASSERT(PARSER_STATE_BEG_TOKEN(p, tLBRACK, '['), IS_BEG())) {
@@ -11424,10 +11424,10 @@ parser_yylex(struct parser_params *p)
                  (space_seen ||
                   PSLR_SHADOW_ASSERT(
                       yy_lexer_context_is(p->current_parser_state, YY_CTX_LABELED),
-                      IS_lex_state(EXPR_LABELED)))) {
+                      OBSERVED_STATE_HAS(EXPR_LABELED)))) {
             c = tLBRACK;
         }
-        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+        OBSERVED_LEX_STATE_SET(EXPR_BEG|EXPR_LABEL);
         COND_PUSH(0);
         CMDARG_PUSH(0);
         return c;
@@ -11438,11 +11438,11 @@ parser_yylex(struct parser_params *p)
             c = tLAMBEG;
         else {
             if (p->current_parser_recovering) {
-                if (IS_lex_state(EXPR_LABELED))
+                if (OBSERVED_STATE_HAS(EXPR_LABELED))
                     c = tLBRACE;
-                else if (IS_lex_state(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
+                else if (OBSERVED_STATE_HAS(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
                     c = '{';
-                else if (IS_lex_state(EXPR_ENDARG))
+                else if (OBSERVED_STATE_HAS(EXPR_ENDARG))
                     c = tLBRACE_ARG;
                 else
                     c = tLBRACE;
@@ -11450,11 +11450,11 @@ parser_yylex(struct parser_params *p)
             else {
 #ifdef PARSER_DEBUG_PSLR_SHADOW
                 int old_c;
-                if (IS_lex_state(EXPR_LABELED))
+                if (OBSERVED_STATE_HAS(EXPR_LABELED))
                     old_c = tLBRACE;
-                else if (IS_lex_state(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
+                else if (OBSERVED_STATE_HAS(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
                     old_c = '{';
-                else if (IS_lex_state(EXPR_ENDARG))
+                else if (OBSERVED_STATE_HAS(EXPR_ENDARG))
                     old_c = tLBRACE_ARG;
                 else
                     old_c = tLBRACE;
@@ -11474,10 +11474,10 @@ parser_yylex(struct parser_params *p)
         }
         if (c != tLBRACE) {
             p->command_start = TRUE;
-            SET_LEX_STATE(EXPR_BEG);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG);
         }
         else {
-            SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+            OBSERVED_LEX_STATE_SET(EXPR_BEG|EXPR_LABEL);
         }
         ++p->lex.paren_nest;  /* after lambda_beginning_p() */
         COND_PUSH(0);
@@ -11497,13 +11497,13 @@ parser_yylex(struct parser_params *p)
         return '\\';
 
       case '%':
-        return parse_percent(p, space_seen, last_state);
+        return parse_percent(p, space_seen, last_observed_state);
 
       case '$':
-        return parse_gvar(p, p->current_parser_state, last_state);
+        return parse_gvar(p, p->current_parser_state, last_observed_state);
 
       case '@':
-        return parse_atmark(p, p->current_parser_state, last_state);
+        return parse_atmark(p, p->current_parser_state, last_observed_state);
 
       case '_':
         if (was_bol(p) && whole_match_p(p, "__END__", 7, 0)) {
@@ -13633,12 +13633,12 @@ id_is_var(struct parser_params *p, ID id)
 #endif
 
 static inline enum lex_state_e
-parser_set_lex_state(struct parser_params *p, enum lex_state_e ls, int line)
+parser_set_observed_lex_state(struct parser_params *p, enum lex_state_e ls, int line)
 {
     if (p->debug) {
         ls = rb_parser_trace_lex_state(p, parser_observed_lex_state(p), ls, line);
     }
-    return p->lex.state = ls;
+    return p->lex.observed_state = ls;
 }
 
 #ifndef RIPPER
