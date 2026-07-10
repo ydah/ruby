@@ -432,6 +432,7 @@ RBIMPL_WARNING_POP()
 #define PARSER_STATE_BEG_TOKEN(p, prefix_tok, binary_tok) \
     ((p)->parser_last_shifted_token != tLAMBDA && \
      (p)->parser_last_shifted_token != keyword_defined && \
+     !PARSER_STATE_FITEM_AT((p)->current_parser_state) && \
      (yy_lexer_context_is((p)->current_parser_state, \
                          YY_CTX_BEG | YY_CTX_PREFIX) || \
       PARSER_STATE_LABELED_AT((p)->current_parser_state) || \
@@ -8823,7 +8824,8 @@ parser_string_term(struct parser_params *p, int func)
         return tREGEXP_END;
     }
     if (IS_LABEL_SUFFIX(0) &&
-        PSLR_SHADOW_ASSERT(PARSER_STATE_ACCEPTS(p, tLABEL_END),
+        PSLR_SHADOW_ASSERT(PARSER_STATE_ACCEPTS(p, tLABEL_END) &&
+                           (func & STR_FUNC_LABEL),
                            func & STR_FUNC_LABEL)) {
         nextc(p);
         OBSERVED_LEX_STATE_SET(EXPR_ARG|EXPR_LABELED);
@@ -11533,11 +11535,13 @@ parser_yylex(struct parser_params *p)
                 else
                     old_c = tLBRACE;
 #endif
-                if (parser_state_labeled_p(p))
-                    c = tLBRACE;
-                else if (p->parser_last_shifted_token == ')' &&
-                         p->parser_last_closed_paren_arg)
+                if (p->parser_last_shifted_token == ')' &&
+                    p->parser_last_closed_paren_arg)
                     c = tLBRACE_ARG;
+                else if (parser_state_end_p(p))
+                    c = '{';
+                else if (parser_state_labeled_p(p))
+                    c = tLBRACE;
                 else if (PARSER_STATE_DEEPLY_ACCEPTS(p, '{'))
                     c = '{';
                 else if (PARSER_STATE_DEEPLY_ACCEPTS(p, tLBRACE_ARG))
