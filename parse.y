@@ -11227,14 +11227,42 @@ parser_yylex(struct parser_params *p)
         ++p->lex.brace_nest;
         if (lambda_beginning_p())
             c = tLAMBEG;
-        else if (IS_lex_state(EXPR_LABELED))
-            c = tLBRACE;      /* hash */
-        else if (IS_lex_state(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
-            c = '{';          /* block (primary) */
-        else if (IS_lex_state(EXPR_ENDARG))
-            c = tLBRACE_ARG;  /* block (expr) */
-        else
-            c = tLBRACE;      /* hash */
+        else {
+            if (p->current_parser_recovering) {
+                if (IS_lex_state(EXPR_LABELED))
+                    c = tLBRACE;
+                else if (IS_lex_state(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
+                    c = '{';
+                else if (IS_lex_state(EXPR_ENDARG))
+                    c = tLBRACE_ARG;
+                else
+                    c = tLBRACE;
+            }
+            else {
+#ifdef PARSER_DEBUG_PSLR_SHADOW
+                int old_c;
+                if (IS_lex_state(EXPR_LABELED))
+                    old_c = tLBRACE;
+                else if (IS_lex_state(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
+                    old_c = '{';
+                else if (IS_lex_state(EXPR_ENDARG))
+                    old_c = tLBRACE_ARG;
+                else
+                    old_c = tLBRACE;
+#endif
+                if (yy_lexer_context_is(p->current_parser_state, YY_CTX_LABELED))
+                    c = tLBRACE;
+                else if (PARSER_STATE_DEEPLY_ACCEPTS(p, '{'))
+                    c = '{';
+                else if (PARSER_STATE_DEEPLY_ACCEPTS(p, tLBRACE_ARG))
+                    c = tLBRACE_ARG;
+                else
+                    c = tLBRACE;
+#ifdef PARSER_DEBUG_PSLR_SHADOW
+                (void)PSLR_SHADOW_ASSERT(c == old_c, 1);
+#endif
+            }
+        }
         if (c != tLBRACE) {
             p->command_start = TRUE;
             SET_LEX_STATE(EXPR_BEG);
