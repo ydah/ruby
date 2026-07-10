@@ -625,6 +625,12 @@ struct parser_params {
 #endif
 };
 
+static inline enum lex_state_e
+parser_observed_lex_state(const struct parser_params *p)
+{
+    return p->lex.state;
+}
+
 #define NUMPARAM_ID_P(id) numparam_id_p(p, id)
 #define NUMPARAM_ID_TO_IDX(id) (unsigned int)(((id) >> ID_SCOPE_SHIFT) - (tNUMPARAM_1 - 1))
 #define NUMPARAM_IDX_TO_ID(idx) TOKEN2LOCALID((tNUMPARAM_1 - 1 + (idx)))
@@ -13296,7 +13302,7 @@ static inline enum lex_state_e
 parser_set_lex_state(struct parser_params *p, enum lex_state_e ls, int line)
 {
     if (p->debug) {
-        ls = rb_parser_trace_lex_state(p, p->lex.state, ls, line);
+        ls = rb_parser_trace_lex_state(p, parser_observed_lex_state(p), ls, line);
     }
     return p->lex.state = ls;
 }
@@ -13400,7 +13406,7 @@ rb_parser_fatal(struct parser_params *p, const char *fmt, ...)
     RB_GC_GUARD(mesg);
 
     mesg = rb_str_new(0, 0);
-    append_lex_state_name(p, p->lex.state, mesg);
+    append_lex_state_name(p, parser_observed_lex_state(p), mesg);
     compile_error(p, "lex.state: %"PRIsVALUE, mesg);
     rb_str_resize(mesg, 0);
     append_bitstack_value(p, p->cond_stack, mesg);
@@ -15831,7 +15837,7 @@ rb_ruby_parser_ruby_sourceline(rb_parser_t *p)
 int
 rb_ruby_parser_lex_state(rb_parser_t *p)
 {
-    return p->lex.state;
+    return parser_observed_lex_state(p);
 }
 
 void
