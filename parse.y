@@ -422,14 +422,17 @@ RBIMPL_WARNING_POP()
 
 #ifdef PARSER_DEBUG_PSLR_SHADOW
 # define PSLR_SHADOW_ASSERT(new_cond, old_cond) \
-    (RUBY_ASSERT(!!(new_cond) == !!(old_cond)), !!(new_cond))
+    (p->current_parser_recovering ? !!(old_cond) : \
+     (RUBY_ASSERT(!!(new_cond) == !!(old_cond)), !!(new_cond)))
 #else
-# define PSLR_SHADOW_ASSERT(new_cond, old_cond) (!!(new_cond))
+# define PSLR_SHADOW_ASSERT(new_cond, old_cond) \
+    (p->current_parser_recovering ? !!(old_cond) : !!(new_cond))
 #endif
 
 #define YYSETSTATE_CONTEXT(CurrentState) \
     do { \
         p->current_parser_state = (CurrentState); \
+        p->current_parser_recovering = YYRECOVERING(); \
         p->parser_stack_base = yyss; \
         p->parser_stack_top = yyssp; \
     } while (0)
@@ -539,6 +542,7 @@ struct parser_params {
     YYSTYPE *lval;
     YYLTYPE *yylloc;
     int current_parser_state;
+    int current_parser_recovering;
     const void *parser_stack_base;
     const void *parser_stack_top;
 
@@ -2926,7 +2930,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token tIGNORED_NL tCOMMENT tEMBDOC_BEG tEMBDOC tEMBDOC_END
 %token tHEREDOC_BEG tHEREDOC_END k__END__
 
-%lexer-context BEG tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term superclass k_else k_ensure allow_exits tLAMBEG keyword_do_LAMBDA
+%lexer-context BEG tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term superclass k_else k_ensure allow_exits block_open tLAMBEG keyword_do_LAMBDA
 %lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
 %lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' '|' opt_block_param_def p_pktbl
 %lexer-context END k_END keyword_defined primary method_call string user_variable keyword_variable backref rparen rbracket rbrace tIDENTIFIER tCONSTANT
