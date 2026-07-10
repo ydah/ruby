@@ -47,8 +47,15 @@ module Lrama
       # Position 0 means we're at the start of a rule (just entered via GOTO)
       return default_beg_context if item.position == 0
 
-      prev_sym = item.rhs[item.position - 1]
-      classify_symbol_context(prev_sym)
+      index = item.position - 1
+      while index >= 0
+        prev_sym = item.rhs[index]
+        return classify_symbol_context(prev_sym) unless midrule_action_symbol?(prev_sym)
+
+        index -= 1
+      end
+
+      default_beg_context
     end
 
     # Classify context based on the symbol before the dot.
@@ -125,6 +132,15 @@ module Lrama
     end
 
     private
+
+    # Midrule actions are lowered to generated empty nonterminals named $@N,
+    # or @N when their value is referenced by a later action.
+    # They do not represent a lexical context transition, so classification
+    # must continue with the preceding grammar symbol.
+    # @rbs (Grammar::Symbol sym) -> bool
+    def midrule_action_symbol?(sym)
+      /\A\$?@\d+\z/.match?(sym.id.s_value)
+    end
 
     # Build a map from symbol name → context bitmask.
     # @rbs () -> Hash[String, Integer]

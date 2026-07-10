@@ -397,6 +397,9 @@ RBIMPL_WARNING_POP()
     PARSER_STATE_ACCEPTS_AT((p)->current_parser_state, (tok))
 #define PARSER_STATE_EVENTUALLY_ACCEPTS(p, tok) \
     yy_state_eventually_accepts_token((p)->current_parser_state, (tok))
+#define PARSER_STATE_DEEPLY_ACCEPTS(p, tok) \
+    yy_state_deep_accepts_token((p)->current_parser_state, (tok), \
+                                (p)->parser_stack_base, (p)->parser_stack_top)
 
 #define PARSER_STATE_AFTER_OPERATOR_AT(state) \
     (PARSER_STATE_ACCEPTS_AT((state), tAREF) || \
@@ -405,7 +408,8 @@ RBIMPL_WARNING_POP()
     (PARSER_STATE_AFTER_OPERATOR_AT(state) && \
      PARSER_STATE_ACCEPTS_AT((state), keyword_class))
 #define PARSER_STATE_DOT_AT(state) \
-    yy_lexer_context_is((state), YY_CTX_DOT)
+    (yy_lexer_context_is((state), YY_CTX_DOT) && \
+     !PARSER_STATE_FNAME_AT(state))
 #define PARSER_STATE_FITEM_AT(state) \
     (PARSER_STATE_AFTER_OPERATOR_AT(state) && \
      PARSER_STATE_ACCEPTS_AT((state), tSYMBEG))
@@ -416,6 +420,13 @@ RBIMPL_WARNING_POP()
 #else
 # define PSLR_SHADOW_ASSERT(new_cond, old_cond) (!!(new_cond))
 #endif
+
+#define YYSETSTATE_CONTEXT(CurrentState) \
+    do { \
+        p->current_parser_state = (CurrentState); \
+        p->parser_stack_base = yyss; \
+        p->parser_stack_top = yyssp; \
+    } while (0)
 
 # define SET_LEX_STATE(ls) \
     parser_set_lex_state(p, ls, __LINE__)
@@ -522,6 +533,8 @@ struct parser_params {
     YYSTYPE *lval;
     YYLTYPE *yylloc;
     int current_parser_state;
+    const void *parser_stack_base;
+    const void *parser_stack_top;
 
     struct {
         rb_strterm_t *strterm;
@@ -2907,8 +2920,10 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token tIGNORED_NL tCOMMENT tEMBDOC_BEG tEMBDOC tEMBDOC_END
 %token tHEREDOC_BEG tHEREDOC_END k__END__
 
-%lexer-context BEG tCOLON3
+%lexer-context BEG tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin expr_value_do f_arglist then term superclass k_else k_ensure allow_exits tLAMBEG keyword_do_LAMBDA
 %lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
+%lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' opt_block_param_def
+%lexer-context END k_END primary method_call string user_variable keyword_variable backref tIDENTIFIER tCONSTANT
 
 /*
  *	precedence table
@@ -10584,14 +10599,24 @@ parser_yylex(struct parser_params *p)
       case '\n':
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
-        c = (IS_lex_state(EXPR_BEG|EXPR_CLASS|EXPR_FNAME|EXPR_DOT) &&
-             !IS_lex_state(EXPR_LABELED));
-        if (c || IS_lex_state_all(EXPR_ARG|EXPR_LABELED)) {
+        const int parser_context_continuation =
+            yy_lexer_context_is(p->current_parser_state, YY_CTX_BEG | YY_CTX_DOT);
+        const int parser_context_labeled =
+            yy_lexer_context_is(p->current_parser_state, YY_CTX_LABELED);
+        const int parser_context_end =
+            yy_lexer_context_is(p->current_parser_state, YY_CTX_END);
+        const int ignore_newline = PSLR_SHADOW_ASSERT(
+            parser_context_continuation || parser_context_labeled ||
+            (!parser_context_end && !PARSER_STATE_DEEPLY_ACCEPTS(p, '\n')),
+            ((IS_lex_state(EXPR_BEG|EXPR_CLASS|EXPR_FNAME|EXPR_DOT) &&
+              !IS_lex_state(EXPR_LABELED)) ||
+             IS_lex_state_all(EXPR_ARG|EXPR_LABELED)));
+        if (ignore_newline) {
             if (!fallthru) {
                 dispatch_scan_event(p, tIGNORED_NL);
             }
             fallthru = FALSE;
-            if (!c && p->ctxt.in_kwarg) {
+            if (!parser_context_continuation && p->ctxt.in_kwarg) {
                 goto normal_newline;
             }
             goto retry;
