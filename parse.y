@@ -413,6 +413,11 @@ RBIMPL_WARNING_POP()
 #define PARSER_STATE_FITEM_AT(state) \
     (PARSER_STATE_AFTER_OPERATOR_AT(state) && \
      PARSER_STATE_ACCEPTS_AT((state), tSYMBEG))
+#define PARSER_STATE_BEG_TOKEN(p, prefix_tok, binary_tok) \
+    (yy_lexer_context_is((p)->current_parser_state, \
+                         YY_CTX_BEG | YY_CTX_LABELED | YY_CTX_LABEL | YY_CTX_PREFIX) || \
+     (PARSER_STATE_DEEPLY_ACCEPTS((p), (prefix_tok)) && \
+      !PARSER_STATE_DEEPLY_ACCEPTS((p), (binary_tok))))
 
 #ifdef PARSER_DEBUG_PSLR_SHADOW
 # define PSLR_SHADOW_ASSERT(new_cond, old_cond) \
@@ -2922,10 +2927,10 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 
 %lexer-context BEG tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term superclass k_else k_ensure allow_exits tLAMBEG keyword_do_LAMBDA
 %lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
-%lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' opt_block_param_def
+%lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' '|' opt_block_param_def p_pktbl
 %lexer-context END k_END primary method_call string user_variable keyword_variable backref tIDENTIFIER tCONSTANT
 %lexer-context LABEL tLBRACE
-%lexer-context PREFIX k_return
+%lexer-context PREFIX k_return keyword_break keyword_next
 
 /*
  *	precedence table
@@ -10701,7 +10706,9 @@ parser_yylex(struct parser_params *p)
                 rb_warning0("'**' interpreted as argument prefix");
                 c = tDSTAR;
             }
-            else if (IS_BEG()) {
+            else if (PSLR_SHADOW_ASSERT(
+                         PARSER_STATE_BEG_TOKEN(p, tDSTAR, tPOW),
+                         IS_BEG())) {
                 c = tDSTAR;
             }
             else {
@@ -10719,7 +10726,9 @@ parser_yylex(struct parser_params *p)
                 rb_warning0("'*' interpreted as argument prefix");
                 c = tSTAR;
             }
-            else if (IS_BEG()) {
+            else if (PSLR_SHADOW_ASSERT(
+                         PARSER_STATE_BEG_TOKEN(p, tSTAR, '*'),
+                         IS_BEG())) {
                 c = tSTAR;
             }
             else {
@@ -10918,7 +10927,9 @@ parser_yylex(struct parser_params *p)
             }
             c = tAMPER;
         }
-        else if (IS_BEG()) {
+        else if (PSLR_SHADOW_ASSERT(
+                     PARSER_STATE_BEG_TOKEN(p, tAMPER, '&'),
+                     IS_BEG())) {
             c = tAMPER;
         }
         else {
@@ -10967,9 +10978,7 @@ parser_yylex(struct parser_params *p)
             SET_LEX_STATE(EXPR_BEG);
             return tOP_ASGN;
         }
-        if (PSLR_SHADOW_ASSERT(yy_lexer_context_is(p->current_parser_state, YY_CTX_BEG | YY_CTX_PREFIX) ||
-                               (PARSER_STATE_DEEPLY_ACCEPTS(p, tUPLUS) &&
-                                !PARSER_STATE_DEEPLY_ACCEPTS(p, '+')), IS_BEG()) ||
+        if (PSLR_SHADOW_ASSERT(PARSER_STATE_BEG_TOKEN(p, tUPLUS, '+'), IS_BEG()) ||
             (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
             SET_LEX_STATE(EXPR_BEG);
             pushback(p, c);
@@ -11003,9 +11012,7 @@ parser_yylex(struct parser_params *p)
             p->lex.lpar_beg = p->lex.paren_nest;
             return tLAMBDA;
         }
-        if (PSLR_SHADOW_ASSERT(yy_lexer_context_is(p->current_parser_state, YY_CTX_BEG | YY_CTX_PREFIX) ||
-                               (PARSER_STATE_DEEPLY_ACCEPTS(p, tUMINUS) &&
-                                !PARSER_STATE_DEEPLY_ACCEPTS(p, '-')), IS_BEG()) ||
+        if (PSLR_SHADOW_ASSERT(PARSER_STATE_BEG_TOKEN(p, tUMINUS, '-'), IS_BEG()) ||
             (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
             SET_LEX_STATE(EXPR_BEG);
             pushback(p, c);
