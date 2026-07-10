@@ -11225,7 +11225,7 @@ parser_yylex(struct parser_params *p)
         OBSERVED_LEX_STATE_SET(EXPR_BEG);
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
-                if (p->ctxt.in_argdef || OLD_LABEL_POSSIBLE()) {
+                if (p->ctxt.in_argdef || IS_LABEL_POSSIBLE(tLABEL)) {
                     OBSERVED_LEX_STATE_SET(EXPR_ENDARG);
                     return tBDOT3;
                 }
