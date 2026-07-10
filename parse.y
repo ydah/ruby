@@ -391,10 +391,24 @@ RBIMPL_WARNING_POP()
 #define IS_lex_state(ls)	IS_lex_state_for(p->lex.state, (ls))
 #define IS_lex_state_all(ls)	IS_lex_state_all_for(p->lex.state, (ls))
 
+#define PARSER_STATE_ACCEPTS_AT(state, tok) \
+    yy_state_accepts_token((state), (tok))
 #define PARSER_STATE_ACCEPTS(p, tok) \
-    yy_state_accepts_token((p)->current_parser_state, (tok))
+    PARSER_STATE_ACCEPTS_AT((p)->current_parser_state, (tok))
 #define PARSER_STATE_EVENTUALLY_ACCEPTS(p, tok) \
     yy_state_eventually_accepts_token((p)->current_parser_state, (tok))
+
+#define PARSER_STATE_AFTER_OPERATOR_AT(state) \
+    (PARSER_STATE_ACCEPTS_AT((state), tAREF) || \
+     yy_lexer_context_is((state), YY_CTX_DOT))
+#define PARSER_STATE_FNAME_AT(state) \
+    (PARSER_STATE_AFTER_OPERATOR_AT(state) && \
+     PARSER_STATE_ACCEPTS_AT((state), keyword_class))
+#define PARSER_STATE_DOT_AT(state) \
+    yy_lexer_context_is((state), YY_CTX_DOT)
+#define PARSER_STATE_FITEM_AT(state) \
+    (PARSER_STATE_AFTER_OPERATOR_AT(state) && \
+     PARSER_STATE_ACCEPTS_AT((state), tSYMBEG))
 
 #ifdef PARSER_DEBUG_PSLR_SHADOW
 # define PSLR_SHADOW_ASSERT(new_cond, old_cond) \
@@ -2892,6 +2906,9 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 
 %token tIGNORED_NL tCOMMENT tEMBDOC_BEG tEMBDOC tEMBDOC_END
 %token tHEREDOC_BEG tHEREDOC_END k__END__
+
+%lexer-context BEG tCOLON3
+%lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
 
 /*
  *	precedence table
@@ -8591,7 +8608,9 @@ parser_peek_variable_name(struct parser_params *p)
         (IS_lex_state(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || \
         IS_ARG())
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
-#define IS_AFTER_OPERATOR() IS_lex_state(EXPR_FNAME | EXPR_DOT)
+#define IS_AFTER_OPERATOR() \
+    PSLR_SHADOW_ASSERT(PARSER_STATE_AFTER_OPERATOR_AT(p->current_parser_state), \
+                       IS_lex_state(EXPR_FNAME | EXPR_DOT))
 
 static inline enum yytokentype
 parser_string_term(struct parser_params *p, int func)
@@ -10085,7 +10104,9 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
         SET_LEX_STATE(EXPR_BEG);
         return tOP_ASGN;
     }
-    if (IS_SPCARG(c) || (IS_lex_state(EXPR_FITEM) && c == 's')) {
+    if (IS_SPCARG(c) ||
+        (PSLR_SHADOW_ASSERT(PARSER_STATE_FITEM_AT(p->current_parser_state),
+                            IS_lex_state(EXPR_FITEM)) && c == 's')) {
         goto quotation;
     }
     SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
@@ -10136,10 +10157,12 @@ parse_numvar(struct parser_params *p)
 }
 
 static enum yytokentype
-parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
+parse_gvar(struct parser_params *p, int parser_state, const enum lex_state_e last_state)
 {
     const char *ptr = p->lex.pcur;
     register int c;
+
+    (void)last_state;
 
     SET_LEX_STATE(EXPR_END);
     p->lex.ptok = ptr - 1; /* from '$' */
@@ -10196,7 +10219,8 @@ parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
       case '`': 	/* $`: string before last match */
       case '\'':	/* $': string after last match */
       case '+': 	/* $+: string matches last paren. */
-        if (IS_lex_state_for(last_state, EXPR_FNAME)) {
+        if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
+                               IS_lex_state_for(last_state, EXPR_FNAME))) {
             tokadd(p, '$');
             tokadd(p, c);
             goto gvar;
@@ -10213,7 +10237,8 @@ parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
             c = nextc(p);
         } while (c != -1 && ISDIGIT(c));
         pushback(p, c);
-        if (IS_lex_state_for(last_state, EXPR_FNAME)) goto gvar;
+        if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
+                               IS_lex_state_for(last_state, EXPR_FNAME))) goto gvar;
         tokfix(p);
         c = parse_numvar(p);
         set_yylval_node(NEW_NTH_REF(c, &_cur_loc));
@@ -10328,6 +10353,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 {
     enum yytokentype result;
     bool is_ascii = true;
+    const int parser_state = p->current_parser_state;
     const enum lex_state_e last_state = p->lex.state;
     ID ident;
     int enforce_keyword_end = 0;
@@ -10341,7 +10367,9 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         result = tFID;
         tokadd(p, c);
     }
-    else if (c == '=' && IS_lex_state(EXPR_FNAME) &&
+    else if (c == '=' &&
+             PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
+                                IS_lex_state(EXPR_FNAME)) &&
              (!peek(p, '~') && !peek(p, '>') && (!peek(p, '=') || (peek_n(p, '>', 1))))) {
         result = tIDENTIFIER;
         tokadd(p, c);
@@ -10379,7 +10407,10 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         if ((p->ruby_sourceline > lineno) && (beg_pos <= column)) {
             const struct kwtable *kw;
 
-            if ((IS_lex_state(EXPR_DOT)) && (kw = rb_reserved_word(tok(p), toklen(p))) && (kw && kw->id[0] == keyword_end)) {
+            if (PSLR_SHADOW_ASSERT(PARSER_STATE_DOT_AT(parser_state),
+                                   IS_lex_state(EXPR_DOT)) &&
+                (kw = rb_reserved_word(tok(p), toklen(p))) &&
+                kw->id[0] == keyword_end) {
                 if (p->debug) rb_parser_printf(p, "enforce_keyword_end is enabled\n");
                 enforce_keyword_end = 1;
             }
@@ -10387,14 +10418,19 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     }
 #endif
 
-    if (is_ascii && (!IS_lex_state(EXPR_DOT) || enforce_keyword_end)) {
+    if (is_ascii) {
         const struct kwtable *kw;
 
         /* See if it is a reserved word.  */
         kw = rb_reserved_word(tok(p), toklen(p));
-        if (kw) {
+        if (kw &&
+            PSLR_SHADOW_ASSERT(
+                enforce_keyword_end ||
+                !PARSER_STATE_DOT_AT(parser_state),
+                !IS_lex_state(EXPR_DOT) || enforce_keyword_end)) {
             enum lex_state_e state = p->lex.state;
-            if (IS_lex_state_for(state, EXPR_FNAME)) {
+            if (PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
+                                   IS_lex_state_for(state, EXPR_FNAME))) {
                 SET_LEX_STATE(EXPR_ENDFN);
                 set_yylval_name(rb_intern2(tok(p), toklen(p)));
                 return kw->id[0];
@@ -11166,7 +11202,7 @@ parser_yylex(struct parser_params *p)
         return parse_percent(p, space_seen, last_state);
 
       case '$':
-        return parse_gvar(p, last_state);
+        return parse_gvar(p, p->current_parser_state, last_state);
 
       case '@':
         return parse_atmark(p, last_state);
