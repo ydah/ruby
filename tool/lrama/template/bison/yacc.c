@@ -615,6 +615,9 @@ static const <%= output.int_type_for(output.context.yyr2) %> yyr2[] =
 #ifndef YYPSLR_SET_PARSER_STATE
 # define YYPSLR_SET_PARSER_STATE(State) ((void) 0)
 #endif
+#ifndef YYSETSHIFTTOKEN_CONTEXT
+# define YYSETSHIFTTOKEN_CONTEXT(CurrentToken) ((void) 0)
+#endif
 <%- end -%>
 
 static int YY_ATTRIBUTE_UNUSED
@@ -2044,6 +2047,9 @@ yybackup:
   *++yyvsp = yylval;
   YY_IGNORE_MAYBE_UNINITIALIZED_END
   *++yylsp = yylloc;
+<%- if output.pslr_enabled? -%>
+  YYSETSHIFTTOKEN_CONTEXT (yychar);
+<%- end -%>
 <%= output.after_shift_function("/* %after-shift code. */") %>
 
   /* Discard the shifted token.  */
