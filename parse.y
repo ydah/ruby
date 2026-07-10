@@ -10051,7 +10051,7 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
     register int c;
     const char *ptok = p->lex.pcur;
 
-    if (IS_BEG()) {
+    if (PSLR_SHADOW_ASSERT(PARSER_STATE_BEG_TOKEN(p, tSTRING_BEG, '%'), IS_BEG())) {
         int term;
         int paren;
 
@@ -11125,7 +11125,7 @@ parser_yylex(struct parser_params *p)
         return tSYMBEG;
 
       case '/':
-        if (IS_BEG()) {
+        if (PSLR_SHADOW_ASSERT(PARSER_STATE_BEG_TOKEN(p, tREGEXP_BEG, '/'), IS_BEG())) {
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
             return tREGEXP_BEG;
         }
