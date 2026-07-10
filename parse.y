@@ -416,12 +416,33 @@ RBIMPL_WARNING_POP()
 #define PARSER_STATE_ENDFN_AT(state) \
     (yystos[(state)] == YYSYMBOL_defn_head || \
      yystos[(state)] == YYSYMBOL_defs_head)
+#define PARSER_STATE_LABELED_AT(state) \
+    (yy_state_accessed_by_token((state), tLPAREN) || \
+     yy_state_accessed_by_token((state), tLPAREN_ARG) || \
+     yy_state_accessed_by_token((state), '(') || \
+     yy_state_accessed_by_token((state), '[') || \
+     yy_state_accessed_by_token((state), ',') || \
+     yy_state_accessed_by_token((state), '|') || \
+     yystos[(state)] == YYSYMBOL_opt_block_param_def || \
+     yystos[(state)] == YYSYMBOL_p_pktbl || \
+     yystos[(state)] == YYSYMBOL_p_kw_label || \
+     yystos[(state)] == YYSYMBOL_f_label)
+#define PARSER_STATE_LABEL_AT(state) \
+    yy_state_accessed_by_token((state), tLBRACE)
 #define PARSER_STATE_BEG_TOKEN(p, prefix_tok, binary_tok) \
-    (yy_lexer_context_is((p)->current_parser_state, \
-                         YY_CTX_BEG | YY_CTX_LABELED | YY_CTX_LABEL | YY_CTX_PREFIX) || \
-     (!yy_lexer_context_is((p)->current_parser_state, YY_CTX_END) && \
+    ((p)->parser_last_shifted_token != tLAMBDA && \
+     (p)->parser_last_shifted_token != keyword_defined && \
+     (yy_lexer_context_is((p)->current_parser_state, \
+                         YY_CTX_BEG | YY_CTX_PREFIX) || \
+      PARSER_STATE_LABELED_AT((p)->current_parser_state) || \
+      PARSER_STATE_LABEL_AT((p)->current_parser_state) || \
+      yystos[(p)->current_parser_state] == YYSYMBOL_opt_bv_decl || \
+      yystos[(p)->current_parser_state] == YYSYMBOL_p_pktbl || \
+      yystos[(p)->current_parser_state] == YYSYMBOL_p_kw_label || \
+      yystos[(p)->current_parser_state] == YYSYMBOL_f_label || \
+      (!yy_lexer_context_is((p)->current_parser_state, YY_CTX_END) && \
       PARSER_STATE_DEEPLY_ACCEPTS((p), (prefix_tok)) && \
-      !PARSER_STATE_DEEPLY_ACCEPTS((p), (binary_tok))))
+      !PARSER_STATE_DEEPLY_ACCEPTS((p), (binary_tok)))))
 
 #ifdef PARSER_DEBUG_PSLR_SHADOW
 # define PSLR_SHADOW_ASSERT(new_cond, old_cond) \
@@ -444,6 +465,15 @@ RBIMPL_WARNING_POP()
     do { \
         p->parser_last_shifted_token = (CurrentToken); \
         p->parser_last_shifted_cmdarg = p->lexed_identifier_cmdarg; \
+        if ((CurrentToken) == tLPAREN_ARG || (CurrentToken) == tLPAREN || \
+            (CurrentToken) == '(') { \
+            p->parser_paren_arg_stack = \
+                (p->parser_paren_arg_stack << 1) | ((CurrentToken) == tLPAREN_ARG); \
+        } \
+        else if ((CurrentToken) == ')') { \
+            p->parser_last_closed_paren_arg = p->parser_paren_arg_stack & 1; \
+            p->parser_paren_arg_stack >>= 1; \
+        } \
     } while (0)
 
 # define OBSERVED_LEX_STATE_SET(ls) \
@@ -558,6 +588,8 @@ struct parser_params {
     int parser_last_shifted_token;
     int parser_last_shifted_cmdarg;
     int lexed_identifier_cmdarg;
+    VALUE parser_paren_arg_stack;
+    int parser_last_closed_paren_arg;
 
     struct {
         rb_strterm_t *strterm;
@@ -2943,14 +2975,11 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token tIGNORED_NL tCOMMENT tEMBDOC_BEG tEMBDOC tEMBDOC_END
 %token tHEREDOC_BEG tHEREDOC_END k__END__
 
-%lexer-context BEG '\n' '+' tLSHFT tCOLON3 tSTRING_DBEG f_paren_args k_case k_begin tDOT2 tDOT3 expr_value_do f_arglist then term terms lex_ctxt superclass k_else k_ensure allow_exits block_open opt_bv_decl tLAMBEG keyword_do_LAMBDA
+%lexer-context BEG '\n' '+' '-' '*' '&' '%' '?' ':' tLSHFT tCOLON3 tSTRING_DBEG tASSOC tANDOP tOROP tCMP tBDOT3 f_paren_args k_case k_begin k_if k_elsif tDOT2 tDOT3 expr_value_do f_arglist then term terms lex_ctxt superclass k_else k_ensure allow_exits block_open opt_bv_decl tLAMBEG keyword_do_LAMBDA do tLPAREN tLPAREN_ARG tLBRACK tLBRACE '(' '[' '{' ',' ';' '|' opt_block_param_def p_args_head assoc_list mlhs_head aref_args after_rescue relop keyword_and keyword_or modifier_if modifier_unless tUPLUS tUMINUS
 %lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
-%lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' '|' opt_block_param_def p_pktbl p_kw_label f_label
 %lexer-context END k_END keyword_self keyword_nil keyword_true keyword_false primary method_call string simple_numeric user_variable keyword_variable backref rparen rbracket rbrace tIDENTIFIER tCONSTANT
-%lexer-context LABEL tLBRACE
 %lexer-context PREFIX k_return keyword_break keyword_next
 %lexer-context CLASS keyword_class keyword_module k_class k_module
-%lexer-context ARG keyword_defined keyword_not keyword_super keyword_yield k_yield p_const
 
 /*
  *	precedence table
@@ -8707,8 +8736,16 @@ parser_state_identifier_sets_arg_p(struct parser_params *p)
 static int
 parser_state_arg_p(struct parser_params *p)
 {
+    int state = p->current_parser_state;
+    int symbol = yystos[state];
+
     return parser_state_identifier_arg_p(p) ||
-           yy_lexer_context_is(p->current_parser_state, YY_CTX_ARG);
+           yy_state_accessed_by_token(state, keyword_defined) ||
+           yy_state_accessed_by_token(state, keyword_not) ||
+           yy_state_accessed_by_token(state, keyword_super) ||
+           yy_state_accessed_by_token(state, keyword_yield) ||
+           symbol == YYSYMBOL_k_yield ||
+           symbol == YYSYMBOL_p_const;
 }
 
 static int
@@ -8726,13 +8763,31 @@ parser_state_end_p(struct parser_params *p)
 }
 
 static int
+parser_state_labeled_p(struct parser_params *p)
+{
+    int state = p->current_parser_state;
+    int symbol = yystos[state];
+
+    return PARSER_STATE_LABELED_AT(state) ||
+           symbol == YYSYMBOL_p_pktbl ||
+           symbol == YYSYMBOL_p_kw_label ||
+           symbol == YYSYMBOL_f_label;
+}
+
+static int
 parser_state_warn_balanced_p(struct parser_params *p, enum lex_state_e last_observed_state)
 {
+    int after_argument_paren =
+        p->parser_last_shifted_token == ')' &&
+        p->parser_last_closed_paren_arg;
     int new_cond =
         !yy_lexer_context_is(p->current_parser_state, YY_CTX_CLASS) &&
-        !PARSER_STATE_AFTER_OPERATOR_AT(p->current_parser_state) &&
+        (!PARSER_STATE_AFTER_OPERATOR_AT(p->current_parser_state) ||
+         (yystos[p->current_parser_state] == YYSYMBOL_primary &&
+          after_argument_paren)) &&
         !parser_state_endfn_p(p) &&
-        p->parser_last_shifted_token != ')';
+        (p->parser_last_shifted_token != ')' || after_argument_paren) &&
+        p->parser_last_shifted_token != tLAMBDA;
     int old_cond =
         !OBSERVED_STATE_HAS_FOR(last_observed_state, EXPR_CLASS|EXPR_DOT|EXPR_FNAME|EXPR_ENDFN);
 
@@ -8749,7 +8804,7 @@ parser_state_warn_balanced_p(struct parser_params *p, enum lex_state_e last_obse
     ((OBSERVED_STATE_HAS(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || OLD_IS_ARG())
 #define IS_LABEL_POSSIBLE(tok) \
     PSLR_SHADOW_ASSERT(PARSER_STATE_DEEPLY_ACCEPTS(p, (tok)) || \
-                       yy_lexer_context_is(p->current_parser_state, YY_CTX_LABEL), \
+                       PARSER_STATE_LABEL_AT(p->current_parser_state), \
                        OLD_LABEL_POSSIBLE())
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
 #define IS_AFTER_OPERATOR() \
@@ -10526,12 +10581,21 @@ keyword_starts_command(enum yytokentype token)
 static int
 parser_state_keyword_primary_p(struct parser_params *p)
 {
-    return yy_lexer_context_is(p->current_parser_state,
-                               YY_CTX_BEG | YY_CTX_LABELED | YY_CTX_CLASS) ||
+    int state = p->current_parser_state;
+    int symbol = yystos[state];
+
+    return yy_lexer_context_is(state, YY_CTX_BEG | YY_CTX_CLASS) ||
+           parser_state_labeled_p(p) ||
            p->parser_last_shifted_token == keyword_do_cond ||
            p->parser_last_shifted_token == '\n' ||
            p->parser_last_shifted_token == tLBRACK ||
-           p->parser_last_shifted_token == '[';
+           p->parser_last_shifted_token == '[' ||
+           p->parser_last_shifted_token == '+' ||
+           p->parser_last_shifted_token == tLSHFT ||
+           symbol == YYSYMBOL_terms ||
+           symbol == YYSYMBOL_lex_ctxt ||
+           symbol == YYSYMBOL_begin_defined ||
+           yy_state_accessed_by_token(state, tLABEL);
 }
 
 static enum yytokentype
@@ -10785,14 +10849,24 @@ parser_yylex(struct parser_params *p)
       case '\n':
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
-        const int parser_context_continuation =
-            yy_lexer_context_is(p->current_parser_state, YY_CTX_BEG | YY_CTX_DOT);
+        const int parser_context_continuation = PSLR_SHADOW_ASSERT(
+            yy_lexer_context_is(p->current_parser_state, YY_CTX_BEG | YY_CTX_DOT),
+            OBSERVED_STATE_HAS(EXPR_BEG|EXPR_CLASS|EXPR_FNAME|EXPR_DOT) &&
+            !OBSERVED_STATE_HAS(EXPR_LABELED));
         const int parser_context_labeled =
-            yy_lexer_context_is(p->current_parser_state, YY_CTX_LABELED | YY_CTX_LABEL);
+            parser_state_labeled_p(p) ||
+            PARSER_STATE_LABEL_AT(p->current_parser_state) ||
+            yy_state_accessed_by_token(p->current_parser_state, tLABEL) ||
+            yy_state_accessed_by_token(p->current_parser_state, tLBRACK) ||
+            yystos[p->current_parser_state] == YYSYMBOL_p_args_head ||
+            yystos[p->current_parser_state] == YYSYMBOL_p_kw_label;
         const int parser_context_end =
-            yy_lexer_context_is(p->current_parser_state, YY_CTX_END);
+            yy_lexer_context_is(p->current_parser_state, YY_CTX_END) ||
+            yystos[p->current_parser_state] == YYSYMBOL_primary_value ||
+            yystos[p->current_parser_state] == YYSYMBOL_f_arg_asgn;
         const int ignore_newline = PSLR_SHADOW_ASSERT(
             parser_context_continuation || parser_context_labeled ||
+            p->parser_last_shifted_token == keyword_do_cond ||
             (!parser_context_end && !PARSER_STATE_DEEPLY_ACCEPTS(p, '\n')),
             ((OBSERVED_STATE_HAS(EXPR_BEG|EXPR_CLASS|EXPR_FNAME|EXPR_DOT) &&
               !OBSERVED_STATE_HAS(EXPR_LABELED)) ||
@@ -10986,7 +11060,7 @@ parser_yylex(struct parser_params *p)
                 !yy_lexer_context_is(p->current_parser_state, YY_CTX_CLASS) &&
                 !parser_state_end_p(p) &&
                 (!parser_state_arg_p(p) ||
-                 yy_lexer_context_is(p->current_parser_state, YY_CTX_LABELED) ||
+                 parser_state_labeled_p(p) ||
                  space_seen),
                 !OBSERVED_STATE_HAS(EXPR_DOT | EXPR_CLASS) &&
                 !OLD_IS_END() &&
@@ -11225,7 +11299,7 @@ parser_yylex(struct parser_params *p)
         OBSERVED_LEX_STATE_SET(EXPR_BEG);
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
-                if (p->ctxt.in_argdef || IS_LABEL_POSSIBLE(tLABEL)) {
+                if (p->ctxt.in_argdef) {
                     OBSERVED_LEX_STATE_SET(EXPR_ENDARG);
                     return tBDOT3;
                 }
@@ -11423,7 +11497,7 @@ parser_yylex(struct parser_params *p)
         else if (IS_ARG() &&
                  (space_seen ||
                   PSLR_SHADOW_ASSERT(
-                      yy_lexer_context_is(p->current_parser_state, YY_CTX_LABELED),
+                      parser_state_labeled_p(p),
                       OBSERVED_STATE_HAS(EXPR_LABELED)))) {
             c = tLBRACK;
         }
@@ -11459,8 +11533,11 @@ parser_yylex(struct parser_params *p)
                 else
                     old_c = tLBRACE;
 #endif
-                if (yy_lexer_context_is(p->current_parser_state, YY_CTX_LABELED))
+                if (parser_state_labeled_p(p))
                     c = tLBRACE;
+                else if (p->parser_last_shifted_token == ')' &&
+                         p->parser_last_closed_paren_arg)
+                    c = tLBRACE_ARG;
                 else if (PARSER_STATE_DEEPLY_ACCEPTS(p, '{'))
                     c = '{';
                 else if (PARSER_STATE_DEEPLY_ACCEPTS(p, tLBRACE_ARG))

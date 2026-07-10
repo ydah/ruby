@@ -169,6 +169,16 @@ module Lrama
     # @rbs () -> void
     def compute_pslr
       capture_pslr_metrics_before_split
+
+      # Without an explicit pseudo-scanner, PSLR is used only as a bridge for
+      # parser-state queries. Keep the LALR tables computed by #compute so
+      # default reductions do not move semantic actions across yylex calls.
+      if token_patterns.empty?
+        report_duration(:classify_lexer_contexts) { classify_lexer_contexts } if @grammar.lexer_contexts.any?
+        finalize_pslr_metrics
+        return
+      end
+
       # Preparation
       report_duration(:clear_conflicts) { clear_conflicts }
       # Phase 1
