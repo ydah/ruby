@@ -2924,6 +2924,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %lexer-context DOT '.' tCOLON2 tANDDOT dot_or_colon call_op call_op2
 %lexer-context LABELED tLPAREN tLPAREN_ARG '(' '[' ',' opt_block_param_def
 %lexer-context END k_END primary method_call string user_variable keyword_variable backref tIDENTIFIER tCONSTANT
+%lexer-context LABEL tLBRACE
 
 /*
  *	precedence table
@@ -8619,9 +8620,12 @@ parser_peek_variable_name(struct parser_params *p)
 #define IS_END() IS_lex_state(EXPR_END_ANY)
 #define IS_BEG() (IS_lex_state(EXPR_BEG_ANY) || IS_lex_state_all(EXPR_ARG|EXPR_LABELED))
 #define IS_SPCARG(c) (IS_ARG() && space_seen && !ISSPACE(c))
-#define IS_LABEL_POSSIBLE() (\
-        (IS_lex_state(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || \
-        IS_ARG())
+#define OLD_LABEL_POSSIBLE() \
+    ((IS_lex_state(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || IS_ARG())
+#define IS_LABEL_POSSIBLE(tok) \
+    PSLR_SHADOW_ASSERT(PARSER_STATE_DEEPLY_ACCEPTS(p, (tok)) || \
+                       yy_lexer_context_is(p->current_parser_state, YY_CTX_LABEL), \
+                       OLD_LABEL_POSSIBLE())
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
 #define IS_AFTER_OPERATOR() \
     PSLR_SHADOW_ASSERT(PARSER_STATE_AFTER_OPERATOR_AT(p->current_parser_state), \
@@ -8638,7 +8642,9 @@ parser_string_term(struct parser_params *p, int func)
         SET_LEX_STATE(EXPR_END);
         return tREGEXP_END;
     }
-    if ((func & STR_FUNC_LABEL) && IS_LABEL_SUFFIX(0)) {
+    if (IS_LABEL_SUFFIX(0) &&
+        PSLR_SHADOW_ASSERT(PARSER_STATE_ACCEPTS(p, tLABEL_END),
+                           func & STR_FUNC_LABEL)) {
         nextc(p);
         SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
         return tLABEL_END;
@@ -10395,13 +10401,11 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     }
     tokfix(p);
 
-    if (IS_LABEL_POSSIBLE()) {
-        if (IS_LABEL_SUFFIX(0)) {
-            SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
-            nextc(p);
-            tokenize_ident(p);
-            return tLABEL;
-        }
+    if (IS_LABEL_SUFFIX(0) && IS_LABEL_POSSIBLE(tLABEL)) {
+        SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
+        nextc(p);
+        tokenize_ident(p);
+        return tLABEL;
     }
 
 #ifndef RIPPER
@@ -10843,7 +10847,11 @@ parser_yylex(struct parser_params *p)
         return '>';
 
       case '"':
-        label = (IS_LABEL_POSSIBLE() ? str_label : 0);
+#ifdef PARSER_DEBUG_PSLR_SHADOW
+        label = (OLD_LABEL_POSSIBLE() ? str_label : 0);
+#else
+        label = str_label;
+#endif
         p->lex.strterm = NEW_STRTERM(str_dquote | label, '"', 0);
         p->lex.ptok = p->lex.pcur-1;
         return tSTRING_BEG;
@@ -10864,7 +10872,11 @@ parser_yylex(struct parser_params *p)
         return tXSTRING_BEG;
 
       case '\'':
-        label = (IS_LABEL_POSSIBLE() ? str_label : 0);
+#ifdef PARSER_DEBUG_PSLR_SHADOW
+        label = (OLD_LABEL_POSSIBLE() ? str_label : 0);
+#else
+        label = str_label;
+#endif
         p->lex.strterm = NEW_STRTERM(str_squote | label, '\'', 0);
         p->lex.ptok = p->lex.pcur-1;
         return tSTRING_BEG;
@@ -11002,7 +11014,7 @@ parser_yylex(struct parser_params *p)
         SET_LEX_STATE(EXPR_BEG);
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
-                if (p->ctxt.in_argdef || IS_LABEL_POSSIBLE()) {
+                if (p->ctxt.in_argdef || OLD_LABEL_POSSIBLE()) {
                     SET_LEX_STATE(EXPR_ENDARG);
                     return tBDOT3;
                 }
