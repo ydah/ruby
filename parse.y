@@ -10319,7 +10319,7 @@ parser_numbered_param(struct parser_params *p, int n)
 }
 
 static enum yytokentype
-parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
+parse_atmark(struct parser_params *p, int parser_state, const enum lex_state_e last_state)
 {
     const char *ptr = p->lex.pcur;
     enum yytokentype result = tIVAR;
@@ -10334,7 +10334,9 @@ parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
         tokadd(p, '@');
         c = nextc(p);
     }
-    SET_LEX_STATE(IS_lex_state_for(last_state, EXPR_FNAME) ? EXPR_ENDFN : EXPR_END);
+    SET_LEX_STATE(PSLR_SHADOW_ASSERT(PARSER_STATE_FNAME_AT(parser_state),
+                                     IS_lex_state_for(last_state, EXPR_FNAME)) ?
+                  EXPR_ENDFN : EXPR_END);
     if (c == -1 || !parser_is_identchar(p)) {
         pushback(p, c);
         RUBY_SET_YYLLOC(loc);
@@ -11242,7 +11244,7 @@ parser_yylex(struct parser_params *p)
         return parse_gvar(p, p->current_parser_state, last_state);
 
       case '@':
-        return parse_atmark(p, last_state);
+        return parse_atmark(p, p->current_parser_state, last_state);
 
       case '_':
         if (was_bol(p) && whole_match_p(p, "__END__", 7, 0)) {
