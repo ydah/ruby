@@ -18,6 +18,16 @@
 #define YYERROR_VERBOSE 1
 #define YYSTACK_USE_ALLOCA 0
 
+/* Override YYSETSTATE_CONTEXT to also expose parser stack for deep PSLR analysis */
+#define YYSETSTATE_CONTEXT(CurrentState) \
+  do { \
+    if (p != 0) { \
+      p->pslr_current_state = (CurrentState); \
+      p->pslr_stack_base = (const void *)yyss; \
+      p->pslr_stack_top = (const void *)yyssp; \
+    } \
+  } while (0)
+
 /* For Ripper */
 #ifdef RUBY_EXTCONF_H
 # include RUBY_EXTCONF_H
@@ -388,14 +398,6 @@ RBIMPL_WARNING_POP()
         {p->ruby_sourceline, (int)(p->lex.pcur - p->lex.pbeg)}, \
     }
 
-#define IS_lex_state_for(x, ls)	((x) & (ls))
-#define IS_lex_state_all_for(x, ls) (((x) & (ls)) == (ls))
-#define IS_lex_state(ls)	IS_lex_state_for(p->lex.state, (ls))
-#define IS_lex_state_all(ls)	IS_lex_state_all_for(p->lex.state, (ls))
-
-# define SET_LEX_STATE(ls) \
-    parser_set_lex_state(p, ls, __LINE__)
-static inline enum lex_state_e parser_set_lex_state(struct parser_params *p, enum lex_state_e ls, int line);
 
 typedef VALUE stack_type;
 
@@ -516,6 +518,13 @@ struct parser_params {
         int lpar_beg;
         /* track the nest level of only braces "{}" */
         int brace_nest;
+        /* track the nest level of do...end blocks */
+        int do_nest;
+        /* track the nest level of tLPAREN (compstmt parens) */
+        int lpar_nest;
+        int in_block_param; /* inside |...| block parameters */
+        stack_type lparen_arg_stack;    /* bitstack: 1 if paren was tLPAREN_ARG */
+        stack_type compstmt_paren_stack; /* bitstack: 1 if paren was tLPAREN/tLPAREN_ARG */
     } lex;
     stack_type cond_stack;
     stack_type cmdarg_stack;
@@ -557,6 +566,9 @@ struct parser_params {
     ID it_id;
 
     struct lex_context ctxt;
+    int pslr_current_state;
+    const void *pslr_stack_base;   /* yy_state_t *yyss */
+    const void *pslr_stack_top;    /* yy_state_t *yyssp */
 
     NODE *eval_tree_begin;
     NODE *eval_tree;
@@ -569,6 +581,19 @@ struct parser_params {
     signed int frozen_string_literal:2; /* -1: not specified, 0: false, 1: true */
 
     unsigned int command_start:1;
+    unsigned int cmd_state:1;  /* saved command_start for PSLR newline checks */
+    /* Track the semantic type of the last lexed token for disambiguation.
+     * PSLR parser states don't distinguish local vars from method names,
+     * but the original parser used lex_state for this. */
+    unsigned int last_token_type:2;
+#define LAST_TOKEN_OTHER  0  /* operator, keyword, delimiter */
+#define LAST_TOKEN_LVAR   1  /* known local variable identifier */
+#define LAST_TOKEN_VALUE  2  /* literal (integer, string end, symbol, etc.) */
+#define LAST_TOKEN_METHOD 3  /* method/function name identifier */
+#define LAST_TOKEN_IS_VALUE(p) ((p)->last_token_type == LAST_TOKEN_LVAR || (p)->last_token_type == LAST_TOKEN_VALUE)
+#define LAST_TOKEN_IS_METHOD(p) ((p)->last_token_type == LAST_TOKEN_METHOD)
+    unsigned int last_rparen_cmdarg:1;  /* ')' just closed a tLPAREN_ARG paren */
+    int last_token_id;  /* last token returned by yylex, for Ripper lex_state */
     unsigned int eofp: 1;
     unsigned int ruby__end__seen: 1;
     unsigned int debug: 1;
@@ -616,6 +641,695 @@ struct parser_params {
     VALUE s_value_stack;
 #endif
 };
+
+/* Rename lrama-generated PSLR symbols to avoid leaked global symbols */
+#ifdef RIPPER
+#define yy_state_accepts_token ripper_yy_state_accepts_token
+#define yy_state_eventually_accepts_token ripper_yy_state_eventually_accepts_token
+#define yy_state_deep_accepts_token ripper_yy_state_deep_accepts_token
+#define yy_pseudo_scan ripper_yy_pseudo_scan
+#define yy_lexer_context_is ripper_yy_lexer_context_is
+#define yy_state_has_empty_default_reduction ripper_yy_state_has_empty_default_reduction
+#else
+#define yy_state_accepts_token rb_yy_state_accepts_token
+#define yy_state_eventually_accepts_token rb_yy_state_eventually_accepts_token
+#define yy_state_deep_accepts_token rb_yy_state_deep_accepts_token
+#define yy_pseudo_scan rb_yy_pseudo_scan
+#define yy_lexer_context_is rb_yy_lexer_context_is
+#define yy_state_has_empty_default_reduction rb_yy_state_has_empty_default_reduction
+#endif
+
+int yy_state_accepts_token(int yystate, int token);
+int yy_state_eventually_accepts_token(int yystate, int token);
+int yy_state_deep_accepts_token(int yystate, int yychar,
+                                const void *stack_base, const void *stack_top);
+int yy_pseudo_scan(int parser_state, const char *input, int *match_length);
+int yy_lexer_context_is(int yystate, int ctx_mask);
+int yy_state_has_empty_default_reduction(int yystate);
+
+/* Synthesize lex_state from PSLR context for Ripper compatibility.
+ * Maps PSLR context bits to the traditional lex_state_e values.
+ * Uses yy_lexer_context_is directly since parser_pslr_context_is
+ * is not yet defined at this point in the file. */
+MAYBE_UNUSED(static enum lex_state_e)
+parser_pslr_synthesize_lex_state(struct parser_params *p)
+{
+    int s;
+    enum lex_state_e state = EXPR_NONE;
+
+    if (p->pslr_current_state < 0)
+        return p->lex.state;
+
+    s = p->pslr_current_state;
+    if (yy_lexer_context_is(s, YY_CTX_BEG))
+        state |= EXPR_BEG;
+    if (yy_lexer_context_is(s, YY_CTX_END))
+        state |= EXPR_END;
+    if (yy_lexer_context_is(s, YY_CTX_CMDARG))
+        state |= EXPR_CMDARG;
+    if (yy_lexer_context_is(s, YY_CTX_ENDFN))
+        state |= EXPR_ENDFN;
+    if (yy_lexer_context_is(s, YY_CTX_MID))
+        state |= EXPR_MID;
+    if (yy_lexer_context_is(s, YY_CTX_DOT))
+        state |= EXPR_DOT;
+
+    if (state == EXPR_NONE)
+        state = p->lex.state;
+    return state;
+}
+
+/* Check if the current PSLR parser state has the given lexer context flag(s).
+ * Returns 0 if the state has no context classification (UNKNOWN). */
+static inline int
+parser_pslr_context_is(struct parser_params *p, int ctx_mask)
+{
+    return p->pslr_current_state >= 0 &&
+           yy_lexer_context_is(p->pslr_current_state, ctx_mask);
+}
+
+/* Check if the current state is a "transient" state with only an empty
+ * default reduction (yyr2 == 0).  Such states are pass-throughs created
+ * by mid-rule actions (e.g., in do_body after k_do_block). */
+static inline int
+parser_pslr_is_transient_state(struct parser_params *p)
+{
+    return p->pslr_current_state >= 0 &&
+           yy_state_has_empty_default_reduction(p->pslr_current_state);
+}
+
+/* Stack-aware deep token acceptance: traces through BOTH empty and non-empty
+ * default reductions using the actual parser stack. This can see tokens that
+ * become visible after reductions like stmt -> expr (yyr2 > 0). */
+static inline int
+parser_pslr_deep_accepts_token(struct parser_params *p, int token)
+{
+    return p->pslr_current_state >= 0 &&
+           p->pslr_stack_base && p->pslr_stack_top &&
+           yy_state_deep_accepts_token(p->pslr_current_state, token,
+                                       p->pslr_stack_base, p->pslr_stack_top);
+}
+
+static inline int
+parser_pslr_accepts_token(struct parser_params *p, int token)
+{
+    return p->pslr_current_state >= 0 && yy_state_accepts_token(p->pslr_current_state, token);
+}
+
+static inline int
+parser_pslr_eventually_accepts_token(struct parser_params *p, int token)
+{
+    return p->pslr_current_state >= 0 && yy_state_eventually_accepts_token(p->pslr_current_state, token);
+}
+
+static inline int
+parser_pslr_accepts_expr_beg_token_p(struct parser_params *p)
+{
+    if (parser_pslr_accepts_token(p, keyword_begin)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_if)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_unless)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_case)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_while)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_until)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_for)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_return)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_yield)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_super)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_self)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_nil)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_true)) return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_false)) return TRUE;
+    if (parser_pslr_accepts_token(p, tINTEGER)) return TRUE;
+    if (parser_pslr_accepts_token(p, tFLOAT)) return TRUE;
+    if (parser_pslr_accepts_token(p, tRATIONAL)) return TRUE;
+    if (parser_pslr_accepts_token(p, tIMAGINARY)) return TRUE;
+    if (parser_pslr_accepts_token(p, tCHAR)) return TRUE;
+    if (parser_pslr_accepts_token(p, tSTRING_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tXSTRING_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tREGEXP_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tWORDS_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tQWORDS_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tSYMBOLS_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tQSYMBOLS_BEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tSYMBEG)) return TRUE;
+    if (parser_pslr_accepts_token(p, tCOLON3)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLPAREN)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLBRACK)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLBRACE)) return TRUE;
+    if (parser_pslr_accepts_token(p, tLAMBDA)) return TRUE;
+    return FALSE;
+}
+
+static inline int
+parser_pslr_accepts_call_name_p(struct parser_params *p)
+{
+    return parser_pslr_accepts_token(p, tIDENTIFIER) ||
+           parser_pslr_accepts_token(p, tFID) ||
+           parser_pslr_accepts_token(p, tCONSTANT);
+}
+
+static inline int
+parser_pslr_pending_def_body_p(struct parser_params *p)
+{
+    if (!parser_pslr_context_is(p, YY_CTX_ENDFN)) return FALSE;
+    if (!parser_pslr_accepts_token(p, '=')) return FALSE;
+    return !parser_pslr_accepts_expr_beg_token_p(p);
+}
+
+
+static inline int
+parser_pslr_expects_fname_p(struct parser_params *p)
+{
+    /*
+     * Distinguish fname-like contexts from ordinary expr starts by requiring
+     * both a reserved-word method name and an operator method name.
+     *
+     * - fname/fitem/sym states accept both `if` and `<=>`
+     * - normal expr starts accept `if` but not `<=>`
+     * - normal call-name-after-dot states accept `<=>` but not reserved words
+     */
+    if (!parser_pslr_accepts_token(p, keyword_if)) return FALSE;
+    if (!parser_pslr_accepts_token(p, tCMP)) return FALSE;
+    if (parser_pslr_accepts_token(p, tINTEGER)) return FALSE;
+    if (parser_pslr_accepts_token(p, tSTRING_BEG)) return FALSE;
+    return parser_pslr_accepts_call_name_p(p);
+}
+
+static inline int
+parser_pslr_after_dot_p(struct parser_params *p)
+{
+    /*
+     * Call-name-after-dot contexts accept operator method names but reject
+     * reserved words.
+     */
+    if (!parser_pslr_accepts_token(p, tCMP)) return FALSE;
+    if (parser_pslr_accepts_token(p, keyword_if)) return FALSE;
+    return parser_pslr_accepts_call_name_p(p);
+}
+
+static inline int
+parser_pslr_class_context_p(struct parser_params *p)
+{
+    /*
+     * `class` / `module` heads accept a cpath (including leading `::`) but do
+     * not accept reserved words, operator method names, or literal expr starts.
+     */
+    if (!parser_pslr_accepts_token(p, tCONSTANT)) return FALSE;
+    if (!parser_pslr_accepts_token(p, tCOLON3)) return FALSE;
+    if (parser_pslr_accepts_token(p, keyword_if)) return FALSE;
+    if (parser_pslr_accepts_token(p, tCMP)) return FALSE;
+    if (parser_pslr_accepts_token(p, tINTEGER)) return FALSE;
+    return !parser_pslr_accepts_token(p, tSTRING_BEG);
+}
+
+static inline int
+parser_pslr_after_operator_p(struct parser_params *p)
+{
+    return parser_pslr_after_dot_p(p) || parser_pslr_expects_fname_p(p);
+}
+
+static inline int
+parser_pslr_label_possible_p(struct parser_params *p, int cmd_state)
+{
+    if (cmd_state) return FALSE;
+    return parser_pslr_accepts_token(p, tLABEL);
+}
+
+static inline int
+parser_pslr_prefers_label_token_p(struct parser_params *p, int current_token_length)
+{
+    int match_length = 0;
+    int token = YYPSLR_PSEUDO_SCAN(p, p->lex.ptok, &match_length);
+
+    return token == tLABEL && match_length == current_token_length + 1;
+}
+
+static inline int
+parser_pslr_after_labeled_state_p(struct parser_params *p)
+{
+    if (!parser_pslr_context_is(p, YY_CTX_CMDARG)) return FALSE;
+    if (!parser_pslr_accepts_token(p, tLBRACE)) return FALSE;
+    if (parser_pslr_accepts_token(p, '{')) return FALSE;
+    return TRUE;
+}
+
+static inline int
+parser_pslr_after_labeled_p(struct parser_params *p)
+{
+    return parser_pslr_after_labeled_state_p(p);
+}
+
+static inline int
+parser_pslr_prefers_token_p(struct parser_params *p, int preferred_token, int competing_token)
+{
+    if (!parser_pslr_accepts_token(p, preferred_token)) return FALSE;
+    return !parser_pslr_accepts_token(p, competing_token);
+}
+
+static inline int
+parser_pslr_prefers_heredoc_p(struct parser_params *p)
+{
+    int accepts_heredoc = parser_pslr_accepts_token(p, tSTRING_BEG) ||
+                          parser_pslr_accepts_token(p, tXSTRING_BEG);
+
+    if (!accepts_heredoc) return FALSE;
+    if (parser_pslr_class_context_p(p)) return FALSE;
+    return !parser_pslr_accepts_token(p, tLSHFT);
+}
+
+static inline int
+parser_pslr_begin_like_p(struct parser_params *p)
+{
+    return parser_pslr_accepts_expr_beg_token_p(p) ||
+           parser_pslr_after_labeled_p(p) ||
+           parser_pslr_class_context_p(p);
+}
+
+static inline int
+parser_pslr_lex_beg_like_p(struct parser_params *p)
+{
+    return parser_pslr_context_is(p, YY_CTX_BEG | YY_CTX_MID) ||
+           parser_pslr_after_labeled_p(p) ||
+           parser_pslr_class_context_p(p);
+}
+
+static inline int
+parser_pslr_ignores_newline_p(struct parser_params *p)
+{
+    if (parser_pslr_after_dot_p(p))
+        return TRUE;
+    if (parser_pslr_expects_fname_p(p) &&
+        !parser_pslr_accepts_token(p, '\n'))
+        return TRUE;
+    if (parser_pslr_accepts_token(p, keyword_if) &&
+        !parser_pslr_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then) &&
+        !parser_pslr_context_is(p, YY_CTX_MID))
+        return TRUE;
+    if (parser_pslr_eventually_accepts_token(p, keyword_if) &&
+        !parser_pslr_eventually_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then) &&
+        !parser_pslr_context_is(p, YY_CTX_MID))
+        return TRUE;
+    /* Remaining BEG-context states should ignore newlines IF the state
+       is "transient" (has an empty default reduction, e.g., mid-rule
+       actions after `do` or `begin`).  Non-transient BEG states like
+       `keyword_undef undef_list .` or `defined? yield .` have non-empty
+       default reductions and newlines should terminate the statement.
+       Also guard against modifier_if and keyword_then as before. */
+    if (parser_pslr_context_is(p, YY_CTX_BEG) &&
+        parser_pslr_is_transient_state(p) &&
+        !parser_pslr_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then)) {
+        /* Only suppress newlines if command_start was set by a block-starting
+           keyword (begin/do/else/ensure/then).  Keywords like return/break/next
+           do NOT set command_start, so newlines after them should terminate. */
+        if (!p->ctxt.in_argdef && p->cmd_state)
+            return TRUE;
+    }
+    /* Inside block parameter delimiters |...|, ignore newlines. */
+    if (p->lex.in_block_param)
+        return TRUE;
+    /* Inside paren-free argument definitions, suppress newlines after ','
+     * so multiline arg lists work: def foo *args,\n kw: val.
+     * Use last_token_id to detect comma -- don't suppress ALL newlines
+     * in argdef as that would eat the term(\n) that resets in_argdef. */
+    if (p->ctxt.in_argdef && p->last_token_id == ',')
+        return TRUE;
+    /* Inside grouping constructs (parens, brackets), ignore newlines.
+       Exceptions: tLPAREN/tLPAREN_ARG (compstmt parens), cond (while/until),
+       cmd_state (after begin/do/else). */
+    if (p->lex.paren_nest > p->lex.brace_nest &&
+        p->lex.brace_nest == 0 &&
+        p->lex.do_nest == 0 &&
+        p->lex.lpar_nest == 0 &&
+        !p->cmd_state &&
+        !(p->cond_stack & 1) &&
+        !p->lex.strterm &&
+        !parser_pslr_deep_accepts_token(p, modifier_if) &&
+        !parser_pslr_deep_accepts_token(p, keyword_then))
+        return TRUE;
+    return FALSE;
+}
+
+static inline int
+parser_pslr_reserved_word_begin_p(struct parser_params *p)
+{
+    if (parser_pslr_after_labeled_state_p(p)) return TRUE;
+    return parser_pslr_context_is(p, YY_CTX_BEG);
+}
+
+static inline int
+parser_pslr_endfn_like_p(struct parser_params *p)
+{
+    return parser_pslr_pending_def_body_p(p);
+}
+
+static inline int
+parser_pslr_arg_state_fallback_p(struct parser_params *p)
+{
+    return parser_pslr_context_is(p, YY_CTX_CMDARG);
+}
+
+static inline int
+parser_pslr_end_state_fallback_p(struct parser_params *p)
+{
+    return parser_pslr_context_is(p, YY_CTX_END);
+}
+
+static inline int
+parser_pslr_space_arg_fallback_p(struct parser_params *p, int c, int space_seen)
+{
+    /* After a value (local var or literal), space+operator is binary, not SPCARG.
+     * Original: IS_ARG() is FALSE for EXPR_END (after values). */
+    if (LAST_TOKEN_IS_VALUE(p)) return FALSE;
+    return parser_pslr_arg_state_fallback_p(p) && space_seen && !ISSPACE(c);
+}
+
+static inline int
+parser_pslr_qmark_is_ternary_p(struct parser_params *p)
+{
+    int accepts_ternary = parser_pslr_accepts_token(p, '?');
+    int accepts_char = parser_pslr_accepts_token(p, tCHAR);
+
+    if (accepts_ternary + accepts_char == 1) return accepts_ternary;
+    /* Deep PSLR (empty reductions) */
+    {
+        int deep_ternary = parser_pslr_eventually_accepts_token(p, '?');
+        int deep_char = parser_pslr_eventually_accepts_token(p, tCHAR);
+        if (deep_ternary + deep_char == 1) return deep_ternary;
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_ternary = parser_pslr_deep_accepts_token(p, '?');
+        int stack_char = parser_pslr_deep_accepts_token(p, tCHAR);
+        if (stack_ternary + stack_char == 1) return stack_ternary;
+    }
+    /* When PSLR cannot disambiguate, use END context as fallback.
+       This is equivalent to the original IS_END() check.
+       Cases where this wrongly returns ternary (e.g. `p ?x` where p is a method)
+       are handled in parse_qmark by checking if the char after ? is a single identchar. */
+    return parser_pslr_end_state_fallback_p(p);
+}
+
+static inline int
+parser_pslr_qmark_warn_space_char_p(struct parser_params *p)
+{
+    /* Original: !IS_ARG(), where IS_ARG = EXPR_ARG|EXPR_CMDARG.
+       After method? names (ENDFN context), lex_state is EXPR_ARG,
+       so suppress the warning. CMDARG also suppresses. */
+    return !parser_pslr_arg_state_fallback_p(p) &&
+           !parser_pslr_context_is(p, YY_CTX_ENDFN);
+}
+
+static inline int
+parser_pslr_heredoc_fallback_p(struct parser_params *p, int space_seen)
+{
+    return !parser_pslr_after_dot_p(p) &&
+           !parser_pslr_class_context_p(p) &&
+           !parser_pslr_end_state_fallback_p(p) &&
+           !parser_pslr_context_is(p, YY_CTX_ENDFN) &&
+           !LAST_TOKEN_IS_VALUE(p) &&
+           (!parser_pslr_accepts_token(p, tLSHFT) || parser_pslr_arg_state_fallback_p(p)) &&
+           (!parser_pslr_arg_state_fallback_p(p) || parser_pslr_after_labeled_p(p) || space_seen);
+}
+
+static inline int
+parser_pslr_colon3_prefix_p(struct parser_params *p, int space_seen)
+{
+    if (parser_pslr_space_arg_fallback_p(p, -1, space_seen)) return TRUE;
+    if (parser_pslr_prefers_token_p(p, tCOLON3, tCOLON2)) return TRUE;
+    if (parser_pslr_prefers_token_p(p, tCOLON2, tCOLON3)) return FALSE;
+    /* Deep PSLR: trace empty reductions to check tCOLON3 reachability */
+    if (parser_pslr_eventually_accepts_token(p, tCOLON3)) {
+        if (!parser_pslr_eventually_accepts_token(p, tCOLON2)) return TRUE;
+    }
+    else if (parser_pslr_eventually_accepts_token(p, tCOLON2)) {
+        return FALSE;
+    }
+    /* Stack-aware deep PSLR */
+    if (parser_pslr_deep_accepts_token(p, tCOLON3) &&
+        !parser_pslr_deep_accepts_token(p, tCOLON2)) {
+        return TRUE;
+    }
+    if (parser_pslr_deep_accepts_token(p, tCOLON2) &&
+        !parser_pslr_deep_accepts_token(p, tCOLON3)) {
+        return FALSE;
+    }
+    /* Fallback: both eventually accepted or neither -- use context table */
+    return parser_pslr_context_is(p, YY_CTX_BEG | YY_CTX_MID) ||
+           parser_pslr_begin_like_p(p);
+}
+
+static inline int
+parser_pslr_colon_symbol_literal_p(struct parser_params *p, int c)
+{
+    if (parser_pslr_prefers_token_p(p, ':', tSYMBEG)) return TRUE;
+    if (parser_pslr_prefers_token_p(p, tSYMBEG, ':')) return FALSE;
+    /* Deep PSLR */
+    {
+        int deep_colon = parser_pslr_eventually_accepts_token(p, ':');
+        int deep_sym = parser_pslr_eventually_accepts_token(p, tSYMBEG);
+        if (deep_colon && !deep_sym) return TRUE;
+        if (deep_sym && !deep_colon) return FALSE;
+    }
+    /* ':' followed by a digit cannot be a symbol literal (:1 is invalid).
+       Also space/comment -> colon. Stack-aware deep check: if ':' (colon)
+       is accepted via non-empty reductions (e.g. ternary), prefer colon. */
+    if (ISSPACE(c) || c == '#' || ISDIGIT(c)) return TRUE;
+    if (parser_pslr_deep_accepts_token(p, ':') &&
+        !parser_pslr_deep_accepts_token(p, tSYMBEG))
+        return TRUE;
+    return FALSE;
+}
+
+static inline int
+parser_pslr_lparen_arg_fallback_p(struct parser_params *p, int space_seen)
+{
+    int accepts_plain = parser_pslr_accepts_token(p, '(');
+    int accepts_paren = parser_pslr_accepts_token(p, tLPAREN);
+    int accepts_arg = parser_pslr_accepts_token(p, tLPAREN_ARG);
+
+    if (!space_seen) return FALSE;
+    if (accepts_plain + accepts_paren + accepts_arg == 1) return accepts_arg;
+    if (parser_pslr_arg_state_fallback_p(p)) return TRUE;
+    /* Only return TRUE when tLPAREN is NOT also accepted.
+     * When both tLPAREN and tLPAREN_ARG are accepted (e.g., mlhs after comma),
+     * tLPAREN_ARG would be wrong -- let the caller fall through to other checks. */
+    if (accepts_arg && !accepts_paren) return TRUE;
+    /* Deep PSLR: after lex_state fallback, check if tLPAREN_ARG uniquely reachable */
+    {
+        int deep_plain = parser_pslr_eventually_accepts_token(p, '(');
+        int deep_paren = parser_pslr_eventually_accepts_token(p, tLPAREN);
+        int deep_arg = parser_pslr_eventually_accepts_token(p, tLPAREN_ARG);
+        if (deep_plain + deep_paren + deep_arg == 1) return deep_arg;
+    }
+    return FALSE;
+}
+
+static inline int
+parser_pslr_lparen_token(struct parser_params *p)
+{
+    int accepts_plain = parser_pslr_accepts_token(p, '(');
+    int accepts_paren = parser_pslr_accepts_token(p, tLPAREN);
+    int accepts_arg = parser_pslr_accepts_token(p, tLPAREN_ARG);
+
+    if (accepts_plain + accepts_paren + accepts_arg == 1) {
+        if (accepts_plain) return '(';
+        if (accepts_paren) return tLPAREN;
+        return tLPAREN_ARG;
+    }
+    /* Deep PSLR (empty reductions) */
+    {
+        int deep_plain = parser_pslr_eventually_accepts_token(p, '(');
+        int deep_paren = parser_pslr_eventually_accepts_token(p, tLPAREN);
+        int deep_arg = parser_pslr_eventually_accepts_token(p, tLPAREN_ARG);
+        if (deep_plain + deep_paren + deep_arg == 1) {
+            if (deep_plain) return '(';
+            if (deep_paren) return tLPAREN;
+            return tLPAREN_ARG;
+        }
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_plain = parser_pslr_deep_accepts_token(p, '(');
+        int stack_paren = parser_pslr_deep_accepts_token(p, tLPAREN);
+        int stack_arg = parser_pslr_deep_accepts_token(p, tLPAREN_ARG);
+        if (stack_plain + stack_paren + stack_arg == 1) {
+            if (stack_plain) return '(';
+            if (stack_paren) return tLPAREN;
+            return tLPAREN_ARG;
+        }
+    }
+    return 0;
+}
+
+static inline int
+parser_pslr_lbrack_arg_fallback_p(struct parser_params *p, int space_seen)
+{
+    int accepts_plain = parser_pslr_accepts_token(p, '[');
+    int accepts_lbrack = parser_pslr_accepts_token(p, tLBRACK);
+
+    if (!space_seen) return FALSE;
+    if (parser_pslr_arg_state_fallback_p(p)) return TRUE;
+    if (accepts_plain + accepts_lbrack == 1) return accepts_lbrack;
+    /* Deep PSLR: check after lex_state fallback to avoid overriding it */
+    {
+        int deep_plain = parser_pslr_eventually_accepts_token(p, '[');
+        int deep_lbrack = parser_pslr_eventually_accepts_token(p, tLBRACK);
+        if (deep_plain + deep_lbrack == 1) return deep_lbrack;
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_plain = parser_pslr_deep_accepts_token(p, '[');
+        int stack_lbrack = parser_pslr_deep_accepts_token(p, tLBRACK);
+        if (stack_plain + stack_lbrack == 1) return stack_lbrack;
+    }
+    return FALSE;
+}
+
+static inline int
+parser_pslr_brace_primary_block_fallback_p(struct parser_params *p)
+{
+    int accepts_hash = parser_pslr_accepts_token(p, tLBRACE);
+    int accepts_primary_block = parser_pslr_accepts_token(p, '{');
+    int accepts_expr_block = parser_pslr_accepts_token(p, tLBRACE_ARG);
+
+    if (parser_pslr_context_is(p, YY_CTX_CMDARG | YY_CTX_END | YY_CTX_ENDFN)) {
+        return TRUE;
+    }
+    if (accepts_hash + accepts_primary_block + accepts_expr_block == 1) {
+        return accepts_primary_block;
+    }
+    /* When hash is not accepted, both block forms indicate a block context */
+    if (!accepts_hash && (accepts_primary_block || accepts_expr_block)) {
+        return TRUE;
+    }
+    /* Deep PSLR: check if primary block uniquely reachable via empty reductions */
+    {
+        int deep_hash = parser_pslr_eventually_accepts_token(p, tLBRACE);
+        int deep_primary = parser_pslr_eventually_accepts_token(p, '{');
+        int deep_expr = parser_pslr_eventually_accepts_token(p, tLBRACE_ARG);
+        if (deep_hash + deep_primary + deep_expr == 1) {
+            return deep_primary;
+        }
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_hash = parser_pslr_deep_accepts_token(p, tLBRACE);
+        int stack_primary = parser_pslr_deep_accepts_token(p, '{');
+        int stack_expr = parser_pslr_deep_accepts_token(p, tLBRACE_ARG);
+        if (stack_hash + stack_primary + stack_expr == 1) {
+            return stack_primary;
+        }
+    }
+    return FALSE;
+}
+
+static inline enum yytokentype
+parser_pslr_do_token(struct parser_params *p)
+{
+    int accepts_lambda = parser_pslr_accepts_token(p, keyword_do_LAMBDA);
+    int accepts_cond = parser_pslr_accepts_token(p, keyword_do_cond);
+    int accepts_block = parser_pslr_accepts_token(p, keyword_do_block);
+    int accepts_plain = parser_pslr_accepts_token(p, keyword_do);
+
+    if (accepts_lambda + accepts_cond + accepts_block + accepts_plain == 1) {
+        if (accepts_lambda) return keyword_do_LAMBDA;
+        if (accepts_cond) return keyword_do_cond;
+        if (accepts_block) return keyword_do_block;
+        return keyword_do;
+    }
+    /* Deep PSLR */
+    {
+        int deep_lambda = parser_pslr_eventually_accepts_token(p, keyword_do_LAMBDA);
+        int deep_cond = parser_pslr_eventually_accepts_token(p, keyword_do_cond);
+        int deep_block = parser_pslr_eventually_accepts_token(p, keyword_do_block);
+        int deep_plain = parser_pslr_eventually_accepts_token(p, keyword_do);
+        if (deep_lambda + deep_cond + deep_block + deep_plain == 1) {
+            if (deep_lambda) return keyword_do_LAMBDA;
+            if (deep_cond) return keyword_do_cond;
+            if (deep_block) return keyword_do_block;
+            return keyword_do;
+        }
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_lambda = parser_pslr_deep_accepts_token(p, keyword_do_LAMBDA);
+        int stack_cond = parser_pslr_deep_accepts_token(p, keyword_do_cond);
+        int stack_block = parser_pslr_deep_accepts_token(p, keyword_do_block);
+        int stack_plain = parser_pslr_deep_accepts_token(p, keyword_do);
+        if (stack_lambda + stack_cond + stack_block + stack_plain == 1) {
+            if (stack_lambda) return keyword_do_LAMBDA;
+            if (stack_cond) return keyword_do_cond;
+            if (stack_block) return keyword_do_block;
+            return keyword_do;
+        }
+    }
+    return 0;
+}
+
+static inline enum yytokentype
+parser_pslr_keyword_variant(struct parser_params *p, enum yytokentype keyword_token, enum yytokentype modifier_token)
+{
+    int accepts_keyword = parser_pslr_accepts_token(p, keyword_token);
+    int accepts_modifier = parser_pslr_accepts_token(p, modifier_token);
+    int deep_keyword, deep_modifier, stack_keyword, stack_modifier;
+
+    if (accepts_keyword + accepts_modifier == 1) {
+        if (accepts_keyword) {
+            /* State directly accepts keyword form but not modifier.
+               Check if modifier is reachable through reductions (deep).
+               If so, prefer modifier form -- this handles states after
+               return/break/next where "return if cond" needs modifier_if.
+               States like after '(' do NOT have modifier deep-reachable
+               so keyword_if is correctly preserved there. */
+            if (parser_pslr_eventually_accepts_token(p, modifier_token) ||
+                parser_pslr_deep_accepts_token(p, modifier_token)) {
+                return modifier_token;
+            }
+            return keyword_token;
+        }
+        return modifier_token;
+    }
+    /* Deep PSLR (empty reductions only) */
+    deep_keyword = parser_pslr_eventually_accepts_token(p, keyword_token);
+    deep_modifier = parser_pslr_eventually_accepts_token(p, modifier_token);
+    if (deep_keyword + deep_modifier == 1) {
+        return deep_keyword ? keyword_token : modifier_token;
+    }
+    /* Stack-aware deep PSLR (follows non-empty reductions using actual stack) */
+    stack_keyword = parser_pslr_deep_accepts_token(p, keyword_token);
+    stack_modifier = parser_pslr_deep_accepts_token(p, modifier_token);
+    if (stack_keyword + stack_modifier == 1) {
+        return stack_keyword ? keyword_token : modifier_token;
+    }
+    /* When both forms are reachable only through stack-aware reductions
+       (no direct or empty-reduction paths accept either), the state is
+       post-expression (e.g., "undef =~ .", "arg ."). In such states the
+       modifier form is the shorter reduction path and the expected parse. */
+    if (stack_keyword && stack_modifier &&
+        !accepts_keyword && !accepts_modifier &&
+        !deep_keyword && !deep_modifier) {
+        return modifier_token;
+    }
+    return 0;
+}
+
+static inline int
+parser_pslr_keyword_sets_command_start_p(enum yytokentype keyword_token)
+{
+    switch (keyword_token) {
+      case keyword_begin:
+      case keyword_do:
+      case keyword_else:
+      case keyword_ensure:
+      case keyword_then:
+        return TRUE;
+      default:
+        return FALSE;
+    }
+}
 
 #define NUMPARAM_ID_P(id) numparam_id_p(p, id)
 #define NUMPARAM_ID_TO_IDX(id) (unsigned int)(((id) >> ID_SCOPE_SHIFT) - (tNUMPARAM_1 - 1))
@@ -1511,7 +2225,6 @@ static int id_is_var(struct parser_params *p, ID id);
 RUBY_SYMBOL_EXPORT_BEGIN
 VALUE rb_parser_reg_compile(struct parser_params* p, VALUE str, int options);
 int rb_reg_fragment_setenc(struct parser_params*, rb_parser_string_t *, int);
-enum lex_state_e rb_parser_trace_lex_state(struct parser_params *, enum lex_state_e, enum lex_state_e, int);
 VALUE rb_parser_lex_state_name(struct parser_params *p, enum lex_state_e state);
 void rb_parser_show_bitstack(struct parser_params *, stack_type, const char *, int);
 PRINTF_ARGS(void rb_parser_fatal(struct parser_params *p, const char *fmt, ...), 2, 3);
@@ -2612,7 +3325,49 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 
 %expect 0
 %define api.pure
+%define lr.type pslr
+%define api.pslr.state-member pslr_current_state
 %define parse.error verbose
+%token-pattern tIDENTIFIER /[a-z_][a-zA-Z0-9_]*/
+%token-pattern tLABEL /[a-z_][a-zA-Z0-9_]*:/
+
+%lexer-context BEG keyword_if keyword_unless keyword_while keyword_until keyword_case keyword_for keyword_begin keyword_do keyword_return keyword_break keyword_next keyword_yield keyword_super keyword_defined keyword_class keyword_module keyword_not keyword_and keyword_or keyword_in keyword_then keyword_else keyword_elsif keyword_when keyword_ensure keyword_rescue keyword_redo keyword_retry keyword_undef keyword_alias keyword_BEGIN keyword_END tLPAREN tLBRACK tLBRACE tLPAREN_ARG tLBRACE_ARG '(' '[' '{' tOP_ASGN '=' tPLUS tMINUS tSTAR tDSTAR tPOW tAMPER tPIPE tCARET tTILDE tBANG tPERCENT tLSHFT tRSHFT tCMP tEQ tEQQ tNEQ tMATCH tNMATCH tGEQ tLEQ tGT tLT tANDOP tOROP '+' '-' '*' '/' '%' '^' '|' '&' '<' '>' '!' '~' '?' tDOT2 tDOT3 tBDOT2 tBDOT3 ',' ';' '\n' ' ' tCOLON tSYMBEG tCOLON3 ':' tASSOC tLAMBDA tLAMBEG tSTRING_BEG tXSTRING_BEG tREGEXP_BEG tWORDS_BEG tQWORDS_BEG tSYMBOLS_BEG tQSYMBOLS_BEG tBACK_REF2 tUPLUS tUMINUS tUMINUS_NUM tNL tLABEL keyword_do_cond keyword_do_block keyword_do_LAMBDA tSTRING_DBEG tSTRING_DVAR
+%lexer-context BEG stmts stmt top_stmts top_stmt bodystmt then do opt_else if_tail case_body cases p_case_body brace_body do_body lambda_body opt_rescue opt_ensure
+%lexer-context BEG p_expr p_alt p_top_expr p_top_expr_body p_expr_basic p_args p_args_head p_args_tail p_find p_kwargs p_kwarg p_kw p_value p_primitive p_variable p_var_ref p_const p_lparen p_lbracket
+%lexer-context BEG mlhs mlhs_inner mlhs_basic mlhs_item mlhs_node lhs
+%lexer-context BEG superclass undef_list assocs assoc assoc_list
+%lexer-context BEG begin_block lex_ctxt begin_defined after_rescue
+%lexer-context BEG p_as p_rest p_args_post p_arg p_kw_label p_kwrest p_kwnorest p_any_kwrest p_expr_ref
+%lexer-context BEG f_eq kwrest_mark restarg_mark blkarg_mark opt_f_block_arg excessed_comma f_any_kwrest f_no_kwarg f_kwrest f_empty_arg
+%lexer-context BEG bv_decls bvar opt_bv_decl for_var none opt_block_param_def
+%lexer-context BEG numparam max_numparam it_id p_pvtbl p_pktbl p_in_kwarg stmt_or_begin block_open allow_exits args_forward p_cases
+%lexer-context BEG word_list symbol_list qword_list qsym_list string_contents regexp_contents xstring_contents string_content
+%lexer-context BEG f_args f_arg f_arg_item f_norm_arg f_label f_opt f_kwarg f_kw f_rest_arg f_block_arg f_largs f_larglist f_block_optarg f_block_opt f_block_kw f_block_kwarg f_marg f_margs f_rest_marg args_tail opt_args_tail largs_tail
+%lexer-context BEG block_param opt_block_param block_param_def compstmt block_args_tail block_args-opt_tail
+%lexer-context BEG k_begin k_if k_unless k_while k_until k_case k_for k_class k_module k_do k_do_block k_rescue k_ensure k_when k_else k_elsif k_return k_yield k_END
+%lexer-context CMDARG tIDENTIFIER tFID tCONSTANT keyword_super
+%lexer-context CMDARG command_args opt_block_arg aref_args opt_call_args call_args
+%lexer-context CMDARG endless_command
+%lexer-context END tINTEGER tFLOAT tRATIONAL tIMAGINARY tCHAR tSTRING_END tREGEXP_END tLABEL_END tSYMBOL tSTRING keyword_self keyword_nil keyword_true keyword_false keyword__FILE__ keyword__LINE__ keyword__ENCODING__ keyword_end ')' ']' '}' modifier_if modifier_unless modifier_while modifier_until modifier_rescue tAREF tASET '`' tSTRING_CONTENT tGVAR tIVAR tCVAR tBACK_REF tNTH_REF tRBRACE_ARG
+%lexer-context END expr arg arg_value arg_rhs primary primary_value literal numeric simple_numeric strings xstring regexp symbol ssym dsym var_ref method_call command_call command block_call block_command mrhs_arg rel_expr ternary command_rhs command_call_value args mrhs exc_list
+%lexer-context END rparen rbracket trailer term terms opt_terms opt_nl
+%lexer-context END command_asgn mlhs_head endless_arg def_endless_method_endless_arg
+%lexer-context END f_arglist f_paren_args f_opt_paren_args
+%lexer-context END singleton lambda string1 string words symbols qwords qsymbols word heredoc range_expr_arg
+%lexer-context END paren_args opt_paren_args do_block brace_block cmd_brace_block block_arg arg_splat case_args exc_var
+%lexer-context END backref nonlocal_var user_variable keyword_variable var_lhs rbrace string_dend string_dvar singleton_expr tDUMNY_END tSTRING_DEND
+%lexer-context END k_end
+%lexer-context ENDFN keyword_def
+%lexer-context ENDFN fname def_name defn_head defs_head
+%lexer-context ENDFN fitem reswords cname cpath operation operation2 operation3 op relop
+%lexer-context ENDFN f_bad_arg f_arg_asgn sym fcall
+%lexer-context ENDFN k_def
+%lexer-context MID keyword_return keyword_break keyword_next
+%lexer-context MID k_return k_yield
+%lexer-context MID expr_value expr_value_do
+%lexer-context DOT tDOT tCOLON2 tANDDOT '.'
+%lexer-context DOT dot_or_colon call_op call_op2
+
 %printer {
     if ((NODE *)$$ == (NODE *)-1) {
         rb_parser_printf(p, "NODE_SPECIAL");
@@ -2685,7 +3440,6 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
     const struct vtable *vars;
     struct rb_strterm_struct *strterm;
     struct lex_context ctxt;
-    enum lex_state_e state;
 }
 
 %token <id>
@@ -2861,7 +3615,7 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %token tQSYMBOLS_BEG	"verbatim symbol list"
 %token tSTRING_END	"terminator"
 %token tSTRING_DEND	"'}'"
-%token <state> tSTRING_DBEG "'#{'"
+%token tSTRING_DBEG "'#{'"
 %token tSTRING_DVAR tLAMBEG tLABEL_END
 
 %token tIGNORED_NL tCOMMENT tEMBDOC_BEG tEMBDOC tEMBDOC_END
@@ -3166,7 +3920,6 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 
 %%
 program		:  {
-                        SET_LEX_STATE(EXPR_BEG);
                         local_push(p, ifndef_ripper(1)+0);
                         /* jumps are possible in the top-level loop. */
                         if (!ifndef_ripper(p->do_loop) + 0) init_block_exit(p);
@@ -3302,7 +4055,11 @@ k_END		: keyword_END lex_ctxt
                     /*% ripper: $:2 %*/
                     };
 
-stmt		: keyword_alias[kw] fitem[new] {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fitem[old]
+stmt		: keyword_alias[kw] fitem[new]
+                    {
+                        /* next alias target is readable by lexer default transition */
+                    }
+                  fitem[old]
                     {
                         $$ = NEW_ALIAS($new, $old, &@$, &@kw);
                     /*% ripper: alias!($:new, $:old) %*/
@@ -3527,15 +4284,12 @@ defn_head	: k_def def_name
                 ;
 
 defs_head	: k_def singleton dot_or_colon
-                    {
-                        SET_LEX_STATE(EXPR_FNAME);
-                    }
                   def_name
                     {
-                        SET_LEX_STATE(EXPR_ENDFN|EXPR_LABEL); /* force for args */
                         $$ = def_head_save(p, $k_def);
                         $$->nd_mid = $def_name;
                         $$->nd_def = NEW_DEFS($singleton, $def_name, 0, &@$);
+                        /* ENDFN is already set when `def_name` is lexed */
                     /*% ripper: [$:singleton, $:dot_or_colon, $:def_name] %*/
                     }
                 ;
@@ -3856,7 +4610,6 @@ cpath		: tCOLON3 cname
 fname		: operation
                 | op
                     {
-                        SET_LEX_STATE(EXPR_ENDFN);
                         $$ = $1;
                     }
                 | reswords
@@ -3875,7 +4628,11 @@ undef_list	: fitem
                         $$ = NEW_UNDEF($1, &@$);
                     /*% ripper: rb_ary_new3(1, $:1) %*/
                     }
-                | undef_list ',' {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fitem
+                | undef_list ','
+                    {
+                        /* next fitem in undef list is also readable by lexer default transition */
+                    }
+                  fitem
                     {
                         nd_set_last_loc($1, @4.end_pos);
                         rb_parser_ary_push_node(p, RNODE_UNDEF($1)->nd_undefs, $4);
@@ -4383,17 +5140,22 @@ primary		: inline_primary
             | k_begin[kw]
                 {
                     CMDARG_PUSH(0);
+                    p->lex.lpar_nest++;
                 }
               bodystmt[body]
               k_end[k_end]
                 {
                     CMDARG_POP();
+                    if (p->lex.lpar_nest > 0) p->lex.lpar_nest--;
                     set_line_body($body, @kw.end_pos.lineno);
                     $$ = NEW_BEGIN($body, &@$);
                     nd_set_line($$, @kw.end_pos.lineno);
                 /*% ripper: begin!($:body) %*/
                 }
-            | tLPAREN_ARG compstmt(stmts)[body] {SET_LEX_STATE(EXPR_ENDARG);} ')'
+            | tLPAREN_ARG compstmt(stmts)[body]
+                {
+                }
+              ')'
                 {
                     if (nd_type_p($body, NODE_SELF)) RNODE_SELF($body)->nd_state = 0;
                     $$ = $body;
@@ -4592,6 +5354,7 @@ primary		: inline_primary
                     $$ = NEW_FOR($expr_value, scope, &@$, &@k_for, &@keyword_in, &do_keyword_loc, &@k_end);
                     RNODE_SCOPE(scope)->nd_parent = $$;
                     fixpos($$, $for_var);
+                    if ($do == keyword_do_cond) p->lex.do_nest--;
                 /*% ripper: for!($:for_var, $:expr_value, $:compstmt) %*/
                 }
             | k_class cpath superclass
@@ -4808,6 +5571,7 @@ k_do		: keyword_do
                     {
                         token_info_push(p, "do", &@$);
                         push_end_expect_token_locations(p, &@1.beg_pos);
+                        p->lex.do_nest++;
                     }
                 ;
 
@@ -4815,6 +5579,7 @@ k_do_block	: keyword_do_block
                     {
                         token_info_push(p, "do", &@$);
                         push_end_expect_token_locations(p, &@1.beg_pos);
+                        p->lex.do_nest++;
                     }
                 ;
 
@@ -5014,12 +5779,17 @@ opt_block_param_def	: none
                         }
                     ;
 
-block_param_def	: '|' opt_block_param opt_bv_decl '|'
+block_param_def	: '|'
                     {
+                        p->lex.in_block_param = 1;
+                    }
+                  opt_block_param opt_bv_decl '|'
+                    {
+                        p->lex.in_block_param = 0;
                         p->max_numparam = ORDINAL_PARAM;
                         p->ctxt.in_argdef = 0;
-                        $$ = $2;
-                    /*% ripper: block_var!($:2, $:3) %*/
+                        $$ = $opt_block_param;
+                    /*% ripper: block_var!($:opt_block_param, $:opt_bv_decl) %*/
                     }
                 ;
 
@@ -5145,6 +5915,7 @@ do_block	: k_do_block do_body k_end
                     {
                         $$ = $2;
                         set_embraced_location($$, &@1, &@3);
+                        p->lex.do_nest--;
                     /*% ripper: $:2 %*/
                     }
                 ;
@@ -5252,6 +6023,7 @@ brace_block	: '{' brace_body '}'
                     {
                         $$ = $2;
                         set_embraced_location($$, &@1, &@3);
+                        p->lex.do_nest--;
                     /*% ripper: $:2 %*/
                     }
                 ;
@@ -5337,7 +6109,7 @@ p_pktbl 	: {$$ = p->pktbl; p->pktbl = 0;};
 
 p_in_kwarg	:   {
                         $$ = p->ctxt;
-                        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+                        /* Error-tolerant `in {a: ...}` still depends on this label context. */
                         p->command_start = FALSE;
                         p->ctxt.in_kwarg = 1;
                         p->ctxt.in_alt_pattern = 0;
@@ -5441,17 +6213,25 @@ p_alt		: p_alt[left] '|'[alt]
                 | p_expr_basic
                 ;
 
-p_lparen	: '(' p_pktbl
+p_lparen	: '('
                     {
-                        $$ = $2;
-                    /*% ripper: $:2 %*/
+                        /* AST.parse_file class pattern kwargs still depend on this */
+                    }
+                  p_pktbl
+                    {
+                        $$ = $3;
+                    /*% ripper: $:3 %*/
                     }
                 ;
 
-p_lbracket	: '[' p_pktbl
+p_lbracket	: '['
                     {
-                        $$ = $2;
-                    /*% ripper: $:2 %*/
+                        /* AST.parse_file class pattern kwargs still depend on this */
+                    }
+                  p_pktbl
+                    {
+                        $$ = $3;
+                    /*% ripper: $:3 %*/
                     }
                 ;
 
@@ -6037,7 +6817,6 @@ string_content	: tSTRING_CONTENT[content]
                         /* need to backup p->lex.strterm so that a string literal `%&foo,#$&,bar&` can be parsed */
                         $$ = p->lex.strterm;
                         p->lex.strterm = 0;
-                        SET_LEX_STATE(EXPR_BEG);
                     }[strterm]<strterm>
                   string_dvar[dvar]
                     {
@@ -6053,7 +6832,6 @@ string_content	: tSTRING_CONTENT[content]
                         /* need to backup p->lex.strterm so that a string literal `%!foo,#{ !0 },bar!` can be parsed */
                         $$ = p->lex.strterm;
                         p->lex.strterm = 0;
-                        SET_LEX_STATE(EXPR_BEG);
                     }[term]<strterm>
                     {
                         $$ = p->lex.brace_nest;
@@ -6072,7 +6850,6 @@ string_content	: tSTRING_CONTENT[content]
                         COND_POP();
                         CMDARG_POP();
                         p->lex.strterm = $term;
-                        SET_LEX_STATE($state);
                         p->lex.brace_nest = $brace;
                         p->lex.lpar_beg = $lpar;
                         p->heredoc_indent = $indent;
@@ -6101,8 +6878,8 @@ symbol		: ssym
 
 ssym		: tSYMBEG sym
                     {
-                        SET_LEX_STATE(EXPR_END);
-                        VALUE str = rb_id2str($2);
+                        VALUE str;
+                        str = rb_id2str($2);
                         /*
                          * TODO:
                          *   set_yylval_noname sets invalid id to yylval.
@@ -6121,7 +6898,6 @@ sym		: fname
 
 dsym		: tSYMBEG string_contents tSTRING_END
                     {
-                        SET_LEX_STATE(EXPR_END);
                         $$ = dsym_node(p, $2, &@$);
                     /*% ripper: dyna_symbol!($:2) %*/
                     }
@@ -6190,7 +6966,6 @@ backref		: tNTH_REF
 
 superclass	: '<'
                     {
-                        SET_LEX_STATE(EXPR_BEG);
                         p->command_start = TRUE;
                     }
                   expr_value term
@@ -6220,7 +6995,6 @@ f_paren_args	: '(' f_args rparen
                     {
                         $$ = $2;
                     /*% ripper: paren!($:2) %*/
-                        SET_LEX_STATE(EXPR_BEG);
                         p->command_start = TRUE;
                         p->ctxt.in_argdef = 0;
                     }
@@ -6231,14 +7005,12 @@ f_arglist	: f_paren_args
                         $$ = p->ctxt;
                         p->ctxt.in_kwarg = 1;
                         p->ctxt.in_argdef = 1;
-                        SET_LEX_STATE(p->lex.state|EXPR_LABEL); /* force for args */
                     }<ctxt>
                   f_args term
                     {
                         p->ctxt.in_kwarg = $1.in_kwarg;
                         p->ctxt.in_argdef = 0;
                         $$ = $2;
-                        SET_LEX_STATE(EXPR_BEG);
                         p->command_start = TRUE;
                     /*% ripper: $:2 %*/
                     }
@@ -6578,7 +7350,6 @@ singleton	: value_expr(singleton_expr)
 singleton_expr	: var_ref
                 | '('
                     {
-                        SET_LEX_STATE(EXPR_BEG);
                         p->ctxt.in_argdef = 0;
                     }
                   expr rparen
@@ -6714,6 +7485,7 @@ term		: ';'
 
 terms		: term
                 | terms ';' {yyerrok;}
+                | terms '\n'
                 ;
 
 none		: /* none */
@@ -6723,6 +7495,18 @@ none		: /* none */
                     }
                 ;
 %%
+/* Check if the given state's default reduction is an empty rule (yyr2 == 0).
+ * States with empty default reductions are "transient" pass-through states
+ * (e.g., after mid-rule actions in `do_body`).  States with non-empty
+ * defaults are "completion" states where a real reduction happens (e.g.,
+ * `keyword_undef undef_list -> stmt`). */
+int
+yy_state_has_empty_default_reduction(int yystate)
+{
+    int rule = yydefact[yystate];
+    return rule != 0 && yyr2[rule] == 0;
+}
+
 # undef p
 # undef yylex
 # undef yylval
@@ -8548,7 +9332,6 @@ parser_peek_variable_name(struct parser_params *p)
       case '{':
         p->lex.pcur = ptr;
         p->command_start = TRUE;
-        yylval.state = p->lex.state;
         return tSTRING_DBEG;
       default:
         return 0;
@@ -8558,15 +9341,11 @@ parser_peek_variable_name(struct parser_params *p)
     return 0;
 }
 
-#define IS_ARG() IS_lex_state(EXPR_ARG_ANY)
-#define IS_END() IS_lex_state(EXPR_END_ANY)
-#define IS_BEG() (IS_lex_state(EXPR_BEG_ANY) || IS_lex_state_all(EXPR_ARG|EXPR_LABELED))
-#define IS_SPCARG(c) (IS_ARG() && space_seen && !ISSPACE(c))
-#define IS_LABEL_POSSIBLE() (\
-        (IS_lex_state(EXPR_LABEL|EXPR_ENDFN) && !cmd_state) || \
-        IS_ARG())
+#define IS_BEG() parser_pslr_lex_beg_like_p(p)
+#define IS_SPCARG(c) parser_pslr_space_arg_fallback_p(p, c, space_seen)
+#define IS_LABEL_POSSIBLE() parser_pslr_label_possible_p(p, cmd_state)
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
-#define IS_AFTER_OPERATOR() IS_lex_state(EXPR_FNAME | EXPR_DOT)
+#define IS_AFTER_OPERATOR() parser_pslr_after_operator_p(p)
 
 static inline enum yytokentype
 parser_string_term(struct parser_params *p, int func)
@@ -8576,15 +9355,12 @@ parser_string_term(struct parser_params *p, int func)
     if (func & STR_FUNC_REGEXP) {
         set_yylval_num(regx_options(p));
         dispatch_scan_event(p, tREGEXP_END);
-        SET_LEX_STATE(EXPR_END);
         return tREGEXP_END;
     }
     if ((func & STR_FUNC_LABEL) && IS_LABEL_SUFFIX(0)) {
         nextc(p);
-        SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
         return tLABEL_END;
     }
-    SET_LEX_STATE(EXPR_END);
     return tSTRING_END;
 }
 
@@ -8601,7 +9377,6 @@ parse_string(struct parser_params *p, rb_strterm_literal_t *quote)
 
     if (func & STR_FUNC_TERM) {
         if (func & STR_FUNC_QWORDS) nextc(p); /* delayed term */
-        SET_LEX_STATE(EXPR_END);
         xfree(p->lex.strterm);
         p->lex.strterm = 0;
         return func & STR_FUNC_REGEXP ? tREGEXP_END : tSTRING_END;
@@ -8664,6 +9439,7 @@ parse_string(struct parser_params *p, rb_strterm_literal_t *quote)
     }
 
     tokfix(p);
+
     lit = STR_NEW3(tok(p), toklen(p), enc, func);
     set_yylval_str(lit);
     flush_string_content(p, enc, 0);
@@ -8968,7 +9744,6 @@ set_number_literal(struct parser_params *p, enum yytokentype type, int suffix, i
       default:
         rb_bug("unexpected token: %d", type);
     }
-    SET_LEX_STATE(EXPR_END);
     return type;
 }
 
@@ -9044,7 +9819,6 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
         compile_error(p, "can't find string \"%.*s\" anywhere before EOF",
                       (int)len, eos);
         token_flush(p);
-        SET_LEX_STATE(EXPR_END);
         return tSTRING_END;
     }
     bol = was_bol(p);
@@ -9063,7 +9837,6 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
       restore:
         heredoc_restore(p, &p->lex.strterm->u.heredoc);
         token_flush(p);
-        SET_LEX_STATE(EXPR_END);
         return tSTRING_END;
     }
 
@@ -9648,7 +10421,8 @@ parser_prepare(struct parser_params *p)
     dispatch2(operator_ambiguous, TOKEN2VAL(tok), rb_str_new_cstr(syn))
 #endif
 #define warn_balanced(tok, op, syn) ((void) \
-    (!IS_lex_state_for(last_state, EXPR_CLASS|EXPR_DOT|EXPR_FNAME|EXPR_ENDFN) && \
+    (!(parser_pslr_after_dot_p(p) || parser_pslr_class_context_p(p) || parser_pslr_pending_def_body_p(p)) && \
+     (!parser_pslr_expects_fname_p(p) || LAST_TOKEN_IS_VALUE(p)) && \
      space_seen && !ISSPACE(c) && \
      (ambiguous_operator(tok, op, syn), 0)), \
      (enum yytokentype)(tok))
@@ -9669,7 +10443,6 @@ parse_numeric(struct parser_params *p, int c)
     int suffix;
 
     is_float = seen_point = seen_e = nondigit = 0;
-    SET_LEX_STATE(EXPR_END);
     newtok(p);
     if (c == '-' || c == '+') {
         tokadd(p, c);
@@ -9905,17 +10678,42 @@ parse_qmark(struct parser_params *p, int space_seen)
     rb_parser_string_t *lit;
     const char *start = p->lex.pcur;
 
-    if (IS_END()) {
-        SET_LEX_STATE(EXPR_VALUE);
+    if (parser_pslr_qmark_is_ternary_p(p)) {
+        /* PSLR: when both ? and tCHAR are accepted, the END fallback may
+           wrongly choose ternary for `method ?x` (character literal).
+           Peek ahead: if space_seen AND next char is a single identchar
+           (character literal pattern), don't treat as ternary -- fall through. */
+        if (space_seen && (parser_pslr_accepts_token(p, tCHAR) ||
+                           parser_pslr_eventually_accepts_token(p, tCHAR) ||
+                           parser_pslr_deep_accepts_token(p, tCHAR))) {
+            const uint8_t *s = (const uint8_t *)start;
+            if (!lex_eol_ptr_p(p, start) && !rb_enc_isspace(*s, p->enc)) {
+                if (*s == '\\') {
+                    /* Backslash escape: ?\n, ?\t, etc. -- character literal */
+                    goto char_literal;
+                }
+                int w = parser_precise_mbclen(p, start);
+                if (w > 0 && is_identchar(p, start, p->lex.pend, p->enc) &&
+                    (lex_eol_ptr_n_p(p, start, w) || !is_identchar(p, start + w, p->lex.pend, p->enc))) {
+                    /* Single identchar after ?: character literal like `p ?x` */
+                    goto char_literal;
+                }
+                if (w > 0 && !is_identchar(p, start, p->lex.pend, p->enc) && ISASCII(*s)) {
+                    /* Non-identchar ASCII after ?: character literal like `p ?&` */
+                    goto char_literal;
+                }
+            }
+        }
         return '?';
     }
+  char_literal:
     c = nextc(p);
     if (c == -1) {
         compile_error(p, "incomplete character syntax");
         return 0;
     }
     if (rb_enc_isspace(c, p->enc)) {
-        if (!IS_ARG()) {
+        if (parser_pslr_qmark_warn_space_char_p(p)) {
             int c2 = escaped_control_code(c);
             if (c2) {
                 WARN_SPACE_CHAR(c2, "?");
@@ -9923,7 +10721,6 @@ parse_qmark(struct parser_params *p, int space_seen)
         }
       ternary:
         pushback(p, c);
-        SET_LEX_STATE(EXPR_VALUE);
         return '?';
     }
     newtok(p);
@@ -9965,17 +10762,26 @@ parse_qmark(struct parser_params *p, int space_seen)
     tokfix(p);
     lit = STR_NEW3(tok(p), toklen(p), enc, 0);
     set_yylval_str(lit);
-    SET_LEX_STATE(EXPR_END);
     return tCHAR;
 }
 
 static enum yytokentype
-parse_percent(struct parser_params *p, const int space_seen, const enum lex_state_e last_state)
+parse_percent(struct parser_params *p, const int space_seen, int cmd_state)
 {
     register int c;
     const char *ptok = p->lex.pcur;
 
-    if (IS_BEG()) {
+    if ((IS_BEG() || cmd_state ||
+         /* After modifier keywords (if/unless/while/until/rescue),
+            the condition expression starts but IS_BEG() is FALSE
+            because the state has END context from the modifier token.
+            Detect by checking that keyword_not (expr start) is accepted
+            but modifier_if and tCMP are not -- tCMP excludes fname states
+            (after def/alias) which also accept keyword_not as a method name. */
+         (parser_pslr_accepts_token(p, keyword_not) &&
+          !parser_pslr_accepts_token(p, modifier_if) &&
+          !parser_pslr_accepts_token(p, tCMP))) &&
+        !parser_pslr_expects_fname_p(p)) {
         int term;
         int paren;
 
@@ -10047,7 +10853,8 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
 
           case 's':
             p->lex.strterm = NEW_STRTERM(str_ssym, term, paren);
-            SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);
+            /* quoted symbol body is read by strterm, no FNAME/FITEM needed after return */
+            /* PSLR fname bridge corrects bare symbol name at lexer entry */
             return tSYMBEG;
 
           default:
@@ -10057,13 +10864,24 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
     }
     if ((c = nextc(p)) == '=') {
         set_yylval_id('%');
-        SET_LEX_STATE(EXPR_BEG);
         return tOP_ASGN;
     }
-    if (IS_SPCARG(c) || (IS_lex_state(EXPR_FITEM) && c == 's')) {
+    if (IS_SPCARG(c)) {
         goto quotation;
     }
-    SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+    /* In fname/fitem context (e.g. undef a, %s(p) or alias a %s(p)),
+       %s should be treated as a percent symbol literal.
+       This matches the original EXPR_FITEM && c == 's' check. */
+    if (parser_pslr_expects_fname_p(p) && c == 's') {
+        goto quotation;
+    }
+    /* In ENDFN context (after method! names), %{...} with space before %
+       should still be a string literal, matching EXPR_ARG behavior.
+       Exclude fname states (after def/alias) where % is a method name. */
+    if (space_seen && !ISSPACE(c) && parser_pslr_context_is(p, YY_CTX_ENDFN) &&
+        !parser_pslr_expects_fname_p(p)) {
+        goto quotation;
+    }
     pushback(p, c);
     return warn_balanced('%', "%%", "string literal");
 }
@@ -10111,12 +10929,12 @@ parse_numvar(struct parser_params *p)
 }
 
 static enum yytokentype
-parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
+parse_gvar(struct parser_params *p)
 {
     const char *ptr = p->lex.pcur;
+    const int expects_fname = parser_pslr_expects_fname_p(p);
     register int c;
 
-    SET_LEX_STATE(EXPR_END);
     p->lex.ptok = ptr - 1; /* from '$' */
     newtok(p);
     c = nextc(p);
@@ -10171,7 +10989,7 @@ parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
       case '`': 	/* $`: string before last match */
       case '\'':	/* $': string after last match */
       case '+': 	/* $+: string matches last paren. */
-        if (IS_lex_state_for(last_state, EXPR_FNAME)) {
+        if (expects_fname) {
             tokadd(p, '$');
             tokadd(p, c);
             goto gvar;
@@ -10188,7 +11006,7 @@ parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
             c = nextc(p);
         } while (c != -1 && ISDIGIT(c));
         pushback(p, c);
-        if (IS_lex_state_for(last_state, EXPR_FNAME)) goto gvar;
+        if (expects_fname) goto gvar;
         tokfix(p);
         c = parse_numvar(p);
         set_yylval_node(NEW_NTH_REF(c, &_cur_loc));
@@ -10214,7 +11032,6 @@ parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
     }
 
     if (tokadd_ident(p, c)) return 0;
-    SET_LEX_STATE(EXPR_END);
     if (VALID_SYMNAME_P(tok(p), toklen(p), p->enc, ID_GLOBAL)) {
         tokenize_ident(p);
     }
@@ -10248,7 +11065,7 @@ parser_numbered_param(struct parser_params *p, int n)
 }
 
 static enum yytokentype
-parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
+parse_atmark(struct parser_params *p)
 {
     const char *ptr = p->lex.pcur;
     enum yytokentype result = tIVAR;
@@ -10263,7 +11080,6 @@ parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
         tokadd(p, '@');
         c = nextc(p);
     }
-    SET_LEX_STATE(IS_lex_state_for(last_state, EXPR_FNAME) ? EXPR_ENDFN : EXPR_END);
     if (c == -1 || !parser_is_identchar(p)) {
         pushback(p, c);
         RUBY_SET_YYLLOC(loc);
@@ -10275,7 +11091,6 @@ parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
         }
         parser_show_error_line(p, &loc);
         set_yylval_noname();
-        SET_LEX_STATE(EXPR_END);
         return result;
     }
     else if (ISDIGIT(c)) {
@@ -10289,7 +11104,6 @@ parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
         }
         parser_show_error_line(p, &loc);
         set_yylval_noname();
-        SET_LEX_STATE(EXPR_END);
         return result;
     }
 
@@ -10303,7 +11117,8 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 {
     enum yytokentype result;
     bool is_ascii = true;
-    const enum lex_state_e last_state = p->lex.state;
+    const int after_dot = parser_pslr_after_dot_p(p);
+    const int expects_fname = parser_pslr_expects_fname_p(p);
     ID ident;
     int enforce_keyword_end = 0;
 
@@ -10316,7 +11131,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         result = tFID;
         tokadd(p, c);
     }
-    else if (c == '=' && IS_lex_state(EXPR_FNAME) &&
+    else if (c == '=' && expects_fname &&
              (!peek(p, '~') && !peek(p, '>') && (!peek(p, '=') || (peek_n(p, '>', 1))))) {
         result = tIDENTIFIER;
         tokadd(p, c);
@@ -10326,10 +11141,8 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         pushback(p, c);
     }
     tokfix(p);
-
-    if (IS_LABEL_POSSIBLE()) {
-        if (IS_LABEL_SUFFIX(0)) {
-            SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
+    if (IS_LABEL_SUFFIX(0)) {
+        if (parser_pslr_prefers_label_token_p(p, toklen(p)) || IS_LABEL_POSSIBLE()) {
             nextc(p);
             tokenize_ident(p);
             return tLABEL;
@@ -10354,7 +11167,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
         if ((p->ruby_sourceline > lineno) && (beg_pos <= column)) {
             const struct kwtable *kw;
 
-            if ((IS_lex_state(EXPR_DOT)) && (kw = rb_reserved_word(tok(p), toklen(p))) && (kw && kw->id[0] == keyword_end)) {
+            if (after_dot && (kw = rb_reserved_word(tok(p), toklen(p))) && (kw && kw->id[0] == keyword_end)) {
                 if (p->debug) rb_parser_printf(p, "enforce_keyword_end is enabled\n");
                 enforce_keyword_end = 1;
             }
@@ -10362,63 +11175,94 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     }
 #endif
 
-    if (is_ascii && (!IS_lex_state(EXPR_DOT) || enforce_keyword_end)) {
+    if (is_ascii && (!after_dot || enforce_keyword_end)) {
         const struct kwtable *kw;
 
         /* See if it is a reserved word.  */
         kw = rb_reserved_word(tok(p), toklen(p));
         if (kw) {
-            enum lex_state_e state = p->lex.state;
-            if (IS_lex_state_for(state, EXPR_FNAME)) {
-                SET_LEX_STATE(EXPR_ENDFN);
+            enum yytokentype do_token = 0;
+            enum yytokentype keyword_variant = 0;
+            if (expects_fname) {
                 set_yylval_name(rb_intern2(tok(p), toklen(p)));
                 return kw->id[0];
             }
-            SET_LEX_STATE(kw->state);
-            if (IS_lex_state(EXPR_BEG)) {
+            if (parser_pslr_keyword_sets_command_start_p(kw->id[0])) {
                 p->command_start = TRUE;
+            }
+            if (kw->id[0] == keyword_rescue) {
+                keyword_variant = parser_pslr_keyword_variant(p, keyword_rescue, modifier_rescue);
+                if (keyword_variant == modifier_rescue) {
+                    return modifier_rescue;
+                }
+                if (keyword_variant == keyword_rescue) {
+                    return keyword_rescue;
+                }
             }
             if (kw->id[0] == keyword_do) {
                 if (lambda_beginning_p()) {
                     p->lex.lpar_beg = -1; /* make lambda_beginning_p() == FALSE in the body of "-> do ... end" */
                     return keyword_do_LAMBDA;
                 }
-                if (COND_P()) return keyword_do_cond;
-                if (CMDARG_P() && !IS_lex_state_for(state, EXPR_CMDARG))
+                do_token = parser_pslr_do_token(p);
+                if (do_token == keyword_do_LAMBDA) {
+                    p->lex.lpar_beg = -1;
+                    return keyword_do_LAMBDA;
+                }
+                if (COND_P() || do_token == keyword_do_cond) {
+                    return keyword_do_cond;
+                }
+                if (CMDARG_P())
                     return keyword_do_block;
+                if (do_token == keyword_do) return keyword_do;
+                if (do_token == keyword_do_block) {
+                    return keyword_do_block;
+                }
                 return keyword_do;
             }
-            if (IS_lex_state_for(state, (EXPR_BEG | EXPR_LABELED | EXPR_CLASS)))
+            if (kw->id[0] == kw->id[1]) {
                 return kw->id[0];
+            }
+            /* keyword_variant cannot disambiguate modifier keywords here:
+             * in CMDARG context, deep check finds keyword form via new-statement
+             * path but misses modifier form (shift action, not on default path) */
+            /* Use action-table disambiguation first */
+            if (kw->id[0] != kw->id[1]) {
+                keyword_variant = parser_pslr_keyword_variant(p, kw->id[0], kw->id[1]);
+                if (keyword_variant) return keyword_variant;
+            }
+            /* Fall back to context-based check, but verify with deep accepts.
+               If the modifier form is reachable via stack-aware reductions
+               (e.g., undef_list reduces to stmt, then modifier_if applies),
+               prefer modifier form even in BEG context. */
+            if (kw->id[0] != kw->id[1]) {
+                int deep_mod = parser_pslr_deep_accepts_token(p, kw->id[1]);
+                int deep_kw = parser_pslr_deep_accepts_token(p, kw->id[0]);
+                if (deep_mod && !deep_kw) return kw->id[1];
+                if (deep_kw && !deep_mod) return kw->id[0];
+            }
+            if (parser_pslr_reserved_word_begin_p(p)) {
+                return kw->id[0];
+            }
             else {
-                if (kw->id[0] != kw->id[1])
-                    SET_LEX_STATE(EXPR_BEG | EXPR_LABEL);
                 return kw->id[1];
             }
         }
     }
 
-    if (IS_lex_state(EXPR_BEG_ANY | EXPR_ARG_ANY | EXPR_DOT)) {
-        if (cmd_state) {
-            SET_LEX_STATE(EXPR_CMDARG);
-        }
-        else {
-            SET_LEX_STATE(EXPR_ARG);
-        }
-    }
-    else if (p->lex.state == EXPR_FNAME) {
-        SET_LEX_STATE(EXPR_ENDFN);
-    }
-    else {
-        SET_LEX_STATE(EXPR_END);
-    }
-
     ident = tokenize_ident(p);
     if (result == tCONSTANT && is_local_id(ident)) result = tIDENTIFIER;
-    if (!IS_lex_state_for(last_state, EXPR_DOT|EXPR_FNAME) &&
-        (result == tIDENTIFIER) && /* not EXPR_FNAME, not attrasgn */
+    /* Classify identifier for PSLR disambiguation (not lex_state).
+     * lex_state is computed on demand in rb_ruby_parser_lex_state(). */
+    if (!after_dot && result == tIDENTIFIER &&
         (lvar_defined(p, ident) || NUMPARAM_ID_P(ident))) {
-        SET_LEX_STATE(EXPR_END|EXPR_LABEL);
+        p->last_token_type = LAST_TOKEN_LVAR;
+    }
+    else if (expects_fname) {
+        p->last_token_type = LAST_TOKEN_VALUE;
+    }
+    else {
+        p->last_token_type = LAST_TOKEN_METHOD;
     }
     return result;
 }
@@ -10434,13 +11278,59 @@ warn_cr(struct parser_params *p)
 }
 
 static enum yytokentype
+parser_pslr_lbrace_token(struct parser_params *p)
+{
+    int accepts_hash = parser_pslr_accepts_token(p, tLBRACE);
+    int accepts_primary_block = parser_pslr_accepts_token(p, '{');
+    int accepts_expr_block = parser_pslr_accepts_token(p, tLBRACE_ARG);
+
+    if (accepts_expr_block && !accepts_hash && !accepts_primary_block) {
+        return tLBRACE_ARG;
+    }
+    if (accepts_primary_block && !accepts_hash && !accepts_expr_block) {
+        return '{';
+    }
+    if (accepts_hash && !accepts_primary_block && !accepts_expr_block) {
+        return tLBRACE;
+    }
+    /* When hash is not accepted but both block forms are, it's a block.
+     * e.g., after keyword_super: primary block and expr block are both
+     * accepted, but hash is not. Prefer primary block. */
+    if (!accepts_hash && (accepts_primary_block || accepts_expr_block)) {
+        return accepts_primary_block ? '{' : tLBRACE_ARG;
+    }
+    /* Deep PSLR: trace empty reductions for unique brace determination */
+    {
+        int deep_hash = parser_pslr_eventually_accepts_token(p, tLBRACE);
+        int deep_primary = parser_pslr_eventually_accepts_token(p, '{');
+        int deep_expr = parser_pslr_eventually_accepts_token(p, tLBRACE_ARG);
+        if (deep_hash + deep_primary + deep_expr == 1) {
+            if (deep_expr) return tLBRACE_ARG;
+            if (deep_primary) return '{';
+            return tLBRACE;
+        }
+    }
+    /* Stack-aware deep PSLR */
+    {
+        int stack_hash = parser_pslr_deep_accepts_token(p, tLBRACE);
+        int stack_primary = parser_pslr_deep_accepts_token(p, '{');
+        int stack_expr = parser_pslr_deep_accepts_token(p, tLBRACE_ARG);
+        if (stack_hash + stack_primary + stack_expr == 1) {
+            if (stack_expr) return tLBRACE_ARG;
+            if (stack_primary) return '{';
+            return tLBRACE;
+        }
+    }
+    return 0;
+}
+
+static enum yytokentype
 parser_yylex(struct parser_params *p)
 {
     register int c;
     int space_seen = 0;
     int cmd_state;
     int label;
-    enum lex_state_e last_state;
     int fallthru = FALSE;
     int token_seen = p->token_seen;
 
@@ -10455,13 +11345,13 @@ parser_yylex(struct parser_params *p)
         }
     }
     cmd_state = p->command_start;
+    p->cmd_state = cmd_state;  /* save for PSLR newline checks */
     p->command_start = FALSE;
     p->token_seen = TRUE;
 #ifndef RIPPER
     token_flush(p);
 #endif
   retry:
-    last_state = p->lex.state;
     switch (c = nextc(p)) {
       case '\0':		/* NUL */
       case '\004':		/* ^D */
@@ -10523,9 +11413,9 @@ parser_yylex(struct parser_params *p)
       case '\n':
         p->token_seen = token_seen;
         rb_parser_string_t *prevline = p->lex.lastline;
-        c = (IS_lex_state(EXPR_BEG|EXPR_CLASS|EXPR_FNAME|EXPR_DOT) &&
-             !IS_lex_state(EXPR_LABELED));
-        if (c || IS_lex_state_all(EXPR_ARG|EXPR_LABELED)) {
+        int after_labeled = parser_pslr_after_labeled_p(p);
+        c = (parser_pslr_ignores_newline_p(p) && !after_labeled);
+        if (c || after_labeled) {
             if (!fallthru) {
                 dispatch_scan_event(p, tIGNORED_NL);
             }
@@ -10593,18 +11483,51 @@ parser_yylex(struct parser_params *p)
         }
       normal_newline:
         p->command_start = TRUE;
-        SET_LEX_STATE(EXPR_BEG);
         return '\n';
 
       case '*':
         if ((c = nextc(p)) == '*') {
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idPow);
-                SET_LEX_STATE(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
-            if (IS_SPCARG(c)) {
+            if (parser_pslr_expects_fname_p(p)) {
+                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
+            else if (LAST_TOKEN_IS_VALUE(p)) {
+                /* After value (local var, literal), ** is exponentiation */
+                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
+            else if (LAST_TOKEN_IS_METHOD(p) && space_seen && !ISSPACE(c)) {
+                /* After method name with space, ** is argument prefix (tDSTAR).
+                   Matches original IS_SPCARG behavior for EXPR_CMDARG. */
+                rb_warning0("'**' interpreted as argument prefix");
+                c = tDSTAR;
+            }
+            else if (parser_pslr_prefers_token_p(p, tDSTAR, tPOW)) {
+                c = tDSTAR;
+            }
+            else if (parser_pslr_prefers_token_p(p, tPOW, tDSTAR)) {
+                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
+            else if (parser_pslr_eventually_accepts_token(p, tDSTAR) &&
+                     !parser_pslr_eventually_accepts_token(p, tPOW)) {
+                c = tDSTAR;
+            }
+            else if (parser_pslr_eventually_accepts_token(p, tPOW) &&
+                     !parser_pslr_eventually_accepts_token(p, tDSTAR)) {
+                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
+            else if (parser_pslr_deep_accepts_token(p, tDSTAR) &&
+                     !parser_pslr_deep_accepts_token(p, tPOW)) {
+                c = tDSTAR;
+            }
+            else if (parser_pslr_deep_accepts_token(p, tPOW) &&
+                     !parser_pslr_deep_accepts_token(p, tDSTAR)) {
+                c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+            }
+            else if (IS_SPCARG(c)) {
                 rb_warning0("'**' interpreted as argument prefix");
                 c = tDSTAR;
             }
@@ -10618,11 +11541,39 @@ parser_yylex(struct parser_params *p)
         else {
             if (c == '=') {
                 set_yylval_id('*');
-                SET_LEX_STATE(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
-            if (IS_SPCARG(c)) {
+            if (parser_pslr_context_is(p, YY_CTX_MID)) {
+                /* In MID context (after yield/return/break/next),
+                   * is always splat. The LALR action table may accept
+                   '*' (multiply) due to argless-yield reduction, but
+                   semantically splat is correct here. */
+                c = tSTAR;
+            }
+            else if (parser_pslr_prefers_token_p(p, tSTAR, '*')) {
+                c = tSTAR;
+            }
+            else if (parser_pslr_prefers_token_p(p, '*', tSTAR)) {
+                c = warn_balanced('*', "*", "argument prefix");
+            }
+            else if (parser_pslr_eventually_accepts_token(p, tSTAR) &&
+                     !parser_pslr_eventually_accepts_token(p, '*')) {
+                c = tSTAR;
+            }
+            else if (parser_pslr_eventually_accepts_token(p, '*') &&
+                     !parser_pslr_eventually_accepts_token(p, tSTAR)) {
+                c = warn_balanced('*', "*", "argument prefix");
+            }
+            else if (parser_pslr_deep_accepts_token(p, tSTAR) &&
+                     !parser_pslr_deep_accepts_token(p, '*')) {
+                c = tSTAR;
+            }
+            else if (parser_pslr_deep_accepts_token(p, '*') &&
+                     !parser_pslr_deep_accepts_token(p, tSTAR)) {
+                c = warn_balanced('*', "*", "argument prefix");
+            }
+            else if (IS_SPCARG(c)) {
                 rb_warning0("'*' interpreted as argument prefix");
                 c = tSTAR;
             }
@@ -10633,19 +11584,14 @@ parser_yylex(struct parser_params *p)
                 c = warn_balanced('*', "*", "argument prefix");
             }
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         return c;
 
       case '!':
         c = nextc(p);
         if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
             if (c == '@') {
                 return '!';
             }
-        }
-        else {
-            SET_LEX_STATE(EXPR_BEG);
         }
         if (c == '=') {
             return tNEQ;
@@ -10686,7 +11632,6 @@ parser_yylex(struct parser_params *p)
             }
         }
 
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         if ((c = nextc(p)) == '=') {
             if ((c = nextc(p)) == '=') {
                 return tEQQ;
@@ -10705,20 +11650,31 @@ parser_yylex(struct parser_params *p)
 
       case '<':
         c = nextc(p);
-        if (c == '<' &&
-            !IS_lex_state(EXPR_DOT | EXPR_CLASS) &&
-            !IS_END() &&
-            (!IS_ARG() || IS_lex_state(EXPR_LABELED) || space_seen)) {
+        if (c == '<' && parser_pslr_prefers_heredoc_p(p)) {
             enum  yytokentype token = heredoc_identifier(p);
             if (token) return token < 0 ? 0 : token;
         }
-        if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
+        if (c == '<' &&
+            (parser_pslr_eventually_accepts_token(p, tSTRING_BEG) ||
+             parser_pslr_eventually_accepts_token(p, tXSTRING_BEG)) &&
+            !parser_pslr_eventually_accepts_token(p, tLSHFT)) {
+            enum  yytokentype token = heredoc_identifier(p);
+            if (token) return token < 0 ? 0 : token;
         }
-        else {
-            if (IS_lex_state(EXPR_CLASS))
+        if (c == '<' &&
+            (parser_pslr_deep_accepts_token(p, tSTRING_BEG) ||
+             parser_pslr_deep_accepts_token(p, tXSTRING_BEG)) &&
+            !parser_pslr_deep_accepts_token(p, tLSHFT)) {
+            enum  yytokentype token = heredoc_identifier(p);
+            if (token) return token < 0 ? 0 : token;
+        }
+        if (c == '<' && parser_pslr_heredoc_fallback_p(p, space_seen)) {
+            enum  yytokentype token = heredoc_identifier(p);
+            if (token) return token < 0 ? 0 : token;
+        }
+        if (!IS_AFTER_OPERATOR()) {
+            if (parser_pslr_class_context_p(p))
                 p->command_start = TRUE;
-            SET_LEX_STATE(EXPR_BEG);
         }
         if (c == '=') {
             if ((c = nextc(p)) == '>') {
@@ -10730,7 +11686,6 @@ parser_yylex(struct parser_params *p)
         if (c == '<') {
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idLTLT);
-                SET_LEX_STATE(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -10740,14 +11695,12 @@ parser_yylex(struct parser_params *p)
         return '<';
 
       case '>':
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         if ((c = nextc(p)) == '=') {
             return tGEQ;
         }
         if (c == '>') {
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idGTGT);
-                SET_LEX_STATE(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -10757,28 +11710,28 @@ parser_yylex(struct parser_params *p)
         return '>';
 
       case '"':
-        label = (IS_LABEL_POSSIBLE() ? str_label : 0);
+        /* PSLR: In CMDARG context (after method name like `foo`), labels
+           like "key": are valid for hash-style arguments. The original parser
+           uses IS_ARG() (EXPR_ARG|EXPR_CMDARG) in IS_LABEL_POSSIBLE(). */
+        label = ((IS_LABEL_POSSIBLE() || parser_pslr_context_is(p, YY_CTX_CMDARG))
+                 ? str_label : 0);
         p->lex.strterm = NEW_STRTERM(str_dquote | label, '"', 0);
         p->lex.ptok = p->lex.pcur-1;
         return tSTRING_BEG;
 
       case '`':
-        if (IS_lex_state(EXPR_FNAME)) {
-            SET_LEX_STATE(EXPR_ENDFN);
+        if (parser_pslr_expects_fname_p(p)) {
             return c;
         }
-        if (IS_lex_state(EXPR_DOT)) {
-            if (cmd_state)
-                SET_LEX_STATE(EXPR_CMDARG);
-            else
-                SET_LEX_STATE(EXPR_ARG);
+        if (parser_pslr_after_dot_p(p)) {
             return c;
         }
         p->lex.strterm = NEW_STRTERM(str_xquote, '`', 0);
         return tXSTRING_BEG;
 
       case '\'':
-        label = (IS_LABEL_POSSIBLE() ? str_label : 0);
+        label = ((IS_LABEL_POSSIBLE() || parser_pslr_context_is(p, YY_CTX_CMDARG))
+                 ? str_label : 0);
         p->lex.strterm = NEW_STRTERM(str_squote | label, '\'', 0);
         p->lex.ptok = p->lex.pcur-1;
         return tSTRING_BEG;
@@ -10788,10 +11741,8 @@ parser_yylex(struct parser_params *p)
 
       case '&':
         if ((c = nextc(p)) == '&') {
-            SET_LEX_STATE(EXPR_BEG);
             if ((c = nextc(p)) == '=') {
                 set_yylval_id(idANDOP);
-                SET_LEX_STATE(EXPR_BEG);
                 return tOP_ASGN;
             }
             pushback(p, c);
@@ -10799,16 +11750,41 @@ parser_yylex(struct parser_params *p)
         }
         else if (c == '=') {
             set_yylval_id('&');
-            SET_LEX_STATE(EXPR_BEG);
             return tOP_ASGN;
         }
         else if (c == '.') {
             set_yylval_id(idANDDOT);
-            SET_LEX_STATE(EXPR_DOT);
             return tANDDOT;
         }
         pushback(p, c);
-        if (IS_SPCARG(c)) {
+        if (LAST_TOKEN_IS_VALUE(p)) {
+            /* After local variable or literal, '&' is bitwise AND */
+            c = warn_balanced('&', "&", "argument prefix");
+            return c;
+        }
+        if (parser_pslr_prefers_token_p(p, tAMPER, '&')) {
+            c = tAMPER;
+        }
+        else if (parser_pslr_prefers_token_p(p, '&', tAMPER)) {
+            c = '&';
+        }
+        else if (parser_pslr_eventually_accepts_token(p, tAMPER) &&
+                 !parser_pslr_eventually_accepts_token(p, '&')) {
+            c = tAMPER;
+        }
+        else if (parser_pslr_eventually_accepts_token(p, '&') &&
+                 !parser_pslr_eventually_accepts_token(p, tAMPER)) {
+            c = '&';
+        }
+        else if (parser_pslr_deep_accepts_token(p, tAMPER) &&
+                 !parser_pslr_deep_accepts_token(p, '&')) {
+            c = tAMPER;
+        }
+        else if (parser_pslr_deep_accepts_token(p, '&') &&
+                 !parser_pslr_deep_accepts_token(p, tAMPER)) {
+            c = '&';
+        }
+        else if (IS_SPCARG(c)) {
             if ((c != ':') ||
                 (c = peekc_n(p, 1)) == -1 ||
                 !(c == '\'' || c == '"' ||
@@ -10823,38 +11799,32 @@ parser_yylex(struct parser_params *p)
         else {
             c = warn_balanced('&', "&", "argument prefix");
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         return c;
 
       case '|':
         if ((c = nextc(p)) == '|') {
-            SET_LEX_STATE(EXPR_BEG);
-            if ((c = nextc(p)) == '=') {
-                set_yylval_id(idOROP);
-                SET_LEX_STATE(EXPR_BEG);
-                return tOP_ASGN;
-            }
-            pushback(p, c);
-            if (IS_lex_state_for(last_state, EXPR_BEG)) {
-                c = '|';
-                pushback(p, '|');
-                return c;
-            }
-            return tOROP;
+        if ((c = nextc(p)) == '=') {
+            set_yylval_id(idOROP);
+            return tOP_ASGN;
+        }
+        pushback(p, c);
+        if (parser_pslr_prefers_token_p(p, '|', tOROP)) {
+            c = '|';
+            pushback(p, '|');
+            return c;
+        }
+        return tOROP;
         }
         if (c == '=') {
             set_yylval_id('|');
-            SET_LEX_STATE(EXPR_BEG);
             return tOP_ASGN;
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG|EXPR_LABEL);
         pushback(p, c);
         return '|';
 
       case '+':
         c = nextc(p);
         if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
             if (c == '@') {
                 return tUPLUS;
             }
@@ -10863,25 +11833,26 @@ parser_yylex(struct parser_params *p)
         }
         if (c == '=') {
             set_yylval_id('+');
-            SET_LEX_STATE(EXPR_BEG);
             return tOP_ASGN;
         }
-        if (IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
-            SET_LEX_STATE(EXPR_BEG);
+        if (parser_pslr_prefers_token_p(p, tUPLUS, '+') ||
+            (parser_pslr_eventually_accepts_token(p, tUPLUS) &&
+             !parser_pslr_eventually_accepts_token(p, '+')) ||
+            (parser_pslr_deep_accepts_token(p, tUPLUS) &&
+             !parser_pslr_deep_accepts_token(p, '+')) ||
+            IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
                 return parse_numeric(p, '+');
             }
             return tUPLUS;
         }
-        SET_LEX_STATE(EXPR_BEG);
         pushback(p, c);
         return warn_balanced('+', "+", "unary operator");
 
       case '-':
         c = nextc(p);
         if (IS_AFTER_OPERATOR()) {
-            SET_LEX_STATE(EXPR_ARG);
             if (c == '@') {
                 return tUMINUS;
             }
@@ -10890,34 +11861,58 @@ parser_yylex(struct parser_params *p)
         }
         if (c == '=') {
             set_yylval_id('-');
-            SET_LEX_STATE(EXPR_BEG);
             return tOP_ASGN;
         }
         if (c == '>') {
-            SET_LEX_STATE(EXPR_ENDFN);
             yylval.num = p->lex.lpar_beg;
             p->lex.lpar_beg = p->lex.paren_nest;
             return tLAMBDA;
         }
-        if (IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
-            SET_LEX_STATE(EXPR_BEG);
+        if (parser_pslr_prefers_token_p(p, tUMINUS, '-') ||
+            (parser_pslr_eventually_accepts_token(p, tUMINUS) &&
+             !parser_pslr_eventually_accepts_token(p, '-')) ||
+            (parser_pslr_deep_accepts_token(p, tUMINUS) &&
+             !parser_pslr_deep_accepts_token(p, '-')) ||
+            IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
             pushback(p, c);
             if (c != -1 && ISDIGIT(c)) {
                 return tUMINUS_NUM;
             }
             return tUMINUS;
         }
-        SET_LEX_STATE(EXPR_BEG);
         pushback(p, c);
         return warn_balanced('-', "-", "unary operator");
 
       case '.': {
-        int is_beg = IS_BEG();
-        SET_LEX_STATE(EXPR_BEG);
+        int is_beg;
+        /* Try PSLR first for tBDOT vs tDOT disambiguation */
+        if (parser_pslr_prefers_token_p(p, tBDOT2, tDOT2) ||
+            parser_pslr_prefers_token_p(p, tBDOT3, tDOT3)) {
+            is_beg = TRUE;
+        }
+        else if (parser_pslr_prefers_token_p(p, tDOT2, tBDOT2) ||
+                 parser_pslr_prefers_token_p(p, tDOT3, tBDOT3)) {
+            is_beg = FALSE;
+        }
+        /* Deep PSLR: trace empty reductions for dot disambiguation */
+        else if ((parser_pslr_eventually_accepts_token(p, tBDOT2) &&
+                  !parser_pslr_eventually_accepts_token(p, tDOT2)) ||
+                 (parser_pslr_eventually_accepts_token(p, tBDOT3) &&
+                  !parser_pslr_eventually_accepts_token(p, tDOT3))) {
+            is_beg = TRUE;
+        }
+        else if ((parser_pslr_eventually_accepts_token(p, tDOT2) &&
+                  !parser_pslr_eventually_accepts_token(p, tBDOT2)) ||
+                 (parser_pslr_eventually_accepts_token(p, tDOT3) &&
+                  !parser_pslr_eventually_accepts_token(p, tBDOT3))) {
+            is_beg = FALSE;
+        }
+        else {
+            is_beg = IS_BEG();
+        }
         if ((c = nextc(p)) == '.') {
             if ((c = nextc(p)) == '.') {
-                if (p->ctxt.in_argdef || IS_LABEL_POSSIBLE()) {
-                    SET_LEX_STATE(EXPR_ENDARG);
+                if (p->ctxt.in_argdef) {
                     return tBDOT3;
                 }
                 if (p->lex.paren_nest == 0 && looking_at_eol_p(p)) {
@@ -10938,12 +11933,10 @@ parser_yylex(struct parser_params *p)
             else {
                 yyerror0("no .<digit> floating literal anymore; put 0 before dot");
             }
-            SET_LEX_STATE(EXPR_END);
             p->lex.ptok = p->lex.pcur;
             goto retry;
         }
         set_yylval_id('.');
-        SET_LEX_STATE(EXPR_DOT);
         return '.';
       }
 
@@ -10954,14 +11947,18 @@ parser_yylex(struct parser_params *p)
       case ')':
         COND_POP();
         CMDARG_POP();
-        SET_LEX_STATE(EXPR_ENDFN);
         p->lex.paren_nest--;
+        p->last_rparen_cmdarg = (p->lex.lparen_arg_stack & 1);
+        p->lex.lparen_arg_stack >>= 1;
+        if (p->lex.compstmt_paren_stack & 1) {
+            if (p->lex.lpar_nest > 0) p->lex.lpar_nest--;
+        }
+        p->lex.compstmt_paren_stack >>= 1;
         return c;
 
       case ']':
         COND_POP();
         CMDARG_POP();
-        SET_LEX_STATE(EXPR_END);
         p->lex.paren_nest--;
         return c;
 
@@ -10970,25 +11967,27 @@ parser_yylex(struct parser_params *p)
         if (!p->lex.brace_nest--) return tSTRING_DEND;
         COND_POP();
         CMDARG_POP();
-        SET_LEX_STATE(EXPR_END);
         p->lex.paren_nest--;
         return c;
 
       case ':':
         c = nextc(p);
         if (c == ':') {
-            if (IS_BEG() || IS_lex_state(EXPR_CLASS) || IS_SPCARG(-1)) {
-                SET_LEX_STATE(EXPR_BEG);
+            if (parser_pslr_colon3_prefix_p(p, space_seen)) {
                 return tCOLON3;
             }
             set_yylval_id(idCOLON2);
-            SET_LEX_STATE(EXPR_DOT);
             return tCOLON2;
         }
-        if (IS_END() || ISSPACE(c) || c == '#') {
+        if (ISSPACE(c) || c == '#') {
+            /* Space or comment after ':' -- always treat as colon, not symbol */
             pushback(p, c);
             c = warn_balanced(':', ":", "symbol literal");
-            SET_LEX_STATE(EXPR_BEG);
+            return c;
+        }
+        if (parser_pslr_colon_symbol_literal_p(p, c)) {
+            pushback(p, c);
+            c = warn_balanced(':', ":", "symbol literal");
             return c;
         }
         switch (c) {
@@ -11002,17 +12001,34 @@ parser_yylex(struct parser_params *p)
             pushback(p, c);
             break;
         }
-        SET_LEX_STATE(EXPR_FNAME);
+        /* AST.parse_file operator symbol literal still depends on this */
         return tSYMBEG;
 
       case '/':
+        /* In fname context (alias, def, sym), / is a method name, not regexp */
+        if (parser_pslr_expects_fname_p(p) || parser_pslr_after_dot_p(p)) {
+            return '/';
+        }
+        if (parser_pslr_prefers_token_p(p, tREGEXP_BEG, '/')) {
+            p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
+            return tREGEXP_BEG;
+        }
+        if (parser_pslr_eventually_accepts_token(p, tREGEXP_BEG) &&
+            !parser_pslr_eventually_accepts_token(p, '/')) {
+            p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
+            return tREGEXP_BEG;
+        }
+        if (parser_pslr_deep_accepts_token(p, tREGEXP_BEG) &&
+            !parser_pslr_deep_accepts_token(p, '/')) {
+            p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
+            return tREGEXP_BEG;
+        }
         if (IS_BEG()) {
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
             return tREGEXP_BEG;
         }
         if ((c = nextc(p)) == '=') {
             set_yylval_id('/');
-            SET_LEX_STATE(EXPR_BEG);
             return tOP_ASGN;
         }
         pushback(p, c);
@@ -11020,26 +12036,21 @@ parser_yylex(struct parser_params *p)
             p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
             return tREGEXP_BEG;
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         return warn_balanced('/', "/", "regexp literal");
 
       case '^':
         if ((c = nextc(p)) == '=') {
             set_yylval_id('^');
-            SET_LEX_STATE(EXPR_BEG);
             return tOP_ASGN;
         }
-        SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
         pushback(p, c);
         return '^';
 
       case ';':
-        SET_LEX_STATE(EXPR_BEG);
         p->command_start = TRUE;
         return ';';
 
       case ',':
-        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
         return ',';
 
       case '~':
@@ -11047,39 +12058,92 @@ parser_yylex(struct parser_params *p)
             if ((c = nextc(p)) != '@') {
                 pushback(p, c);
             }
-            SET_LEX_STATE(EXPR_ARG);
-        }
-        else {
-            SET_LEX_STATE(EXPR_BEG);
         }
         return '~';
 
-      case '(':
-        if (IS_BEG()) {
-            c = tLPAREN;
+      case '(': {
+        if (lambda_beginning_p()) {
+            /* lambda parameter list always starts with the plain '(' token */
+        }
+        else if (space_seen && parser_pslr_endfn_like_p(p) &&
+                 (c = parser_pslr_lparen_token(p)) == '(') {
+            /* singleton literal diagnostics still need plain '(' after ENDFN */
         }
         else if (!space_seen) {
-            /* foo( ... ) => method call, no ambiguity */
+            /* No space: use PSLR action-table to pick the right paren token.
+               e.g., yield( needs '(' to match "k_yield '(' call_args rparen",
+               but IS_BEG() would wrongly choose tLPAREN. */
+            int pslr_c = parser_pslr_lparen_token(p);
+            if (pslr_c != 0) {
+                c = pslr_c;
+            }
+            else if (parser_pslr_accepts_token(p, tLPAREN) &&
+                     !parser_pslr_accepts_token(p, '(')) {
+                /* e.g., mlhs after comma: tLPAREN accepted but not plain '(' */
+                c = tLPAREN;
+            }
         }
-        else if (IS_ARG() || IS_lex_state_all(EXPR_END|EXPR_LABEL)) {
-            c = tLPAREN_ARG;
+        else {
+            /* Space seen */
+            if (LAST_TOKEN_IS_METHOD(p)) {
+                /* After method name with space, ( is tLPAREN_ARG.
+                   Matches original IS_SPCARG for EXPR_CMDARG/EXPR_ARG. */
+                c = tLPAREN_ARG;
+                goto paren_done;
+            }
+            /* try PSLR action-table disambiguation */
+            int pslr_c = parser_pslr_lparen_token(p);
+            if (pslr_c != 0 && pslr_c != '(') {
+                /* PSLR uniquely disambiguated to tLPAREN or tLPAREN_ARG */
+                c = pslr_c;
+            }
+            else if (pslr_c == '(' &&
+                     !parser_pslr_eventually_accepts_token(p, '!') &&
+                     (parser_pslr_eventually_accepts_token(p, tLPAREN_ARG) ||
+                      parser_pslr_deep_accepts_token(p, tLPAREN_ARG))) {
+                /* PSLR chose plain '(' but tLPAREN_ARG is also reachable,
+                   AND we're NOT in a general expression context ('!' not accepted).
+                   This handles defined? (;x) where the grammar has both
+                   keyword_defined '(' and the tLPAREN_ARG compstmt path. */
+                c = tLPAREN_ARG;
+            }
+            else if (pslr_c != 0) {
+                c = pslr_c;
+            }
+            else if (IS_BEG() || cmd_state) {
+                c = tLPAREN;
+            }
+            else if (parser_pslr_lparen_arg_fallback_p(p, space_seen)) {
+                c = tLPAREN_ARG;
+            }
+            else {
+                /* When PSLR can't disambiguate and we're not in an arg state,
+                 * default to tLPAREN. This handles mlhs after comma where
+                 * both tLPAREN and tLPAREN_ARG are accepted. */
+                c = tLPAREN;
+            }
         }
-        else if (IS_lex_state(EXPR_ENDFN) && !lambda_beginning_p()) {
+      paren_done:
+        if (c == '(' && parser_pslr_endfn_like_p(p) && !lambda_beginning_p()) {
             rb_warning0("parentheses after method name is interpreted as "
                         "an argument list, not a decomposed argument");
         }
         p->lex.paren_nest++;
+        /* Track paren type for brace and newline disambiguation */
+        p->lex.lparen_arg_stack = (p->lex.lparen_arg_stack << 1) | (c == tLPAREN_ARG ? 1 : 0);
+        p->lex.compstmt_paren_stack = (p->lex.compstmt_paren_stack << 1) | ((c == tLPAREN || c == tLPAREN_ARG) ? 1 : 0);
+        if (c == tLPAREN || c == tLPAREN_ARG)
+            p->lex.lpar_nest++;
         COND_PUSH(0);
         CMDARG_PUSH(0);
-        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
         return c;
+      }
 
       case '[':
         p->lex.paren_nest++;
         if (IS_AFTER_OPERATOR()) {
             if ((c = nextc(p)) == ']') {
                 p->lex.paren_nest--;
-                SET_LEX_STATE(EXPR_ARG);
                 if ((c = nextc(p)) == '=') {
                     return tASET;
                 }
@@ -11087,16 +12151,35 @@ parser_yylex(struct parser_params *p)
                 return tAREF;
             }
             pushback(p, c);
-            SET_LEX_STATE(EXPR_ARG|EXPR_LABEL);
             return '[';
         }
-        else if (IS_BEG()) {
+        else if (IS_BEG() || cmd_state) {
+            /* PSLR: when IS_BEG() is true due to context (e.g. after keyword_super),
+             * check if the parser can disambiguate between '[' (aref) and tLBRACK (array).
+             * If only '[' is accepted, use it instead of tLBRACK. */
+            int accepts_plain = parser_pslr_accepts_token(p, '[');
+            int accepts_lbrack = parser_pslr_accepts_token(p, tLBRACK);
+            if (accepts_plain && !accepts_lbrack) {
+                c = '[';
+            }
+            else if (!accepts_plain && accepts_lbrack) {
+                c = tLBRACK;
+            }
+            else {
+                /* Both or neither accepted at surface level; try deep checks */
+                int deep_plain = parser_pslr_deep_accepts_token(p, '[');
+                int deep_lbrack = parser_pslr_deep_accepts_token(p, tLBRACK);
+                if (deep_plain && !deep_lbrack) {
+                    c = '[';
+                }
+                else {
+                    c = tLBRACK;
+                }
+            }
+        }
+        else if (parser_pslr_lbrack_arg_fallback_p(p, space_seen)) {
             c = tLBRACK;
         }
-        else if (IS_ARG() && (space_seen || IS_lex_state(EXPR_LABELED))) {
-            c = tLBRACK;
-        }
-        SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
         COND_PUSH(0);
         CMDARG_PUSH(0);
         return c;
@@ -11105,20 +12188,28 @@ parser_yylex(struct parser_params *p)
         ++p->lex.brace_nest;
         if (lambda_beginning_p())
             c = tLAMBEG;
-        else if (IS_lex_state(EXPR_LABELED))
+        else if (parser_pslr_after_labeled_p(p))
             c = tLBRACE;      /* hash */
-        else if (IS_lex_state(EXPR_ARG_ANY | EXPR_END | EXPR_ENDFN))
+        else if (cmd_state) {
+            /* After newline/semicolon we are at statement beginning.
+               Use PSLR to pick the right brace, defaulting to hash. */
+            if ((c = parser_pslr_lbrace_token(p)) == 0)
+                c = tLBRACE;
+        }
+        else if (p->last_rparen_cmdarg) {
+            /* ')' just closed a tLPAREN_ARG paren: '{' is cmd_brace_block */
+            c = tLBRACE_ARG;
+            p->last_rparen_cmdarg = FALSE;
+        }
+        else if (parser_pslr_brace_primary_block_fallback_p(p))
             c = '{';          /* block (primary) */
-        else if (IS_lex_state(EXPR_ENDARG))
-            c = tLBRACE_ARG;  /* block (expr) */
+        else if ((c = parser_pslr_lbrace_token(p)) != 0) {
+            /* Prefer parser-state disambiguation when it selects one brace token. */
+        }
         else
             c = tLBRACE;      /* hash */
         if (c != tLBRACE) {
             p->command_start = TRUE;
-            SET_LEX_STATE(EXPR_BEG);
-        }
-        else {
-            SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
         }
         ++p->lex.paren_nest;  /* after lambda_beginning_p() */
         COND_PUSH(0);
@@ -11138,13 +12229,13 @@ parser_yylex(struct parser_params *p)
         return '\\';
 
       case '%':
-        return parse_percent(p, space_seen, last_state);
+        return parse_percent(p, space_seen, cmd_state);
 
       case '$':
-        return parse_gvar(p, last_state);
+        return parse_gvar(p);
 
       case '@':
-        return parse_atmark(p, last_state);
+        return parse_atmark(p);
 
       case '_':
         if (was_bol(p) && whole_match_p(p, "__END__", 7, 0)) {
@@ -11183,6 +12274,47 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
     p->yylloc = yylloc;
 
     t = parser_yylex(p);
+
+    /* Store last token ID for Ripper lex_state computation.
+     * lex_state is NOT maintained here -- it is computed on demand
+     * in rb_ruby_parser_lex_state() when Ripper requests it. */
+    p->last_token_id = t;
+
+    /* Set last_token_type for PSLR disambiguation (not lex_state). */
+    switch (t) {
+      case tIDENTIFIER: case tFID: case tCONSTANT:
+        /* parse_ident already sets last_token_type */
+        break;
+      case tIVAR: case tCVAR:
+        /* parse_atmark sets context; mark as value for PSLR */
+        p->last_token_type = LAST_TOKEN_VALUE;
+        break;
+      case tINTEGER: case tFLOAT: case tRATIONAL: case tIMAGINARY:
+      case tCHAR: case tSTRING_END: case tREGEXP_END: case tLABEL_END:
+      case tSTRING_DEND:
+      case keyword_self: case keyword_nil:
+      case keyword_true: case keyword_false:
+      case keyword__FILE__: case keyword__LINE__: case keyword__ENCODING__:
+      case keyword_end: case keyword_redo: case keyword_retry:
+      case keyword_BEGIN: case keyword_END:
+      case tGVAR: case tNTH_REF: case tBACK_REF:
+      case ')': case ']': case '}':
+        p->last_token_type = LAST_TOKEN_VALUE;
+        break;
+      case tIGNORED_NL: case tCOMMENT:
+      case tEMBDOC_BEG: case tEMBDOC: case tEMBDOC_END:
+        /* Preserve previous last_token_type */
+        break;
+      default:
+        p->last_token_type = LAST_TOKEN_OTHER;
+        break;
+    }
+
+    /* Reset last_rparen_cmdarg: keep it alive from ')' until '{'.
+     * ')' sets it, '{' reads it; anything else in between clears it. */
+    if (t != ')' && t != '{' && t != tLBRACE && t != tLBRACE_ARG && t != tLAMBEG) {
+        p->last_rparen_cmdarg = FALSE;
+    }
 
     if (has_delayed_token(p))
         dispatch_delayed_token(p, t);
@@ -13273,15 +14405,6 @@ id_is_var(struct parser_params *p, ID id)
 }
 #endif
 
-static inline enum lex_state_e
-parser_set_lex_state(struct parser_params *p, enum lex_state_e ls, int line)
-{
-    if (p->debug) {
-        ls = rb_parser_trace_lex_state(p, p->lex.state, ls, line);
-    }
-    return p->lex.state = ls;
-}
-
 #ifndef RIPPER
 static void
 flush_debug_buffer(struct parser_params *p, VALUE out, VALUE str)
@@ -13325,19 +14448,6 @@ append_lex_state_name(struct parser_params *p, enum lex_state_e state, VALUE buf
     return buf;
 }
 
-enum lex_state_e
-rb_parser_trace_lex_state(struct parser_params *p, enum lex_state_e from,
-                          enum lex_state_e to, int line)
-{
-    VALUE mesg;
-    mesg = rb_str_new_cstr("lex_state: ");
-    append_lex_state_name(p, from, mesg);
-    rb_str_cat_cstr(mesg, " -> ");
-    append_lex_state_name(p, to, mesg);
-    rb_str_catf(mesg, " at line %d\n", line);
-    flush_debug_buffer(p, p->debug_output, mesg);
-    return to;
-}
 
 VALUE
 rb_parser_lex_state_name(struct parser_params *p, enum lex_state_e state)
@@ -13381,9 +14491,6 @@ rb_parser_fatal(struct parser_params *p, const char *fmt, ...)
     RB_GC_GUARD(mesg);
 
     mesg = rb_str_new(0, 0);
-    append_lex_state_name(p, p->lex.state, mesg);
-    compile_error(p, "lex.state: %"PRIsVALUE, mesg);
-    rb_str_resize(mesg, 0);
     append_bitstack_value(p, p->cond_stack, mesg);
     compile_error(p, "cond_stack: %"PRIsVALUE, mesg);
     rb_str_resize(mesg, 0);
@@ -15521,6 +16628,7 @@ parser_initialize(struct parser_params *p)
 {
     /* note: we rely on TypedData_Make_Struct to set most fields to 0 */
     p->command_start = TRUE;
+    p->pslr_current_state = -1;
     p->ruby_sourcefile_string = Qnil;
     p->lex.lpar_beg = -1; /* make lambda_beginning_p() == FALSE at first */
     string_buffer_init(p);
@@ -15813,7 +16921,149 @@ rb_ruby_parser_ruby_sourceline(rb_parser_t *p)
 int
 rb_ruby_parser_lex_state(rb_parser_t *p)
 {
-    return p->lex.state;
+    /* Single boundary function for Ripper lex_state reporting.
+     * Computes lex_state on demand from last_token_id, last_token_type,
+     * and PSLR context. No lex_state is maintained during parsing. */
+    int t = p->last_token_id;
+
+    switch (t) {
+      /* Identifiers: use last_token_type to distinguish */
+      case tIDENTIFIER: case tFID: case tCONSTANT:
+        if (p->last_token_type == LAST_TOKEN_LVAR)
+            return EXPR_END | EXPR_LABEL;
+        else if (p->last_token_type == LAST_TOKEN_VALUE)
+            return EXPR_ENDFN;  /* fname context (after def/alias/sym) */
+        else
+            return p->cmd_state ? EXPR_CMDARG : EXPR_ARG;
+
+      /* Instance/class variables */
+      case tIVAR: case tCVAR:
+        return parser_pslr_context_is(p, YY_CTX_ENDFN) ? EXPR_ENDFN : EXPR_END;
+
+      /* Global variables, nth/back refs */
+      case tGVAR: case tNTH_REF: case tBACK_REF:
+        return EXPR_END;
+
+      /* Literals -> EXPR_END */
+      case tINTEGER: case tFLOAT: case tRATIONAL: case tIMAGINARY:
+      case tCHAR: case tSTRING_END: case tREGEXP_END:
+        return EXPR_END;
+
+      /* Label end -> EXPR_LABELED (but actually ARG|LABELED) */
+      case tLABEL_END:
+        return EXPR_ARG | EXPR_LABELED;
+
+      /* String interpolation end */
+      case tSTRING_DEND:
+        return EXPR_END;
+
+      /* Closing brackets */
+      case ')':
+        return EXPR_ENDARG;
+      case ']': case '}':
+        return EXPR_END;
+
+      /* Opening brackets */
+      case tLPAREN: case tLPAREN_ARG:
+        return EXPR_BEG | EXPR_LABEL;
+      case tLBRACE: case tLBRACE_ARG: case tLAMBEG:
+      case tLBRACK: case '(': case '[': case '{':
+        return EXPR_BEG;
+
+      /* String/regexp/symbol begin */
+      case tSTRING_BEG: case tXSTRING_BEG: case tREGEXP_BEG:
+      case tWORDS_BEG: case tQWORDS_BEG: case tSYMBOLS_BEG:
+      case tQSYMBOLS_BEG:
+        return EXPR_BEG;
+      case tSYMBEG:
+        return EXPR_FNAME | EXPR_FITEM;
+
+      /* String content/interpolation */
+      case tSTRING_CONTENT: case tSTRING_DBEG: case tSTRING_DVAR:
+        return EXPR_BEG;
+      case tLAMBDA:
+        return EXPR_BEG;
+
+      /* Operators -> EXPR_BEG */
+      case '+': case '-': case '*': case '/': case '%':
+      case '^': case '|': case '&': case '<': case '>':
+      case '!': case '~': case '?': case ':': case '=':
+      case tOP_ASGN:
+      case tAMPER: case tSTAR: case tDSTAR: case tPOW:
+      case tUPLUS: case tUMINUS: case tUMINUS_NUM:
+      case tEQ: case tNEQ: case tEQQ:
+      case tCMP: case tGEQ: case tLEQ:
+      case tMATCH: case tNMATCH:
+      case tLSHFT: case tRSHFT:
+      case tDOT2: case tDOT3: case tBDOT2: case tBDOT3:
+      case tANDOP: case tOROP:
+      case tASSOC: case tCOLON3:
+        return EXPR_BEG;
+
+      /* Dot/scope */
+      case '.': case tCOLON2: case tANDDOT:
+        return EXPR_DOT;
+
+      /* Delimiters */
+      case ',': case ';': case '\n':
+        return EXPR_BEG;
+
+      /* Label */
+      case tLABEL:
+        return EXPR_LABELED;
+
+      /* AREF/ASET */
+      case tAREF: case tASET:
+        return EXPR_ARG;
+
+      /* Heredoc */
+      case tHEREDOC_BEG: case tHEREDOC_END:
+        return EXPR_BEG;
+
+      /* Keywords: use kw->state from defs/keywords */
+      case keyword_return: case keyword_break: case keyword_next:
+        return EXPR_MID;
+      case keyword_rescue:
+        return EXPR_MID;
+      case keyword_defined: case keyword_not:
+      case keyword_super: case keyword_yield:
+        return EXPR_ARG;
+      case keyword_def:
+        return EXPR_FNAME;
+      case keyword_alias: case keyword_undef:
+        return EXPR_FNAME | EXPR_FITEM;
+      case keyword_class: case keyword_module:
+        return EXPR_CLASS;
+      case keyword_if: case keyword_unless:
+      case keyword_while: case keyword_until:
+      case keyword_case: case keyword_for:
+      case keyword_begin: case keyword_do:
+      case keyword_do_cond: case keyword_do_block: case keyword_do_LAMBDA:
+      case keyword_and: case keyword_or: case keyword_in:
+      case keyword_then: case keyword_else: case keyword_elsif:
+      case keyword_when: case keyword_ensure:
+        return EXPR_BEG;
+      case keyword_end: case keyword_redo: case keyword_retry:
+      case keyword_self: case keyword_nil:
+      case keyword_true: case keyword_false:
+      case keyword__FILE__: case keyword__LINE__: case keyword__ENCODING__:
+      case keyword_BEGIN: case keyword_END:
+        return EXPR_END;
+
+      /* Modifier keywords */
+      case modifier_if: case modifier_unless:
+      case modifier_while: case modifier_until:
+      case modifier_rescue:
+        return EXPR_BEG | EXPR_LABEL;
+
+      /* Ignored tokens: use PSLR context */
+      case tIGNORED_NL: case tCOMMENT:
+      case tEMBDOC_BEG: case tEMBDOC: case tEMBDOC_END:
+        /* fall through to default */
+
+      default:
+        return parser_pslr_synthesize_lex_state(p);
+    }
 }
 
 void
