@@ -1,0 +1,668 @@
+class Lrama::Parser
+  expect 0
+  error_on_expect_mismatch
+
+  token C_DECLARATION CHARACTER IDENT_COLON IDENTIFIER INTEGER STRING TAG REGEX
+
+rule
+
+  input: prologue_declaration* bison_declaration* "%%" rules_or_grammar_declaration+ epilogue_declaration?
+
+  prologue_declaration:
+      "%{"
+        {
+          begin_c_declaration("%}")
+        }
+      C_DECLARATION
+        {
+          end_c_declaration
+        }
+      "%}"
+        {
+          @grammar.prologue_first_lineno = val[0].first_line
+          @grammar.prologue = val[2].s_value
+        }
+    | "%require" STRING
+        {
+          @grammar.required = true
+        }
+
+  bison_declaration:
+      parser_option ";"*
+    | grammar_declaration ";"*
+
+  parser_option:
+      "%expect" INTEGER
+        {
+          @grammar.expect = val[1].s_value
+        }
+    | "%define" variable value
+        {
+          @grammar.define[val[1].s_value] = val[2]&.s_value
+        }
+    | "%define" variable "{" value "}"
+        {
+          @grammar.define[val[1].s_value] = val[3]&.s_value
+        }
+    | "%param" param+
+    | "%lex-param" param+
+        {
+          val[1].each {|token|
+            @grammar.lex_param = Grammar::Code::NoReferenceCode.new(type: :lex_param, token_code: token).token_code.s_value
+          }
+        }
+    | "%parse-param" param+
+        {
+          val[1].each {|token|
+            @grammar.parse_param = Grammar::Code::NoReferenceCode.new(type: :parse_param, token_code: token).token_code.s_value
+          }
+        }
+    | "%code" IDENTIFIER param
+        {
+          @grammar.add_percent_code(id: val[1], code: val[2])
+        }
+    | "%initial-action" param
+        {
+          @grammar.initial_action = Grammar::Code::InitialActionCode.new(type: :initial_action, token_code: val[1])
+        }
+    | "%no-stdlib"
+        {
+          @grammar.no_stdlib = true
+        }
+    | "%locations"
+        {
+          @grammar.locations = true
+        }
+
+  grammar_declaration:
+      symbol_declaration
+    | rule_declaration
+    | inline_declaration
+    | "%union" param
+        {
+          @grammar.set_union(
+            Grammar::Code::NoReferenceCode.new(type: :union, token_code: val[1]),
+            val[1].line
+          )
+        }
+    | "%destructor" param (symbol | TAG)+
+        {
+          @grammar.add_destructor(
+            ident_or_tags: val[2].flatten,
+            token_code: val[1],
+            lineno: val[1].line
+          )
+        }
+    | "%printer" param (symbol | TAG)+
+        {
+          @grammar.add_printer(
+            ident_or_tags: val[2].flatten,
+            token_code: val[1],
+            lineno: val[1].line
+          )
+        }
+    | "%error-token" param (symbol | TAG)+
+        {
+          @grammar.add_error_token(
+            ident_or_tags: val[2].flatten,
+            token_code: val[1],
+            lineno: val[1].line
+          )
+        }
+    | "%after-shift" IDENTIFIER
+        {
+          @grammar.after_shift = val[1]
+        }
+    | "%before-reduce" IDENTIFIER
+        {
+          @grammar.before_reduce = val[1]
+        }
+    | "%after-reduce" IDENTIFIER
+        {
+          @grammar.after_reduce = val[1]
+        }
+    | "%after-shift-error-token" IDENTIFIER
+        {
+          @grammar.after_shift_error_token = val[1]
+        }
+    | "%after-pop-stack" IDENTIFIER
+        {
+          @grammar.after_pop_stack = val[1]
+        }
+
+  symbol_declaration:
+      "%token" token_declarations
+    | "%token-pattern" token_pattern_declarations
+    | "%lexer-context" lexer_context_declaration
+    | "%lex-prec" lex_prec_declarations
+    | "%type" symbol_declarations
+        {
+          val[1].each {|hash|
+            hash[:tokens].each {|id|
+              @grammar.add_type(id: id, tag: hash[:tag])
+            }
+          }
+        }
+    | "%nterm" symbol_declarations
+        {
+          val[1].each {|hash|
+            hash[:tokens].each {|id|
+              if @grammar.find_term_by_s_value(id.s_value)
+                on_action_error("symbol #{id.s_value} redeclared as a nonterminal", id)
+              else
+                @grammar.add_type(id: id, tag: hash[:tag])
+              end
+            }
+          }
+        }
+    | "%left" token_declarations_for_precedence
+        {
+          val[1].each {|hash|
+            hash[:tokens].each {|id|
+              sym = @grammar.add_term(id: id, tag: hash[:tag])
+              @grammar.add_left(sym, @precedence_number, id.s_value, id.first_line)
+            }
+          }
+          @precedence_number += 1
+        }
+    | "%right" token_declarations_for_precedence
+        {
+          val[1].each {|hash|
+            hash[:tokens].each {|id|
+              sym = @grammar.add_term(id: id, tag: hash[:tag])
+              @grammar.add_right(sym, @precedence_number, id.s_value, id.first_line)
+            }
+          }
+          @precedence_number += 1
+        }
+    | "%precedence" token_declarations_for_precedence
+        {
+          val[1].each {|hash|
+            hash[:tokens].each {|id|
+              sym = @grammar.add_term(id: id, tag: hash[:tag])
+              @grammar.add_precedence(sym, @precedence_number, id.s_value, id.first_line)
+            }
+          }
+          @precedence_number += 1
+        }
+    | "%nonassoc" token_declarations_for_precedence
+        {
+          val[1].each {|hash|
+            hash[:tokens].each {|id|
+              sym = @grammar.add_term(id: id, tag: hash[:tag])
+              @grammar.add_nonassoc(sym, @precedence_number, id.s_value, id.first_line)
+            }
+          }
+          @precedence_number += 1
+        }
+    | "%start" IDENTIFIER
+        {
+          @grammar.set_start_nterm(val[1])
+        }
+
+  token_declarations:
+      TAG? token_declaration+
+        {
+          val[1].each {|token_declaration|
+            @grammar.add_term(id: token_declaration[0], alias_name: token_declaration[2], token_id: token_declaration[1]&.s_value, tag: val[0], replace: true)
+          }
+        }
+    | token_declarations TAG token_declaration+
+        {
+          val[2].each {|token_declaration|
+            @grammar.add_term(id: token_declaration[0], alias_name: token_declaration[2], token_id: token_declaration[1]&.s_value, tag: val[1], replace: true)
+          }
+        }
+
+  token_declaration: id INTEGER? alias { result = val }
+
+  token_pattern_declarations:
+      TAG? token_pattern_declaration+
+        {
+          val[1].each {|decl|
+            @grammar.add_token_pattern(
+              id: decl[:id],
+              pattern: decl[:pattern],
+              alias_name: decl[:alias],
+              tag: val[0],
+              lineno: decl[:id].first_line
+            )
+          }
+        }
+    | token_pattern_declarations TAG token_pattern_declaration+
+        {
+          val[2].each {|decl|
+            @grammar.add_token_pattern(
+              id: decl[:id],
+              pattern: decl[:pattern],
+              alias_name: decl[:alias],
+              tag: val[1],
+              lineno: decl[:id].first_line
+            )
+          }
+        }
+
+  token_pattern_declaration:
+      IDENTIFIER REGEX alias
+        {
+          result = { id: val[0], pattern: val[1], alias: val[2] }
+        }
+
+  lexer_context_declaration:
+      IDENTIFIER symbol+
+        {
+          @grammar.add_lexer_context(name: val[0].s_value, symbols: val[1])
+        }
+
+  lex_prec_declarations:
+      lex_prec_chain
+        {
+          val[0].each {|rule|
+            @grammar.add_lex_prec_rule(
+              left_token: rule[:left],
+              operator: rule[:op],
+              right_token: rule[:right],
+              lineno: rule[:left].first_line
+            )
+          }
+        }
+
+  lex_prec_chain:
+      IDENTIFIER lex_prec_op IDENTIFIER
+        {
+          result = [{ left: val[0], op: val[1], right: val[2] }]
+        }
+    | lex_prec_chain lex_prec_op IDENTIFIER
+        {
+          last_right = val[0].last[:right]
+          result = val[0] + [{ left: last_right, op: val[1], right: val[2] }]
+        }
+
+  lex_prec_op:
+      ","
+        {
+          result = Lrama::Grammar::LexPrec::SAME_PRIORITY
+        }
+    | "-"
+        {
+          result = Lrama::Grammar::LexPrec::HIGHER
+        }
+    | "-s"
+        {
+          result = Lrama::Grammar::LexPrec::SHORTER
+        }
+
+  rule_declaration:
+      "%rule" IDENTIFIER "(" rule_args ")" TAG? ":" rule_rhs_list
+        {
+          rule = Grammar::Parameterized::Rule.new(val[1].s_value, val[3], val[7], tag: val[5])
+          @grammar.add_parameterized_rule(rule)
+        }
+
+  inline_declaration:
+      "%rule" "%inline" IDENT_COLON ":" rule_rhs_list
+        {
+          rule = Grammar::Parameterized::Rule.new(val[2].s_value, [], val[4], is_inline: true)
+          @grammar.add_parameterized_rule(rule)
+        }
+    | "%rule" "%inline" IDENTIFIER "(" rule_args ")" ":" rule_rhs_list
+        {
+          rule = Grammar::Parameterized::Rule.new(val[2].s_value, val[4], val[7], is_inline: true)
+          @grammar.add_parameterized_rule(rule)
+        }
+
+  rule_args:
+      IDENTIFIER { result = [val[0]] }
+    | rule_args "," IDENTIFIER { result = val[0].append(val[2]) }
+
+  rule_rhs_list:
+      rule_rhs
+        {
+          builder = val[0]
+          result = [builder]
+        }
+    | rule_rhs_list "|" rule_rhs
+        {
+          builder = val[2]
+          result = val[0].append(builder)
+        }
+
+  rule_rhs:
+      "%empty"?
+        {
+          reset_precs
+          result = Grammar::Parameterized::Rhs.new
+        }
+    | rule_rhs symbol named_ref?
+        {
+          on_action_error("intermediate %prec in a rule", val[1]) if @trailing_prec_seen
+          token = val[1]
+          token.alias_name = val[2]
+          builder = val[0]
+          builder.symbols << token
+          result = builder
+        }
+    | rule_rhs symbol parameterized_suffix
+        {
+          on_action_error("intermediate %prec in a rule", val[1]) if @trailing_prec_seen
+          builder = val[0]
+          builder.symbols << Lrama::Lexer::Token::InstantiateRule.new(s_value: val[2], location: @lexer.location, args: [val[1]])
+          result = builder
+        }
+    | rule_rhs IDENTIFIER "(" parameterized_args ")" named_ref? TAG?
+        {
+          on_action_error("intermediate %prec in a rule", val[1]) if @trailing_prec_seen
+          builder = val[0]
+          builder.symbols << Lrama::Lexer::Token::InstantiateRule.new(s_value: val[1].s_value, alias_name: val[5], location: @lexer.location, args: val[3], lhs_tag: val[6])
+          result = builder
+        }
+    | rule_rhs action named_ref?
+        {
+          user_code = val[1]
+          user_code.alias_name = val[2]
+          builder = val[0]
+          builder.user_code = user_code
+          result = builder
+        }
+    | rule_rhs "%prec" symbol
+        {
+          on_action_error("multiple %prec in a rule", val[0]) if prec_seen?
+          sym = @grammar.find_symbol_by_id!(val[2])
+          if val[0].rhs.empty?
+            @opening_prec_seen = true
+          else
+            @trailing_prec_seen = true
+          end
+          builder = val[0]
+          builder.precedence_sym = sym
+          result = builder
+        }
+
+  alias: string_as_id? { result = val[0].s_value if val[0] }
+
+  symbol_declarations:
+      TAG? symbol+
+        {
+          result = if val[0]
+            [{tag: val[0], tokens: val[1]}]
+          else
+            [{tag: nil, tokens: val[1]}]
+          end
+        }
+    | symbol_declarations TAG symbol+ { result = val[0].append({tag: val[1], tokens: val[2]}) }
+
+  symbol:
+      id
+    | string_as_id
+
+  param:
+      "{"
+        {
+          begin_c_declaration("}")
+        }
+      C_DECLARATION
+        {
+          end_c_declaration
+        }
+      "}"
+        {
+          result = val[2]
+        }
+
+  token_declarations_for_precedence:
+      id+ { result = [{tag: nil, tokens: val[0]}] }
+    | (TAG id+)+ { result = val[0].map {|tag, ids| {tag: tag, tokens: ids} } }
+    | id+ TAG id+ { result = [{tag: nil, tokens: val[0]}, {tag: val[1], tokens: val[2]}] }
+
+  id:
+      IDENTIFIER
+    | CHARACTER
+
+  rules_or_grammar_declaration:
+      rules ";"*
+    | grammar_declaration ";"+
+
+  rules:
+      IDENT_COLON named_ref? ":" rhs_list
+        {
+          lhs = val[0]
+          lhs.alias_name = val[1]
+          val[3].each do |builder|
+            builder.lhs = lhs
+            builder.complete_input
+            @grammar.add_rule_builder(builder)
+          end
+        }
+
+  rhs_list:
+      rhs
+        {
+          if val[0].rhs.count > 1
+            empties = val[0].rhs.select { |sym| sym.is_a?(Lrama::Lexer::Token::Empty) }
+            empties.each do |empty|
+              on_action_error("%empty on non-empty rule", empty)
+            end
+          end
+          builder = val[0]
+          if !builder.line
+            builder.line = @lexer.line - 1
+          end
+          result = [builder]
+        }
+    | rhs_list "|" rhs
+        {
+          builder = val[2]
+          if !builder.line
+            builder.line = @lexer.line - 1
+          end
+          result = val[0].append(builder)
+        }
+
+  rhs:
+      /* empty */
+        {
+          reset_precs
+          result = @grammar.create_rule_builder(@rule_counter, @midrule_action_counter)
+        }
+    | rhs "%empty"
+        {
+          builder = val[0]
+          builder.add_rhs(Lrama::Lexer::Token::Empty.new(location: @lexer.location))
+          result = builder
+        }
+    | rhs symbol named_ref?
+        {
+          on_action_error("intermediate %prec in a rule", val[1]) if @trailing_prec_seen
+          token = val[1]
+          token.alias_name = val[2]
+          builder = val[0]
+          builder.add_rhs(token)
+          result = builder
+        }
+    | rhs symbol parameterized_suffix named_ref? TAG?
+        {
+          on_action_error("intermediate %prec in a rule", val[1]) if @trailing_prec_seen
+          token = Lrama::Lexer::Token::InstantiateRule.new(s_value: val[2], alias_name: val[3], location: @lexer.location, args: [val[1]], lhs_tag: val[4])
+          builder = val[0]
+          builder.add_rhs(token)
+          builder.line = val[1].first_line
+          result = builder
+        }
+    | rhs IDENTIFIER "(" parameterized_args ")" named_ref? TAG?
+        {
+          on_action_error("intermediate %prec in a rule", val[1]) if @trailing_prec_seen
+          token = Lrama::Lexer::Token::InstantiateRule.new(s_value: val[1].s_value, alias_name: val[5], location: @lexer.location, args: val[3], lhs_tag: val[6])
+          builder = val[0]
+          builder.add_rhs(token)
+          builder.line = val[1].first_line
+          result = builder
+        }
+    | rhs action named_ref? TAG?
+        {
+          user_code = val[1]
+          user_code.alias_name = val[2]
+          user_code.tag = val[3]
+          builder = val[0]
+          builder.user_code = user_code
+          result = builder
+        }
+    | rhs "%prec" symbol
+        {
+          on_action_error("multiple %prec in a rule", val[0]) if prec_seen?
+          sym = @grammar.find_symbol_by_id!(val[2])
+          if val[0].rhs.empty?
+            @opening_prec_seen = true
+          else
+            @trailing_prec_seen = true
+          end
+          builder = val[0]
+          builder.precedence_sym = sym
+          result = builder
+        }
+
+  parameterized_suffix:
+      "?" { result = "option" }
+    | "+" { result = "nonempty_list" }
+    | "*" { result = "list" }
+
+  parameterized_args:
+      symbol parameterized_suffix?
+        {
+          result = if val[1]
+            [Lrama::Lexer::Token::InstantiateRule.new(s_value: val[1].s_value, location: @lexer.location, args: val[0])]
+          else
+            [val[0]]
+          end
+        }
+    | parameterized_args ',' symbol { result = val[0].append(val[2]) }
+    | parameterized_args ',' IDENTIFIER "(" parameterized_args ")" { result = val[0].append(Lrama::Lexer::Token::InstantiateRule.new(s_value: val[2].s_value, location: @lexer.location, args: val[4])) }
+    | IDENTIFIER "(" parameterized_args ")" { result = [Lrama::Lexer::Token::InstantiateRule.new(s_value: val[0].s_value, location: @lexer.location, args: val[2])] }
+
+  action:
+      "{"
+        {
+          if prec_seen?
+            on_action_error("multiple User_code after %prec", val[0]) if @code_after_prec
+            @code_after_prec = true
+          end
+          begin_c_declaration("}")
+        }
+      C_DECLARATION
+        {
+          end_c_declaration
+        }
+      "}"
+        {
+          result = val[2]
+        }
+
+  named_ref: '[' IDENTIFIER ']' { result = val[1].s_value }
+
+  epilogue_declaration:
+      "%%"
+        {
+          begin_c_declaration('\Z')
+        }
+      C_DECLARATION
+        {
+          end_c_declaration
+          @grammar.epilogue_first_lineno = val[0].first_line + 1
+          @grammar.epilogue = val[2].s_value
+        }
+
+  variable: id
+
+  value: # empty
+       | IDENTIFIER
+       | STRING
+       | "{...}"
+
+  string_as_id: STRING { result = Lrama::Lexer::Token::Ident.new(s_value: val[0].s_value) }
+end
+
+---- inner
+
+include Lrama::Tracer::Duration
+
+def initialize(text, path, debug = false, locations = false, define = {})
+  @path = path
+  @grammar_file = Lrama::Lexer::GrammarFile.new(path, text)
+  @yydebug = debug || define.key?('parse.trace')
+  @rule_counter = Lrama::Grammar::Counter.new(0)
+  @midrule_action_counter = Lrama::Grammar::Counter.new(1)
+  @locations = locations
+  @define = define
+end
+
+def parse
+  message = "parse '#{File.basename(@path)}'"
+  report_duration(message) do
+    @lexer = Lrama::Lexer.new(@grammar_file)
+    @grammar = Lrama::Grammar.new(@rule_counter, @locations, @define)
+    @precedence_number = 0
+    reset_precs
+    do_parse
+    @grammar
+  end
+end
+
+def next_token
+  @lexer.next_token
+end
+
+def on_error(error_token_id, error_value, value_stack)
+  case error_value
+  when Lrama::Lexer::Token::Int
+    location = error_value.location
+    value = "#{error_value.s_value}"
+  when Lrama::Lexer::Token::Token
+    location = error_value.location
+    value = "\"#{error_value.s_value}\""
+  when Lrama::Lexer::Token::Base
+    location = error_value.location
+    value = "'#{error_value.s_value}'"
+  else
+    location = @lexer.location
+    value = error_value.inspect
+  end
+
+  error_message = "parse error on value #{value} (#{token_to_str(error_token_id) || '?'})"
+
+  raise_parse_error(error_message, location)
+end
+
+def on_action_error(error_message, error_value)
+  if error_value.is_a?(Lrama::Lexer::Token::Base)
+    location = error_value.location
+  else
+    location = @lexer.location
+  end
+
+  raise_parse_error(error_message, location)
+end
+
+private
+
+def reset_precs
+  @opening_prec_seen = false
+  @trailing_prec_seen = false
+  @code_after_prec = false
+end
+
+def prec_seen?
+  @opening_prec_seen || @trailing_prec_seen
+end
+
+def begin_c_declaration(end_symbol)
+  @lexer.status = :c_declaration
+  @lexer.end_symbol = end_symbol
+end
+
+def end_c_declaration
+  @lexer.status = :initial
+  @lexer.end_symbol = nil
+end
+
+def raise_parse_error(error_message, location)
+  raise ParseError, location.generate_error_message(error_message)
+end
