@@ -6970,8 +6970,9 @@ ripper_dispatch_delayed_token(struct parser_params *p, enum yytokentype t)
 #endif /* RIPPER */
 
 static inline int
-is_identchar(struct parser_params *p, const char *ptr, const char *MAYBE_UNUSED(ptr_end), rb_encoding *enc)
+is_identchar(struct parser_params *p, const char *ptr, const char *ptr_end, rb_encoding *enc)
 {
+    if (ptr >= ptr_end) return 0;
     return rb_enc_isalnum((unsigned char)*ptr, enc) || *ptr == '_' || !ISASCII(*ptr);
 }
 
