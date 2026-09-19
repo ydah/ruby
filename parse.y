@@ -1536,6 +1536,7 @@ static void flush_string_content(struct parser_params *p, rb_encoding *enc, size
 static void error_duplicate_pattern_variable(struct parser_params *p, ID id, const YYLTYPE *loc);
 static void error_duplicate_pattern_key(struct parser_params *p, ID id, const YYLTYPE *loc);
 static VALUE formal_argument_error(struct parser_params*, ID);
+static ID formal_label_local_id(ID);
 static ID shadowing_lvar(struct parser_params*,ID);
 static void new_bv(struct parser_params*,ID);
 
@@ -6467,13 +6468,7 @@ f_label 	: tLABEL
                             $$ = 0;
                             /*% ripper[error]: param_error!(?e, $:1) %*/
                         }
-                        /*
-                         * Workaround for Prism::ParseTest#test_filepath for
-                         * "unparser/corpus/literal/def.txt"
-                         *
-                         * See the discussion on https://github.com/ruby/ruby/pull/9923
-                         */
-                        arg_var(p, ifdef_ripper(0, $1));
+                        arg_var(p, formal_label_local_id($1));
                         /*% ripper: $:1 %*/
                         p->max_numparam = ORDINAL_PARAM;
                         p->ctxt.in_argdef = 0;
@@ -9220,6 +9215,17 @@ formal_argument_error(struct parser_params *p, ID id)
     shadowing_lvar(p, id);
 
     return Qfalse;
+}
+
+static ID
+formal_label_local_id(ID id)
+{
+    /*
+     * Use a placeholder for Ripper so f_kw registers the label only after its
+     * default value is lexed.  This keeps a same-named call in the default at
+     * EXPR_ARG while preserving the argument table slot used by new_args_tail.
+     */
+    return ifdef_ripper(0, id);
 }
 
 static int
