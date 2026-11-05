@@ -12798,6 +12798,19 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const no
         CHECK(compile_array(iseq, ret, node, &RB_NODE_ARRAY(node)->elements, popped, TRUE) >= 0);
         break;
       }
+      case RB_SPLAT_NODE: {
+        if (RB_NODE_SPLAT(node)->expression) {
+            CHECK(COMPILE(ret, "splat", RB_NODE_SPLAT(node)->expression));
+        }
+        else {
+            CHECK(compile_lvar(iseq, ret, node, '*'));
+        }
+        ADD_INSN1(ret, node, splatarray, Qtrue);
+        if (popped) {
+            ADD_INSN(ret, node, pop);
+        }
+        break;
+      }
       case RB_ARGUMENTS_NODE: {
         const rb_arguments_node_t *cast = RB_NODE_ARGUMENTS(node);
         const rb_node_list2_t *args = &cast->arguments;
