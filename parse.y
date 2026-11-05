@@ -1906,6 +1906,7 @@ static rb_node_t *new_command_qcall(struct parser_params* p, ID atype, rb_node_t
 static rb_node_t *new_super(struct parser_params *p, rb_arguments_node_t *nd_args, const YYLTYPE *loc, const YYLTYPE *keyword_loc, const YYLTYPE *lparen_loc, const YYLTYPE *rparen_loc);
 static rb_node_t *method_add_block(struct parser_params *p, rb_node_t *m, rb_block_node_t *b, const YYLTYPE *loc);
 static rb_node_t *method_add_arguments(struct parser_params *p, rb_node_t *nd_call, rb_arguments_node_t *nd_args, const YYLTYPE *loc);
+static void set_call_parentheses(rb_node_t *node, const YYLTYPE *loc);
 
 static bool args_info_empty_p(rb_parameters_node_t *args);
 // static rb_node_args_t *new_args(struct parser_params*,rb_node_args_aux_t*,rb_node_opt_arg_t*,ID,rb_node_args_aux_t*,rb_node_args_t*,const YYLTYPE*);
@@ -4138,6 +4139,7 @@ block_command	: block_call
                 | block_call call_op2 operation2 command_args
                     {
                         $$ = new_qcall(p, $2, $1, $3, $4, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
                     /*% ripper: method_add_arg!(call!($:1, $:2, $:3), $:4) %*/
                     }
                 ;
@@ -4175,27 +4177,32 @@ command		: fcall command_args       %prec tLOWEST
                 | primary_value call_op operation2 command_args	%prec tLOWEST
                     {
                         $$ = new_command_qcall(p, $2, $1, $3, $4, 0, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
                     /*% ripper: command_call!($:1, $:2, $:3, $:4) %*/
                     }
                 | primary_value call_op operation2 command_args cmd_brace_block
                     {
                         $$ = new_command_qcall(p, $2, $1, $3, $4, $5, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
                     /*% ripper: method_add_block!(command_call!($:1, $:2, $:3, $:4), $:5) %*/
                     }
                 | primary_value tCOLON2 operation2 command_args	%prec tLOWEST
                     {
                         $$ = new_command_qcall(p, idCOLON2, $1, $3, $4, 0, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
                     /*% ripper: command_call!($:1, $:2, $:3, $:4) %*/
                     }
                 | primary_value tCOLON2 operation2 command_args cmd_brace_block
                     {
                         $$ = new_command_qcall(p, idCOLON2, $1, $3, $4, $5, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
                     /*% ripper: method_add_block!(command_call!($:1, $:2, $:3, $:4), $:5) %*/
                    }
                 | primary_value tCOLON2 tCONSTANT '{' brace_body '}'
                     {
                         set_embraced_location($5, &@4, &@6);
                         $$ = new_command_qcall(p, idCOLON2, $1, $3, 0, $5, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
                     /*% ripper: method_add_block!(command_call!($:1, $:2, $:3, Qnil), $:5) %*/
                    }
                 | keyword_super command_args
@@ -5788,6 +5795,8 @@ block_call	: command do_block
                         bool has_args = $4 != 0;
                         if (NODE_EMPTY_ARGS_P($4)) $4 = 0;
                         $$ = new_qcall(p, $2, $1, $3, $4, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
+                        if (has_args) set_call_parentheses((rb_node_t *)$$, &@4);
                     /*% ripper: call!($:1, $:2, $:3) %*/
                         if (has_args) {
                         /*% ripper: method_add_arg!($:$, $:4) %*/
@@ -5795,18 +5804,24 @@ block_call	: command do_block
                     }
                 | block_call call_op2 operation2 opt_paren_args brace_block
                     {
+                        bool has_args = $4 != 0;
                         if (NODE_EMPTY_ARGS_P($4)) $4 = 0;
                         $$ = new_command_qcall(p, $2, $1, $3, $4, $5, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
+                        if (has_args) set_call_parentheses((rb_node_t *)$$, &@4);
                     /*% ripper: method_add_block!(command_call!($:1, $:2, $:3, $:4), $:5) %*/
                     }
                 | block_call call_op2 operation2 command_args do_block
                     {
                         $$ = new_command_qcall(p, $2, $1, $3, $4, $5, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
                     /*% ripper: method_add_block!(command_call!($:1, $:2, $:3, $:4), $:5) %*/
                     }
                 | block_call call_op2 paren_args
                     {
                         $$ = new_qcall(p, $2, $1, idCall, $3, &@2, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
+                        set_call_parentheses((rb_node_t *)$$, &@3);
                         nd_set_line($$, @2.end_pos.lineno);
                     /*% ripper: method_add_arg!(call!($:1, $:2, ID2VAL(idCall)), $:3) %*/
                     }
@@ -5815,6 +5830,7 @@ block_call	: command do_block
 method_call	: fcall paren_args
                     {
                         $$ = method_add_arguments(p, $1, $2, &@$);
+                        set_call_parentheses((rb_node_t *)$$, &@2);
                         ((rb_node_t *)$1)->location.end_pos = @2.end_pos;
                     /*% ripper: method_add_arg!(fcall!($:1), $:2) %*/
                     }
@@ -5823,6 +5839,8 @@ method_call	: fcall paren_args
                         bool has_args = $4 != 0;
                         if (NODE_EMPTY_ARGS_P($4)) $4 = 0;
                         $$ = new_qcall(p, $2, $1, $3, $4, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
+                        if (has_args) set_call_parentheses((rb_node_t *)$$, &@4);
                         nd_set_line($$, @3.end_pos.lineno);
                     /*% ripper: call!($:1, $:2, $:3) %*/
                         if (has_args) {
@@ -5832,17 +5850,22 @@ method_call	: fcall paren_args
                 | primary_value tCOLON2 operation2 paren_args
                     {
                         $$ = new_qcall(p, idCOLON2, $1, $3, $4, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
+                        set_call_parentheses((rb_node_t *)$$, &@4);
                         nd_set_line($$, @3.end_pos.lineno);
                     /*% ripper: method_add_arg!(call!($:1, $:2, $:3), $:4) %*/
                     }
                 | primary_value tCOLON2 operation3
                     {
                         $$ = new_qcall(p, idCOLON2, $1, $3, 0, &@3, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
                     /*% ripper: call!($:1, $:2, $:3) %*/
                     }
                 | primary_value call_op2 paren_args
                     {
                         $$ = new_qcall(p, $2, $1, idCall, $3, &@2, &@$);
+                        RB_NODE_CALL($$)->call_operator_loc = @2;
+                        set_call_parentheses((rb_node_t *)$$, &@3);
                         nd_set_line($$, @2.end_pos.lineno);
                     /*% ripper: method_add_arg!(call!($:1, $:2, ID2VAL(idCall)), $:3) %*/
                     }
@@ -5864,6 +5887,8 @@ method_call	: fcall paren_args
                 | primary_value '[' opt_call_args rbracket
                     {
                         $$ = NEW_RB_CALL($1, tAREF, $3, 0, &@$);
+                        RB_NODE_CALL($$)->opening_loc = @2;
+                        RB_NODE_CALL($$)->closing_loc = @4;
                         fixpos($$, $1);
                     /*% ripper: aref!($:1, $:3) %*/
                     }
@@ -6549,7 +6574,7 @@ string		: tCHAR
 string1		: tSTRING_BEG string_contents tSTRING_END
                     {
                         $$ = heredoc_dedent(p, $2);
-                        if ($$) nd_set_loc($$, &@$);
+                        if ($$) rb_nd_set_loc((rb_node_t *)$$, &@$);
                     /*% ripper: $:2 %*/
                         if (p->heredoc_indent > 0) {
                         /*% ripper: heredoc_dedent!($:$, INT2NUM(%{p->heredoc_indent})) %*/
@@ -13745,7 +13770,7 @@ rb_new_node_call_new(struct parser_params *p, rb_node_t *nd_recv, ID nd_mid, rb_
     n->arguments = nd_args;
     n->block = 0;
     n->call_operator_loc = NULL_LOC;
-    n->message_loc = NULL_LOC;
+    n->message_loc = !nd_recv && !nd_args ? *loc : NULL_LOC;
     n->opening_loc = NULL_LOC;
     n->closing_loc = NULL_LOC;
     n->equal_loc = NULL_LOC;
@@ -14754,6 +14779,8 @@ rb_new_node_constant_path(struct parser_params *p, rb_node_t *nd_head, ID nd_mid
     rb_constant_path_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_CONSTANT_PATH_NODE, rb_constant_path_node_t, loc);
     n->parent = nd_head;
     n->name = nd_mid;
+    n->delimiter_loc = *delimiter_loc;
+    n->name_loc = *name_loc;
 
     return n;
 }
@@ -15389,6 +15416,7 @@ call_bin_op(struct parser_params *p, rb_node_t *recv, ID id, rb_node_t *arg1,
     value_expr(p, recv);
     value_expr(p, arg1);
     expr = NEW_RB_OPCALL(recv, id, NEW_RB_ARGUMENTS(arg1, rb_nd_code_loc(arg1)), loc);
+    RB_NODE_CALL(expr)->message_loc = *op_loc;
     nd_set_line(expr, op_loc->beg_pos.lineno);
     return expr;
 }
@@ -15399,8 +15427,19 @@ call_uni_op(struct parser_params *p, rb_node_t *recv, ID id, const YYLTYPE *op_l
     rb_node_t *opcall;
     value_expr(p, recv);
     opcall = NEW_RB_OPCALL(recv, id, 0, loc);
+    RB_NODE_CALL(opcall)->message_loc = *op_loc;
     nd_set_line(opcall, op_loc->beg_pos.lineno);
     return opcall;
+}
+
+static void
+set_call_parentheses(rb_node_t *node, const YYLTYPE *loc)
+{
+    rb_call_node_t *call = RB_NODE_CALL(node);
+    call->opening_loc.beg_pos = call->opening_loc.end_pos = loc->beg_pos;
+    call->opening_loc.end_pos.column++;
+    call->closing_loc.beg_pos = call->closing_loc.end_pos = loc->end_pos;
+    call->closing_loc.beg_pos.column--;
 }
 
 static rb_node_t *
@@ -15408,6 +15447,7 @@ new_qcall(struct parser_params* p, ID atype, rb_node_t *recv, ID mid, rb_argumen
 {
     rb_node_t *qcall = NEW_RB_QCALL(atype, recv, mid, 0, loc);
     method_add_arguments(p, qcall, args, loc);
+    RB_NODE_CALL(qcall)->message_loc = *op_loc;
     nd_set_line(qcall, op_loc->beg_pos.lineno);
     return qcall;
 }
@@ -17160,7 +17200,7 @@ negate_lit(struct parser_params *p, NODE* node, const YYLTYPE *loc)
         RB_NODE_IMAGINARY(node)->minus = TRUE;
         break;
     }
-    node->nd_loc = *loc;
+    RB_NODE(node)->location = *loc;
     return node;
 }
 
@@ -17468,7 +17508,7 @@ dsym_node(struct parser_params *p, NODE *node, const YYLTYPE *loc, const YYLTYPE
     switch (nd_type(node)) {
       case RB_INTERPOLATED_STRING_NODE:
         rb_nd_set_type(node, RB_INTERPOLATED_SYMBOL_NODE);
-        nd_set_loc(node, loc);
+        rb_nd_set_loc((rb_node_t *)node, loc);
         break;
       case RB_STRING_NODE:
         node = str_to_sym_node(p, node, loc, opening_loc, value_loc, closing_loc);
