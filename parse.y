@@ -3158,6 +3158,13 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 %destructor {
     if (CASE_LABELS_ENABLED_P($$)) st_free_table($$);
 } <labels>
+%destructor {
+    /* A completed in-clause may have restored this scope before an error. */
+    if (p->pvtbl != $$) pop_pvtbl(p, $$);
+} p_pvtbl
+%destructor {
+    if (p->pktbl != $$) pop_pktbl(p, $$);
+} p_pktbl p_lparen p_lbracket
 
 %lex-param {struct parser_params *p}
 %parse-param {struct parser_params *p}
@@ -18732,6 +18739,9 @@ rb_ruby_parser_free(void *ptr)
 
     if (p->pvtbl) {
         st_free_table(p->pvtbl);
+    }
+    if (p->pktbl) {
+        st_free_table(p->pktbl);
     }
 
     if (CASE_LABELS_ENABLED_P(p->case_labels)) {
