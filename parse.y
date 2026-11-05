@@ -17749,6 +17749,7 @@ new_op_assign(struct parser_params *p, rb_node_t *lhs, ID op, rb_node_t *rhs, st
     rb_node_t *asgn;
 
     if (lhs) {
+        mark_lvar_used(p, (NODE *)lhs);
         if (op == tOROP) {
             switch (nd_type(lhs)) {
               case RB_LOCAL_VARIABLE_WRITE_NODE: {
