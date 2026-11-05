@@ -1025,6 +1025,7 @@ rb_iseq_compile_node(rb_iseq_t *iseq, const NODE *node)
              nd_type_p(node, RB_MODULE_NODE) ||
              nd_type_p(node, RB_BLOCK_NODE) ||
              nd_type_p(node, RB_LAMBDA_NODE) ||
+             nd_type_p(node, RB_POST_EXECUTION_NODE) ||
              nd_type_p(node, RB_DEF_NODE)) {
         const rb_ast_id_table_t *locals = NULL;
         const NODE *args = NULL;
@@ -1113,6 +1114,7 @@ rb_iseq_compile_node(rb_iseq_t *iseq, const NODE *node)
           //   }
           case RB_POST_EXECUTION_NODE:
             {
+                body = (NODE *)RB_NODE_POST_EXECUTION(node)->statements;
                 break;
             }
           default:
@@ -13848,24 +13850,27 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const no
             CHECK(compile_defined_expr(iseq, ret, node, Qtrue, false));
         }
         break;
-      // case NODE_POSTEXE:{
-      //   /* compiled to:
-      //    *   ONCE{ rb_mRubyVMFrozenCore::core#set_postexe{ ... } }
-      //    */
-      //   int is_index = body->ise_size++;
-      //   struct rb_iseq_new_with_callback_callback_func *ifunc =
-      //       rb_iseq_new_with_callback_new_callback(build_postexe_iseq, RNODE_POSTEXE(node)->nd_body);
-      //   const rb_iseq_t *once_iseq =
-      //       NEW_CHILD_ISEQ_WITH_CALLBACK(ifunc, rb_fstring(make_name_for_block(iseq)), ISEQ_TYPE_BLOCK, line);
+      case RB_PRE_EXECUTION_NODE:
+        CHECK(COMPILE_(ret, "pre execution", RB_NODE_PRE_EXECUTION(node)->statements, popped));
+        break;
+      case RB_POST_EXECUTION_NODE:{
+        /* compiled to:
+         *   ONCE{ rb_mRubyVMFrozenCore::core#set_postexe{ ... } }
+         */
+        int is_index = body->ise_size++;
+        struct rb_iseq_new_with_callback_callback_func *ifunc =
+            rb_iseq_new_with_callback_new_callback(build_postexe_iseq, node);
+        const rb_iseq_t *once_iseq =
+            NEW_CHILD_ISEQ_WITH_CALLBACK(ifunc, rb_fstring(make_name_for_block(iseq)), ISEQ_TYPE_BLOCK, line);
 
-      //   ADD_INSN2(ret, node, once, once_iseq, INT2FIX(is_index));
-      //   RB_OBJ_WRITTEN(iseq, Qundef, (VALUE)once_iseq);
+        ADD_INSN2(ret, node, once, once_iseq, INT2FIX(is_index));
+        RB_OBJ_WRITTEN(iseq, Qundef, (VALUE)once_iseq);
 
-      //   if (popped) {
-      //       ADD_INSN(ret, node, pop);
-      //   }
-      //   break;
-      // }
+        if (popped) {
+            ADD_INSN(ret, node, pop);
+        }
+        break;
+      }
       // case NODE_KW_ARG:
       //   CHECK(compile_kw_arg(iseq, ret, node, popped));
       //   break;
