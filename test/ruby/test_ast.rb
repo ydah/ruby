@@ -415,6 +415,19 @@ class TestAst < Test::Unit::TestCase
     end
   end
 
+  def test_node_id_for_backtrace_location_of_call_with_block
+    omit if ParserSupport.prism_enabled?
+
+    receiver = Object.new
+    def receiver.capture
+      caller_locations(1, 1).first
+    end
+    location = receiver.capture { :unused }
+    node = RubyVM::AbstractSyntaxTree.of(location)
+    assert_equal(:CALL, node.type)
+    assert_equal(RubyVM::AbstractSyntaxTree.node_id_for_backtrace_location(location), node.node_id)
+  end
+
   def test_node_id_for_backtrace_location_raises_argument_error
     bug19262 = '[ruby-core:111435]'
 
@@ -630,6 +643,25 @@ class TestAst < Test::Unit::TestCase
       assert_equal([1, nil, nil, nil, 0, nil, nil, nil, nil, nil], args.children)
       assert_equal([1, source.bytesize, 1, source.bytesize],
                    [args.first_lineno, args.first_column, args.last_lineno, args.last_column])
+    end
+  end
+
+  def test_forwarding_argument_locations
+    ["g(1,...)", "super(1,...)", "g(...)"].each do |call|
+      source = "def f(...);#{call};end"
+      body = parse(source).children.last.children.last.children.last.children.last
+      forwarding = body.children.last
+      expected = [source.index("(", source.index(";") + 1), source.index(")", source.index(";") + 1) + 1]
+      assert_equal(:BLOCK_PASS, forwarding.type)
+      assert_equal(expected, [forwarding.first_column, forwarding.last_column])
+      push = forwarding.children.first
+      assert_equal(:ARGSPUSH, push.type)
+      assert_equal(expected, [push.first_column, push.last_column])
+      if call.include?("1")
+        cat = push.children.first
+        assert_equal(:ARGSCAT, cat.type)
+        assert_equal(expected, [cat.first_column, cat.last_column])
+      end
     end
   end
 

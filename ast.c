@@ -90,6 +90,7 @@ static VALUE ast_child(const struct ASTNodeData *parent, const rb_node_t *node);
 static VALUE node_children(const struct ASTNodeData *data);
 static VALUE ast_view(const struct ASTNodeData *parent, const rb_node_t *node, enum node_type type);
 static VALUE owned_child(const struct ASTNodeData *, const rb_node_t *, const rb_node_t *);
+static enum node_type call_type(const rb_call_node_t *);
 
 static VALUE rb_ast_parse_str(VALUE str, VALUE keep_script_lines, VALUE error_tolerant, VALUE keep_tokens);
 static VALUE rb_ast_parse_file(VALUE path, VALUE keep_script_lines, VALUE error_tolerant, VALUE keep_tokens);
@@ -215,6 +216,15 @@ node_find(VALUE self, int node_id)
          search.parent->type == RB_FORWARDING_SUPER_NODE)) {
         return ast_child(&context, search.parent);
     }
+    /* The call and its literal block have separate execution IDs, even though
+     * the public tree nests both under an ITER view. */
+    if (search.found->type == RB_CALL_NODE && RB_NODE_CALL(search.found)->block &&
+        RB_NODE_CALL(search.found)->block->type == RB_BLOCK_NODE) {
+        return ast_view(&context, search.found, call_type(RB_NODE_CALL(search.found)));
+    }
+    if (search.found->type == RB_SUPER_NODE && RB_NODE_SUPER(search.found)->block &&
+        RB_NODE_SUPER(search.found)->block->type == RB_BLOCK_NODE) return ast_view(&context, search.found, NODE_SUPER);
+    if (search.found->type == RB_FORWARDING_SUPER_NODE && RB_NODE_FORWARDING_SUPER(search.found)->block) return ast_view(&context, search.found, NODE_ZSUPER);
     return ast_child(&context, search.found);
 }
 
@@ -396,7 +406,7 @@ ast_view(const struct ASTNodeData *parent, const rb_node_t *node, enum node_type
     }
     switch (RB_NODE_TYPE(node)) {
       case RB_FORWARDING_ARGUMENTS_NODE:
-        if ((type == NODE_ARGSPUSH || type == NODE_BLOCK_PASS) && data->owner != node) data->location = data->owner->location;
+        if (parent->node == node && (type == NODE_ARGSPUSH || type == NODE_ARGSCAT || type == NODE_BLOCK_PASS)) data->location = parent->location;
         break;
       case RB_BEGIN_NODE:
         if (type == NODE_BLOCK && RB_NODE_BEGIN(node)->statements) data->location.end_pos = RB_NODE_BEGIN(node)->statements->base.location.end_pos;
@@ -507,6 +517,19 @@ ast_arguments(const struct ASTNodeData *parent, const rb_node_t *owner, const rb
         TypedData_Get_Struct(child, struct ASTNodeData, &rb_node_type, data);
         data->owner = owner;
         data->location = owner->location;
+        const rb_code_location_t *opening = NULL, *closing = NULL;
+        if (parent->node->type == RB_CALL_NODE) {
+            opening = &RB_NODE_CALL(parent->node)->opening_loc;
+            closing = &RB_NODE_CALL(parent->node)->closing_loc;
+        }
+        else if (parent->node->type == RB_SUPER_NODE) {
+            opening = &RB_NODE_SUPER(parent->node)->lparen_loc;
+            closing = &RB_NODE_SUPER(parent->node)->rparen_loc;
+        }
+        if (opening && !NULL_LOC_P(opening) && !NULL_LOC_P(closing)) {
+            data->location.beg_pos = opening->beg_pos;
+            data->location.end_pos = closing->end_pos;
+        }
         return child;
     }
     size_t splat = count;
@@ -741,7 +764,16 @@ ast_node_node_id(rb_execution_context_t *ec, VALUE self)
 {
     struct ASTNodeData *data;
     TypedData_Get_Struct(self, struct ASTNodeData, &rb_node_type, data);
-    return INT2NUM(data->node->node_id);
+    const rb_node_t *node = data->node;
+    if (data->type == NODE_ITER) {
+        switch (node->type) {
+          case RB_CALL_NODE: node = RB_NODE_CALL(node)->block; break;
+          case RB_SUPER_NODE: node = RB_NODE_SUPER(node)->block; break;
+          case RB_FORWARDING_SUPER_NODE: node = (const rb_node_t *)RB_NODE_FORWARDING_SUPER(node)->block; break;
+          default: break;
+        }
+    }
+    return INT2NUM(node->node_id);
 }
 
 #define CHILD(node) ast_child(data, (const rb_node_t *)(node))
