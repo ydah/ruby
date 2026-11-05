@@ -568,7 +568,7 @@ struct rb_exits_node {
 };
 
 struct RNode_DEF_TEMP {
-    NODE node;
+    rb_node_t node;
 
     /* for RB_DEF_NODE */
 
@@ -1292,7 +1292,7 @@ static rb_pre_execution_node_t *rb_new_node_pre_execution_new(struct parser_para
 // static rb_node_fndptn_t *rb_node_fndptn_new(struct parser_params *p, NODE *pre_rest_arg, NODE *args, NODE *post_rest_arg, const YYLTYPE *loc);
 // static rb_node_line_t *rb_node_line_new(struct parser_params *p, const YYLTYPE *loc);
 // static rb_node_file_t *rb_node_file_new(struct parser_params *p, VALUE str, const YYLTYPE *loc);
-static rb_node_error_t *rb_node_error_new(struct parser_params *p, const YYLTYPE *loc);
+static rb_missing_node_t *rb_new_node_missing_new(struct parser_params *p, const YYLTYPE *loc);
 
 // #define NEW_SCOPE(a,b,c,loc) (NODE *)rb_node_scope_new(p,a,b,c,loc)
 #define NEW_SCOPE2(t,a,b,c,loc) (NODE *)rb_node_scope_new2(p,t,a,b,c,loc)
@@ -1402,7 +1402,7 @@ static rb_node_error_t *rb_node_error_new(struct parser_params *p, const YYLTYPE
 // #define NEW_LINE(loc) (NODE *)rb_node_line_new(p,loc)
 // #define NEW_FILE(str,loc) (NODE *)rb_node_file_new(p,str,loc)
 // #define NEW_ENCODING(loc) (NODE *)rb_node_encoding_new(p,loc)
-#define NEW_ERROR(loc) (NODE *)rb_node_error_new(p,loc)
+#define NEW_ERROR(loc) (rb_node_t *)rb_new_node_missing_new(p,loc)
 
 /* prism node */
 static rb_program_node_t *rb_new_node_program_new(struct parser_params *p, rb_statements_node_t *statements, const YYLTYPE *loc);
@@ -1731,13 +1731,6 @@ static rb_source_encoding_node_t *rb_new_node_source_encoding_new(struct parser_
 #define NODE_LASGN RB_LOCAL_VARIABLE_WRITE_NODE
 #define NODE_DASGN RB_LOCAL_VARIABLE_WRITE_NODE
 
-enum internal_node_type {
-    NODE_INTERNAL_ONLY = NODE_LAST,
-    NODE_DEF_TEMP,
-    NODE_EXITS,
-    NODE_INTERNAL_LAST
-};
-
 enum internal_rb_node_type {
     RB_NODE_INTERNAL_ONLY = RB_NODE_LAST,
     RB_NODE_DEF_TEMP,
@@ -1749,10 +1742,10 @@ static const char *
 parser_node_name(int node)
 {
     switch (node) {
-      case NODE_DEF_TEMP:
-        return "NODE_DEF_TEMP";
-      case NODE_EXITS:
-        return "NODE_EXITS";
+      case RB_NODE_DEF_TEMP:
+        return "RB_NODE_DEF_TEMP";
+      case RB_NODE_EXITS:
+        return "RB_NODE_EXITS";
       default:
         return rb_node_type_to_str(node);
     }
@@ -13031,13 +13024,6 @@ rb_node_args_aux_new(struct parser_params *p, ID nd_pid, int nd_plen, const YYLT
 //     return n;
 // }
 
-static rb_node_error_t *
-rb_node_error_new(struct parser_params *p, const YYLTYPE *loc)
-{
-    rb_node_error_t *n = NODE_NEWNODE(NODE_ERROR, rb_node_error_t, loc);
-
-    return n;
-}
 
 // static rb_node_break_t *
 // rb_node_break_new(struct parser_params *p, NODE *nd_stts, const YYLTYPE *loc, const YYLTYPE *keyword_loc)
@@ -13071,18 +13057,6 @@ rb_node_error_new(struct parser_params *p, const YYLTYPE *loc)
 //     return n;
 // }
 
-static rb_node_def_temp_t *
-rb_node_def_temp_new(struct parser_params *p, const YYLTYPE *loc)
-{
-    rb_node_def_temp_t *n = NODE_NEWNODE((enum node_type)NODE_DEF_TEMP, rb_node_def_temp_t, loc);
-    n->save.numparam_save = 0;
-    n->save.max_numparam = 0;
-    n->save.ctxt = p->ctxt;
-    n->nd_def = 0;
-    n->nd_mid = 0;
-
-    return n;
-}
 
 static rb_node_def_temp_t *
 def_head_save(struct parser_params *p, rb_node_def_temp_t *n)
@@ -13129,6 +13103,25 @@ rb_node_newnode(struct parser_params *p, enum rb_node_type type, size_t size, si
 }
 
 #define RB_NEW_NODE_NEWNODE(rb_node_type, type, loc) (type *)(rb_node_newnode(p, rb_node_type, sizeof(type), RUBY_ALIGNOF(type), loc))
+
+static rb_missing_node_t *
+rb_new_node_missing_new(struct parser_params *p, const YYLTYPE *loc)
+{
+    return RB_NEW_NODE_NEWNODE(RB_MISSING_NODE, rb_missing_node_t, loc);
+}
+
+static rb_node_def_temp_t *
+rb_node_def_temp_new(struct parser_params *p, const YYLTYPE *loc)
+{
+    rb_node_def_temp_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_NODE_DEF_TEMP, rb_node_def_temp_t, loc);
+    n->save.numparam_save = 0;
+    n->save.max_numparam = 0;
+    n->save.ctxt = p->ctxt;
+    n->nd_def = 0;
+    n->nd_mid = 0;
+
+    return n;
+}
 
 static rb_for_node_t *
 rb_new_node_for_new(struct parser_params *p, rb_node_t *index, rb_node_t *collection, rb_statements_node_t *statements, const YYLTYPE *loc, const YYLTYPE *for_loc, const YYLTYPE *in_loc, const YYLTYPE *do_loc, const YYLTYPE *end_loc)
@@ -15347,8 +15340,8 @@ write2target(struct parser_params *p, rb_node_t *node)
             return NEW_RB_INDEX_TARGET(cast->receiver, cast->arguments, rb_node_get_fl(cast), nd_code_loc(cast));
         }
       }
-      // TODO
-      // case NODE_ERROR: {}
+      case RB_MISSING_NODE:
+        return node;
       default:
         rb_bug("unexpected node: %s", rb_node_type_to_str(RB_NODE_TYPE(node)));
         UNREACHABLE_RETURN(0);
@@ -17746,6 +17739,7 @@ new_unique_key_hash(struct parser_params *p, NODE *hash, const YYLTYPE *loc)
 static rb_node_t *
 new_op_assign(struct parser_params *p, rb_node_t *lhs, ID op, rb_node_t *rhs, struct lex_context ctxt, const YYLTYPE *loc)
 {
+    if (lhs && RB_NODE_TYPE_P(lhs, RB_MISSING_NODE)) return lhs;
     rb_node_t *asgn;
 
     if (lhs) {
@@ -18608,7 +18602,7 @@ rb_reg_named_capture_assign_iter_impl(struct parser_params *p, const char *s, lo
     }
     node = assignable_target(p, var, loc);
     succ = *succ_block;
-    if (!succ) succ = NEW_ERROR(loc);
+    if (!succ) succ = NEW_RB_ZARRAY(loc);
     succ = node_array_append(p, succ, node, loc);
     *succ_block = succ;
     return ST_CONTINUE;
