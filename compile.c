@@ -1117,6 +1117,7 @@ rb_iseq_compile_node(rb_iseq_t *iseq, const NODE *node)
             iseq_set_local_table(iseq, locals, args);
             iseq_set_arguments(iseq, ret, args);
         }
+        iseq_set_parameters_lvar_state(iseq);
 
         switch (ISEQ_BODY(iseq)->type) {
           case ISEQ_TYPE_BLOCK:

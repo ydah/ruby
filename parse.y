@@ -5814,7 +5814,7 @@ method_call	: fcall paren_args
                     }
                 | primary_value '[' opt_call_args rbracket
                     {
-                        $$ = NEW_RB_CALL($1, tAREF, $3, 0, &@$);
+                        $$ = method_add_arguments(p, NEW_RB_CALL($1, tAREF, 0, 0, &@$), $3, &@$);
                         RB_NODE_CALL($$)->opening_loc = @2;
                         RB_NODE_CALL($$)->closing_loc = @4;
                         fixpos($$, $1);
@@ -13011,6 +13011,7 @@ rb_new_node_return_new(struct parser_params *p, rb_arguments_node_t *nd_argument
 static rb_yield_node_t *
 rb_new_node_yield_new(struct parser_params *p, rb_arguments_node_t *nd_arguments, const YYLTYPE *loc, const YYLTYPE *keyword_loc, const YYLTYPE *lparen_loc, const YYLTYPE *rparen_loc)
 {
+    if (nd_arguments) no_blockarg(p, nd_arguments);
     rb_yield_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_YIELD_NODE, rb_yield_node_t, loc);
     n->arguments = nd_arguments;
     n->keyword_loc = *keyword_loc;
