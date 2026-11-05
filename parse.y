@@ -1901,6 +1901,7 @@ static rb_node_t *new_qcall(struct parser_params* p, ID atype, rb_node_t *recv, 
 static rb_node_t *new_command_qcall(struct parser_params* p, ID atype, rb_node_t *recv, ID mid, rb_arguments_node_t *args, rb_node_t *block, const YYLTYPE *op_loc, const YYLTYPE *loc);
 static rb_node_t *new_super(struct parser_params *p, rb_arguments_node_t *nd_args, const YYLTYPE *loc, const YYLTYPE *keyword_loc, const YYLTYPE *lparen_loc, const YYLTYPE *rparen_loc);
 static rb_node_t *method_add_block(struct parser_params *p, rb_node_t *m, rb_block_node_t *b, const YYLTYPE *loc);
+static rb_node_t *command_add_block(struct parser_params *p, rb_node_t *m, rb_block_node_t *b, const YYLTYPE *loc);
 static rb_node_t *method_add_arguments(struct parser_params *p, rb_node_t *nd_call, rb_arguments_node_t *nd_args, const YYLTYPE *loc);
 static void set_call_parentheses(rb_node_t *node, const YYLTYPE *loc);
 
@@ -5751,14 +5752,7 @@ do_block	: k_do_block do_body k_end
 
 block_call	: command do_block
                     {
-                        if (nd_type_p($1, RB_YIELD_NODE)) {
-                            compile_error(p, "block given to yield");
-                            $$ = $1;
-                        }
-                        else {
-                            block_dup_check(p, $1, $2);
-                            $$ = method_add_block(p, $1, $2, &@$);
-                        }
+                        $$ = command_add_block(p, $1, $2, &@$);
                         fixpos($$, $1);
                     /*% ripper: method_add_block!($:1, $:2) %*/
                     }
@@ -15499,6 +15493,41 @@ method_add_block(struct parser_params *p, rb_node_t *m, rb_block_node_t *b, cons
     }
 
     m->location = *loc;
+    return m;
+}
+
+static rb_node_t *
+command_add_block(struct parser_params *p, rb_node_t *m, rb_block_node_t *b, const YYLTYPE *loc)
+{
+    rb_arguments_node_t *arguments;
+    switch (RB_NODE_TYPE(m)) {
+      case RB_YIELD_NODE:
+        compile_error(p, "block given to yield");
+        return m;
+      case RB_RETURN_NODE:
+        arguments = RB_NODE_RETURN(m)->arguments;
+        break;
+      case RB_BREAK_NODE:
+        arguments = RB_NODE_BREAK(m)->arguments;
+        break;
+      case RB_NEXT_NODE:
+        arguments = RB_NODE_NEXT(m)->arguments;
+        break;
+      case RB_REDO_NODE:
+      case RB_RETRY_NODE:
+        compile_error(p, "command_add_block: unexpected node: %s", parser_node_name(RB_NODE_TYPE(m)));
+        return m;
+      default:
+        block_dup_check(p, m, (rb_node_t *)b);
+        return method_add_block(p, m, b, loc);
+    }
+
+    RUBY_ASSERT(arguments && arguments->arguments.size == 1);
+    rb_node_t *body = arguments->arguments.nodes[0];
+    YYLTYPE body_loc = code_loc_gen(&body->location, loc);
+    arguments->arguments.nodes[0] = command_add_block(p, body, b, &body_loc);
+    arguments->base.location.end_pos = loc->end_pos;
+    m->location.end_pos = loc->end_pos;
     return m;
 }
 
