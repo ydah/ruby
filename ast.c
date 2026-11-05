@@ -565,7 +565,9 @@ ast_child(const struct ASTNodeData *parent, const rb_node_t *node)
       }
       case RB_ELSE_NODE: return ast_child(parent, (const rb_node_t *)RB_NODE_ELSE(node)->statements);
       case RB_BLOCK_PARAMETERS_NODE: return ast_child(parent, (const rb_node_t *)RB_NODE_BLOCK_PARAMETERS(node)->parameters);
-      case RB_PARENTHESES_NODE: return ast_child(parent, (const rb_node_t *)RB_NODE_PARENTHESES(node)->body);
+      case RB_PARENTHESES_NODE:
+        if (RB_NODE_FLAG_P(node, RB_PARENTHESES_NODE_FLAGS_ARGUMENT)) return ast_child(parent, RB_NODE_PARENTHESES(node)->body);
+        return ast_view(parent, node, NODE_BLOCK);
       case RB_IMPLICIT_NODE: return ast_child(parent, RB_NODE_IMPLICIT(node)->value);
       case RB_ASSOC_SPLAT_NODE: return ast_child(parent, RB_NODE_ASSOC_SPLAT(node)->value);
       case RB_PINNED_VARIABLE_NODE: return ast_child(parent, RB_NODE_PINNED_VARIABLE(node)->variable);
@@ -1307,6 +1309,7 @@ node_children(const struct ASTNodeData *data)
       case RB_YIELD_NODE: return CHILDREN(1, CHILD(RB_NODE_YIELD(node)->arguments));
       case RB_POST_EXECUTION_NODE: return CHILDREN(1, CHILD(RB_NODE_POST_EXECUTION(node)->statements));
       case RB_PRE_EXECUTION_NODE: return CHILDREN(1, CHILD(RB_NODE_PRE_EXECUTION(node)->statements));
+      case RB_PARENTHESES_NODE: return CHILDREN(1, CHILD(RB_NODE_PARENTHESES(node)->body));
       case RB_PINNED_VARIABLE_NODE: return CHILDREN(1, CHILD(RB_NODE_PINNED_VARIABLE(node)->variable));
       case RB_PINNED_EXPRESSION_NODE: return CHILDREN(1, CHILD(RB_NODE_PINNED_EXPRESSION(node)->expression));
       case RB_ENSURE_NODE: return CHILDREN(2, Qnil, CHILD(RB_NODE_ENSURE(node)->statements));

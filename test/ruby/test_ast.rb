@@ -599,6 +599,20 @@ class TestAst < Test::Unit::TestCase
     end
   end
 
+  def test_parenthesized_expression_projection
+    {"(1)" => :INTEGER, "(1;2)" => :BLOCK, "((1))" => :BLOCK, "()" => :BEGIN}.each do |source, child_type|
+      body = parse(source).children.last
+      assert_equal(:BLOCK, body.type)
+      assert_equal([0, source.bytesize], [body.first_column, body.last_column])
+      assert_equal([child_type], body.children.map(&:type))
+    end
+    {"foo (1)" => :INTEGER, "foo (1;2)" => :BLOCK, "foo((1))" => :BLOCK}.each do |source, child_type|
+      arguments = parse(source).children.last.children.last
+      assert_equal(:LIST, arguments.type)
+      assert_equal(child_type, arguments.children.first.type)
+    end
+  end
+
   def test_scope_local_variables
     node = RubyVM::AbstractSyntaxTree.parse("_x = 0")
     lv, _, body = *node.children
