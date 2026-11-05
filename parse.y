@@ -8109,7 +8109,7 @@ yycompile0(VALUE arg)
         p->ast->body.frozen_string_literal = p->frozen_string_literal;
         p->ast->body.coverage_enabled = cov;
         if (p->keep_tokens) {
-            p->ast->node_buffer->tokens = tokens;
+            p->ast->rb_node_buffer->tokens = tokens;
             p->tokens = NULL;
         }
     }

@@ -386,6 +386,13 @@ NODE *
 rb_ast_newnode(rb_ast_t *ast, enum node_type type, size_t size, size_t alignment)
 {
     node_buffer_t *nb = ast->node_buffer;
+    if (!nb) {
+#ifdef UNIVERSAL_PARSER
+        nb = ast->node_buffer = node_buffer_new(ast->config);
+#else
+        nb = ast->node_buffer = node_buffer_new();
+#endif
+    }
     node_buffer_list_t *bucket = &nb->buffer_list;
     return ast_newnode_in_bucket(ast, bucket, size, alignment);
 }
@@ -403,8 +410,8 @@ rb_ast_new_local_table(rb_ast_t *ast, int size)
 {
     size_t alloc_size = sizeof(struct rb_ast_local_table_link) + size * sizeof(ID);
     struct rb_ast_local_table_link *link = ruby_xmalloc(alloc_size);
-    link->next = ast->node_buffer->local_tables;
-    ast->node_buffer->local_tables = link;
+    link->next = ast->rb_node_buffer->local_tables;
+    ast->rb_node_buffer->local_tables = link;
     link->size = size;
 
     return (rb_ast_id_table_t *) &link->size;
@@ -413,10 +420,10 @@ rb_ast_new_local_table(rb_ast_t *ast, int size)
 rb_ast_id_table_t *
 rb_ast_resize_latest_local_table(rb_ast_t *ast, int size)
 {
-    struct rb_ast_local_table_link *link = ast->node_buffer->local_tables;
+    struct rb_ast_local_table_link *link = ast->rb_node_buffer->local_tables;
     size_t alloc_size = sizeof(struct rb_ast_local_table_link) + size * sizeof(ID);
     link = ruby_xrealloc(link, alloc_size);
-    ast->node_buffer->local_tables = link;
+    ast->rb_node_buffer->local_tables = link;
     link->size = size;
 
     return (rb_ast_id_table_t *) &link->size;
@@ -434,11 +441,9 @@ rb_ast_delete_node(rb_ast_t *ast, NODE *n)
 rb_ast_t *
 rb_ast_new(const rb_parser_config_t *config)
 {
-    node_buffer_t *nb = node_buffer_new(config);
     rb_node_buffer_t *rb_nb = rb_node_buffer_new(config);
     rb_ast_t *ast = (rb_ast_t *)config->calloc(1, sizeof(rb_ast_t));
     ast->config = config;
-    ast->node_buffer = nb;
     ast->rb_node_buffer =rb_nb;
     return ast;
 }
@@ -446,10 +451,8 @@ rb_ast_new(const rb_parser_config_t *config)
 rb_ast_t *
 rb_ast_new(void)
 {
-    node_buffer_t *nb = node_buffer_new();
     rb_node_buffer_t *rb_nb = rb_node_buffer_new();
     rb_ast_t *ast = ruby_xcalloc(1, sizeof(rb_ast_t));
-    ast->node_buffer = nb;
     ast->rb_node_buffer =rb_nb;
     return ast;
 }
@@ -579,12 +582,12 @@ rb_ast_memsize(const rb_ast_t *ast)
 void
 rb_ast_dispose(rb_ast_t *ast)
 {
-    if (ast && ast->node_buffer) {
+    if (ast && (ast->node_buffer || ast->rb_node_buffer)) {
         script_lines_free(ast, ast->body.script_lines);
         ast->body.script_lines = NULL;
-        rb_node_buffer_free(ast, ast->node_buffer);
+        if (ast->node_buffer) rb_node_buffer_free(ast, ast->node_buffer);
         ast->node_buffer = 0;
-        rb_rb_node_buffer_free(ast, ast->rb_node_buffer);
+        if (ast->rb_node_buffer) rb_rb_node_buffer_free(ast, ast->rb_node_buffer);
         ast->rb_node_buffer = 0;
         if (ast->body.filepath) {
             parser_string_free(ast, ast->body.filepath);
