@@ -2365,23 +2365,15 @@ static NODE *
 get_nd_value(struct parser_params *p, NODE *node)
 {
     switch (nd_type(node)) {
-      case NODE_GASGN:
-        return RNODE_GASGN(node)->nd_value;
-      case NODE_IASGN:
-        return RNODE_IASGN(node)->nd_value;
-      case NODE_LASGN:
-        return RNODE_LASGN(node)->nd_value;
-      // case NODE_DASGN:
-      //   return RNODE_DASGN(node)->nd_value;
-      case NODE_MASGN:
-        return RNODE_MASGN(node)->nd_value;
-      case NODE_CVASGN:
-        return RNODE_CVASGN(node)->nd_value;
-      case NODE_CDECL:
-        return RNODE_CDECL(node)->nd_value;
-      default:
-        compile_error(p, "get_nd_value: unexpected node: %s", parser_node_name(nd_type(node)));
-        return 0;
+      case RB_LOCAL_VARIABLE_WRITE_NODE: return RB_NODE_LOCAL_VARIABLE_WRITE(node)->value;
+      case RB_GLOBAL_VARIABLE_WRITE_NODE: return RB_NODE_GLOBAL_VARIABLE_WRITE(node)->value;
+      case RB_INSTANCE_VARIABLE_WRITE_NODE: return RB_NODE_INSTANCE_VARIABLE_WRITE(node)->value;
+      case RB_CLASS_VARIABLE_WRITE_NODE: return RB_NODE_CLASS_VARIABLE_WRITE(node)->value;
+      case RB_CONSTANT_WRITE_NODE: return RB_NODE_CONSTANT_WRITE(node)->value;
+      case RB_CONSTANT_PATH_WRITE_NODE: return RB_NODE_CONSTANT_PATH_WRITE(node)->value;
+      case RB_MULTI_WRITE_NODE: return RB_NODE_MULTI_WRITE(node)->value;
+      case RB_SHAREABLE_CONSTANT_NODE: return get_nd_value(p, RB_NODE_SHAREABLE_CONSTANT(node)->write);
+      default: return NULL;
     }
 }
 
@@ -3751,15 +3743,7 @@ program		:  {
                   compstmt(top_stmts)
                     {
                         if ($2 && !compile_for_eval) {
-                            NODE *node = $2;
-                            /* last expression should not be void */
-                            if (nd_type_p(node, NODE_BLOCK)) {
-                                while (RNODE_BLOCK(node)->nd_next) {
-                                    node = RNODE_BLOCK(node)->nd_next;
-                                }
-                                node = RNODE_BLOCK(node)->nd_head;
-                            }
-                            node = remove_begin(node);
+                            NODE *node = last_expr_node((NODE *)$2);
                             void_expr(p, node);
                         }
                         // p->eval_tree = NEW_SCOPE(0, block_append(p, p->eval_tree, $2), NULL, &@$);
@@ -16695,10 +16679,11 @@ void_expr(struct parser_params *p, NODE *node)
 
     if (!RTEST(ruby_verbose)) return;
 
-    if (!node || !(node = nd_once_body(node))) return;
+    if (!node || !(node = last_expr_node(node))) return;
     switch (nd_type(node)) {
-      case NODE_OPCALL:
-        switch (RNODE_OPCALL(node)->nd_mid) {
+      case RB_CALL_NODE:
+        if (!RB_NODE_CALL(node)->receiver || !NULL_LOC_P(&RB_NODE_CALL(node)->call_operator_loc)) break;
+        switch (RB_NODE_CALL(node)->name) {
           case '+':
           case '-':
           case '*':
@@ -16717,7 +16702,7 @@ void_expr(struct parser_params *p, NODE *node)
           case tLEQ:
           case tEQ:
           case tNEQ:
-            useless = rb_id2name(RNODE_OPCALL(node)->nd_mid);
+            useless = rb_id2name(RB_NODE_CALL(node)->name);
             break;
         }
         break;
@@ -16731,7 +16716,7 @@ void_expr(struct parser_params *p, NODE *node)
       case RB_BACK_REFERENCE_READ_NODE:
         useless = "a variable";
         break;
-      case NODE_CONST:
+      case RB_CONSTANT_READ_NODE:
         useless = "a constant";
         break;
       case RB_SYMBOL_NODE:
@@ -16743,20 +16728,16 @@ void_expr(struct parser_params *p, NODE *node)
       case RB_RATIONAL_NODE:
       case RB_IMAGINARY_NODE:
       case RB_STRING_NODE:
-      case NODE_DSTR:
+      case RB_INTERPOLATED_STRING_NODE:
       case RB_REGULAR_EXPRESSION_NODE:
-      case NODE_DREGX:
+      case RB_INTERPOLATED_REGULAR_EXPRESSION_NODE:
         useless = "a literal";
         break;
-      case NODE_COLON2:
-      case NODE_COLON3:
+      case RB_CONSTANT_PATH_NODE:
         useless = "::";
         break;
-      case NODE_DOT2:
-        useless = "..";
-        break;
-      case NODE_DOT3:
-        useless = "...";
+      case RB_RANGE_NODE:
+        useless = (rb_node_get_fl(node) & RB_RANGE_FLAGS_EXCLUDE_END) ? "..." : "..";
         break;
       case RB_SELF_NODE:
         useless = "self";
@@ -16770,7 +16751,7 @@ void_expr(struct parser_params *p, NODE *node)
       case RB_FALSE_NODE:
         useless = "false";
         break;
-      case NODE_DEFINED:
+      case RB_DEFINED_NODE:
         useless = "defined?";
         break;
     }
@@ -16784,24 +16765,21 @@ void_expr(struct parser_params *p, NODE *node)
 static NODE *
 void_stmts(struct parser_params *p, NODE *node)
 {
-    NODE *const n = node;
-    if (!RTEST(ruby_verbose)) return n;
-    if (!node) return n;
-    if (!nd_type_p(node, NODE_BLOCK)) return n;
-
-    while (RNODE_BLOCK(node)->nd_next) {
-        void_expr(p, RNODE_BLOCK(node)->nd_head);
-        node = RNODE_BLOCK(node)->nd_next;
+    if (!node || !nd_type_p(node, RB_STATEMENTS_NODE)) return node;
+    rb_node_list2_t *body = &RB_NODE_STATEMENTS(node)->body;
+    if (!body->size) return NULL;
+    if (RTEST(ruby_verbose)) {
+        for (size_t i = 0; i + 1 < body->size; i++) void_expr(p, body->nodes[i]);
     }
-    return RNODE_BLOCK(node)->nd_head;
+    return body->nodes[body->size - 1];
 }
 
 static NODE *
 remove_begin(NODE *node)
 {
-    NODE **n = &node, *n1 = node;
-    while (n1 && nd_type_p(n1, NODE_BEGIN) && RNODE_BEGIN(n1)->nd_body) {
-        *n = n1 = RNODE_BEGIN(n1)->nd_body;
+    while (node && nd_type_p(node, RB_BEGIN_NODE) && RB_NODE_BEGIN(node)->statements &&
+           !RB_NODE_BEGIN(node)->rescue_clause && !RB_NODE_BEGIN(node)->ensure_clause) {
+        node = (NODE *)RB_NODE_BEGIN(node)->statements;
     }
     return node;
 }
@@ -16873,30 +16851,35 @@ static int
 is_static_content(NODE *node)
 {
     if (!node) return 1;
+    const rb_node_list2_t *elements;
     switch (nd_type(node)) {
-      case NODE_HASH:
-        if (!(node = RNODE_HASH(node)->nd_head)) break;
-      case NODE_LIST:
-        do {
-            if (!is_static_content(RNODE_LIST(node)->nd_head)) return 0;
-        } while ((node = RNODE_LIST(node)->nd_next) != 0);
-      case RB_SYMBOL_NODE:
-      case NODE_REGX:
-      case NODE_LINE:
-      case NODE_FILE:
-      case NODE_ENCODING:
-      case NODE_INTEGER:
-      case NODE_FLOAT:
-      case NODE_RATIONAL:
-      case NODE_IMAGINARY:
-      case NODE_STR:
-      case NODE_NIL:
-      case NODE_TRUE:
-      case NODE_FALSE:
-      case NODE_ZLIST:
+      case RB_HASH_NODE:
+        elements = &RB_NODE_HASH(node)->elements;
         break;
+      case RB_ARRAY_NODE:
+        elements = &RB_NODE_ARRAY(node)->elements;
+        break;
+      case RB_ASSOC_NODE:
+        return is_static_content(RB_NODE_ASSOC(node)->key) && is_static_content(RB_NODE_ASSOC(node)->value);
+      case RB_SYMBOL_NODE:
+      case RB_REGULAR_EXPRESSION_NODE:
+      case RB_SOURCE_LINE_NODE:
+      case RB_SOURCE_FILE_NODE:
+      case RB_SOURCE_ENCODING_NODE:
+      case RB_INTEGER_NODE:
+      case RB_FLOAT_NODE:
+      case RB_RATIONAL_NODE:
+      case RB_IMAGINARY_NODE:
+      case RB_STRING_NODE:
+      case RB_NIL_NODE:
+      case RB_TRUE_NODE:
+      case RB_FALSE_NODE:
+        return 1;
       default:
         return 0;
+    }
+    for (size_t i = 0; i < elements->size; i++) {
+        if (!is_static_content(elements->nodes[i])) return 0;
     }
     return 1;
 }
@@ -16904,24 +16887,10 @@ is_static_content(NODE *node)
 static int
 assign_in_cond(struct parser_params *p, NODE *node)
 {
-    switch (nd_type(node)) {
-      case NODE_MASGN:
-      case NODE_LASGN:
-      // case NODE_DASGN:
-      case NODE_GASGN:
-      case NODE_IASGN:
-      case NODE_CVASGN:
-      case NODE_CDECL:
-        break;
-
-      default:
-        return 0;
-    }
-
-    if (!get_nd_value(p, node)) return 1;
-    if (is_static_content(get_nd_value(p, node))) {
-        /* reports always */
-        rb_warn0L(nd_line(get_nd_value(p, node)), "found '= literal' in conditional, should be ==");
+    NODE *value = get_nd_value(p, node);
+    if (!value) return 0;
+    if (is_static_content(value)) {
+        rb_warn0L(nd_line(value), "found '= literal' in conditional, should be ==");
     }
     return 1;
 }
@@ -16945,98 +16914,86 @@ static NODE *cond0(struct parser_params*,NODE*,enum cond_type,const YYLTYPE*,boo
 static NODE*
 range_op(struct parser_params *p, NODE *node, const YYLTYPE *loc)
 {
-    enum node_type type;
-
-    if (node == 0) return 0;
-
-    type = nd_type(node);
+    if (!node) return NULL;
     value_expr(p, node);
-    if (type == NODE_INTEGER) {
+    if (nd_type_p(node, RB_INTEGER_NODE)) {
         if (!e_option_supplied(p)) rb_warn0L(nd_line(node), "integer literal in flip-flop");
         ID lineno = rb_intern("$.");
-        return NEW_CALL(node, tEQ, NEW_LIST(NEW_RB_GLOBAL_VARIABLE_READ(lineno, loc), loc), loc);
+        return NEW_RB_CALL(node, tEQ, NEW_RB_ARGUMENTS(NEW_RB_GLOBAL_VARIABLE_READ(lineno, loc), loc), 0, loc);
     }
     return cond0(p, node, COND_IN_FF, loc, true);
 }
 
-// TODO
 static NODE*
 cond0(struct parser_params *p, NODE *node, enum cond_type type, const YYLTYPE *loc, bool top)
 {
-    if (node == 0) return 0;
-    if (!(node = nd_once_body(node))) return 0;
+    if (!node) return NULL;
     assign_in_cond(p, node);
 
     switch (nd_type(node)) {
-      case NODE_BEGIN:
-        RNODE_BEGIN(node)->nd_body = cond0(p, RNODE_BEGIN(node)->nd_body, type, loc, top);
+      case RB_PARENTHESES_NODE:
+        RB_NODE_PARENTHESES(node)->body = cond0(p, RB_NODE_PARENTHESES(node)->body, type, loc, top);
         break;
-
-      case NODE_DSTR:
-      case NODE_EVSTR:
-      case NODE_STR:
-      case NODE_FILE:
+      case RB_BEGIN_NODE:
+        if (!RB_NODE_BEGIN(node)->rescue_clause && !RB_NODE_BEGIN(node)->ensure_clause) {
+            cond0(p, (NODE *)RB_NODE_BEGIN(node)->statements, type, loc, top);
+        }
+        break;
+      case RB_STATEMENTS_NODE: {
+        rb_node_list2_t *body = &RB_NODE_STATEMENTS(node)->body;
+        if (body->size) body->nodes[body->size - 1] = cond0(p, body->nodes[body->size - 1], type, loc, top && body->size == 1);
+        break;
+      }
+      case RB_INTERPOLATED_STRING_NODE:
+      case RB_EMBEDDED_STATEMENTS_NODE:
+      case RB_EMBEDDED_VARIABLE_NODE:
+      case RB_STRING_NODE:
+      case RB_SOURCE_FILE_NODE:
         SWITCH_BY_COND_TYPE(type, warn, "string ");
         break;
-
-      case NODE_REGX:
+      case RB_REGULAR_EXPRESSION_NODE:
         if (!e_option_supplied(p)) SWITCH_BY_COND_TYPE(type, warn, "regex ");
-        nd_set_type(node, NODE_MATCH);
+        rb_nd_set_type((rb_node_t *)node, RB_MATCH_LAST_LINE_NODE);
         break;
-
-      case NODE_DREGX:
+      case RB_INTERPOLATED_REGULAR_EXPRESSION_NODE:
         if (!e_option_supplied(p)) SWITCH_BY_COND_TYPE(type, warning, "regex ");
-
-        return NEW_MATCH2(node, NEW_RB_GLOBAL_VARIABLE_READ(idLASTLINE, loc), loc);
-
-      case NODE_BLOCK:
-        {
-            NODE *end = RNODE_BLOCK(node)->nd_end;
-            NODE **expr = &RNODE_BLOCK(end)->nd_head;
-            if (top) top = node == end;
-            *expr = cond0(p, *expr, type, loc, top);
+        /* Conditional regexp lowering discards the legacy once wrapper. */
+        RB_NODE(node)->flags &= ~RB_REGULAR_EXPRESSION_FLAGS_ONCE;
+        rb_nd_set_type((rb_node_t *)node, RB_INTERPOLATED_MATCH_LAST_LINE_NODE);
+        break;
+      case RB_AND_NODE:
+      case RB_OR_NODE: {
+        /* The parser stores a flat logical chain along its right edges. */
+        rb_node_t *current = (rb_node_t *)node;
+        while (current && (nd_type_p(current, RB_AND_NODE) || nd_type_p(current, RB_OR_NODE))) {
+            rb_and_node_t *logical = RB_NODE_AND(current);
+            logical->left = cond0(p, logical->left, COND_IN_COND, loc, true);
+            current = logical->right;
+            if (!current || (!nd_type_p(current, RB_AND_NODE) && !nd_type_p(current, RB_OR_NODE))) {
+                logical->right = cond0(p, current, COND_IN_COND, loc, true);
+            }
         }
         break;
-
-      case NODE_AND:
-      case NODE_OR:
-        RNODE_AND(node)->nd_1st = cond0(p, RNODE_AND(node)->nd_1st, COND_IN_COND, loc, true);
-        RNODE_AND(node)->nd_2nd = cond0(p, RNODE_AND(node)->nd_2nd, COND_IN_COND, loc, true);
-        break;
-
-      case NODE_DOT2:
-      case NODE_DOT3:
-        if (!top) break;
-        RNODE_DOT2(node)->nd_beg = range_op(p, RNODE_DOT2(node)->nd_beg, loc);
-        RNODE_DOT2(node)->nd_end = range_op(p, RNODE_DOT2(node)->nd_end, loc);
-        switch (nd_type(node)) {
-          case NODE_DOT2:
-            nd_set_type(node,NODE_FLIP2);
-            rb_node_flip2_t *flip2 = RNODE_FLIP2(node); /* for debug info */
-            (void)flip2;
-            break;
-          case NODE_DOT3:
-            nd_set_type(node, NODE_FLIP3);
-            rb_node_flip3_t *flip3 = RNODE_FLIP3(node); /* for debug info */
-            (void)flip3;
-            break;
+      }
+      case RB_RANGE_NODE:
+        if (top) {
+            RB_NODE_RANGE(node)->left = range_op(p, RB_NODE_RANGE(node)->left, loc);
+            RB_NODE_RANGE(node)->right = range_op(p, RB_NODE_RANGE(node)->right, loc);
+            rb_nd_set_type((rb_node_t *)node, RB_FLIP_FLOP_NODE);
         }
         break;
-
       case RB_SYMBOL_NODE:
-      case NODE_DSYM:
+      case RB_INTERPOLATED_SYMBOL_NODE:
         SWITCH_BY_COND_TYPE(type, warning, "symbol ");
         break;
-
-      case NODE_LINE:
-      case NODE_ENCODING:
-      case NODE_INTEGER:
-      case NODE_FLOAT:
-      case NODE_RATIONAL:
-      case NODE_IMAGINARY:
+      case RB_SOURCE_LINE_NODE:
+      case RB_SOURCE_ENCODING_NODE:
+      case RB_INTEGER_NODE:
+      case RB_FLOAT_NODE:
+      case RB_RATIONAL_NODE:
+      case RB_IMAGINARY_NODE:
         SWITCH_BY_COND_TYPE(type, warning, "");
         break;
-
       default:
         break;
     }
@@ -17155,8 +17112,7 @@ static rb_node_t *
 new_if2(struct parser_params *p, rb_node_t *cc, rb_statements_node_t *left, rb_node_t *right, const YYLTYPE *loc, const YYLTYPE* if_keyword_loc, const YYLTYPE* then_keyword_loc, const YYLTYPE* end_keyword_loc)
 {
     if (!cc) return right;
-    // TODO
-    // cc = cond0(p, cc, COND_IN_COND, loc, true);
+    cc = cond0(p, cc, COND_IN_COND, loc, true);
     return rb_new_node_newline_node(NEW_RB_IF(cc, left, right, loc, if_keyword_loc, then_keyword_loc, end_keyword_loc));
 }
 
@@ -17164,8 +17120,7 @@ static rb_node_t *
 new_unless2(struct parser_params *p, rb_node_t *cc, rb_statements_node_t *left, rb_else_node_t *right, const YYLTYPE *loc, const YYLTYPE *keyword_loc, const YYLTYPE *then_keyword_loc, const YYLTYPE *end_keyword_loc)
 {
     if (!cc) return right;
-    // TODO
-    // cc = cond0(p, cc, COND_IN_COND, loc, true);
+    cc = cond0(p, cc, COND_IN_COND, loc, true);
     return rb_new_node_newline_node(NEW_RB_UNLESS(cc, left, right, loc, keyword_loc, then_keyword_loc, end_keyword_loc));
 }
 
@@ -18554,7 +18509,7 @@ rb_parser_assignable(struct parser_params *p, ID id, NODE *val, const YYLTYPE *l
 
 int
 rb_reg_named_capture_assign_iter_impl(struct parser_params *p, const char *s, long len,
-                                      rb_encoding *enc, NODE **succ_block, const rb_code_location_t *loc, rb_parser_assignable_func assignable)
+                                      rb_encoding *enc, rb_node_t **succ_block, const rb_code_location_t *loc, rb_parser_assignable_func assignable)
 {
     ID var;
     rb_node_t *node;
