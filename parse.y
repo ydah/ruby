@@ -3770,7 +3770,9 @@ top_stmts	: none
                     }
                 | top_stmts terms top_stmt
                     {
-                        // $$ = block_append(p, $1, newline_node($3));
+                        if ($1->body.size == 0) {
+                            rb_node_list_append(&$1->body, RB_NODE(NEW_RB_STATEMENTS0(&$1->base.location)));
+                        }
                         statements_node_body_append(p, $1, rb_new_node_newline_node($3), false);
                     /*% ripper: stmts_add!($:1, $:3) %*/
                     }
@@ -3847,7 +3849,9 @@ stmts		: none
                     }
                 | stmts terms stmt_or_begin
                     {
-                        // $$ = block_append(p, $1, newline_node($3));
+                        if ($1->body.size == 0) {
+                            rb_node_list_append(&$1->body, RB_NODE(NEW_RB_STATEMENTS0(&$1->base.location)));
+                        }
                         statements_node_body_append(p, $1, rb_new_node_newline_node($3), false);
                     /*% ripper: stmts_add!($:1, $:3) %*/
                     }
