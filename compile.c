@@ -13679,25 +13679,25 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const no
       //   }
       //   break;
       // }
-      // case NODE_UNDEF:{
-      //   const rb_parser_ary_t *ary = RNODE_UNDEF(node)->nd_undefs;
+      case RB_UNDEF_NODE:{
+        const rb_node_list2_t *ary = &RB_NODE_UNDEF(node)->names;
 
-      //   for (long i = 0; i < ary->len; i++) {
-      //       ADD_INSN1(ret, node, putspecialobject, INT2FIX(VM_SPECIAL_OBJECT_VMCORE));
-      //       ADD_INSN1(ret, node, putspecialobject, INT2FIX(VM_SPECIAL_OBJECT_CBASE));
-      //       CHECK(COMPILE(ret, "undef arg", ary->data[i]));
-      //       ADD_SEND(ret, node, id_core_undef_method, INT2FIX(2));
+        for (size_t i = 0; i < ary->size; i++) {
+            ADD_INSN1(ret, node, putspecialobject, INT2FIX(VM_SPECIAL_OBJECT_VMCORE));
+            ADD_INSN1(ret, node, putspecialobject, INT2FIX(VM_SPECIAL_OBJECT_CBASE));
+            CHECK(COMPILE(ret, "undef arg", ary->nodes[i]));
+            ADD_SEND(ret, node, id_core_undef_method, INT2FIX(2));
 
-      //       if (i < ary->len - 1) {
-      //           ADD_INSN(ret, node, pop);
-      //       }
-      //   }
+            if (i < ary->size - 1) {
+                ADD_INSN(ret, node, pop);
+            }
+        }
 
-      //   if (popped) {
-      //       ADD_INSN(ret, node, pop);
-      //   }
-      //   break;
-      // }
+        if (popped) {
+            ADD_INSN(ret, node, pop);
+        }
+        break;
+      }
       // case NODE_CLASS:{
       //   const rb_iseq_t *class_iseq = NEW_CHILD_ISEQ(RNODE_CLASS(node)->nd_body,
       //                                                rb_str_freeze(rb_sprintf("<class:%"PRIsVALUE">", rb_id2str(get_node_colon_nd_mid(RNODE_CLASS(node)->nd_cpath)))),
