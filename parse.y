@@ -15822,9 +15822,8 @@ symbol_append(struct parser_params *p, NODE *symbols, NODE *symbol)
 }
 
 static void
-dregex_fragment_setenc(struct parser_params *p, rb_interpolated_regular_expression_node_t *const dreg, int options)
+dregex_fragment_setenc(struct parser_params *p, const rb_node_list2_t *list, int options)
 {
-    const rb_node_list2_t *list = &dreg->parts;
     for (size_t i = 0; i < RB_NODE_LIST_LEN(list); i++) {
         rb_node_t *frag = list->nodes[i];
 
@@ -15832,8 +15831,7 @@ dregex_fragment_setenc(struct parser_params *p, rb_interpolated_regular_expressi
             reg_fragment_setenc(p, RB_NODE_STRING(frag)->unescaped, options);
         }
         else if (nd_type_p(frag, RB_INTERPOLATED_STRING_NODE)) {
-            // RB_INTERPOLATED_STRING_NODE and RB_INTERPOLATED_REGULAR_EXPRESSION_NODE have same structure
-            dregex_fragment_setenc(p, RB_NODE_INTERPOLATED_REGULAR_EXPRESSION(frag), options);
+            dregex_fragment_setenc(p, &RB_NODE_INTERPOLATED_STRING(frag)->parts, options);
         }
     }
 }
@@ -15859,13 +15857,19 @@ new_regexp(struct parser_params *p, rb_node_t *node, int options, const YYLTYPE 
       default:
         node = NEW_RB_INTERPOLATED_STRING0(node, loc);
         /* fall through */
-      case RB_INTERPOLATED_STRING_NODE:
-        rb_nd_set_type(node, RB_INTERPOLATED_REGULAR_EXPRESSION_NODE);
-        rb_nd_set_loc(node, loc);
-        rb_interpolated_regular_expression_node_t *const dreg = RB_NODE_INTERPOLATED_REGULAR_EXPRESSION(node);
+      case RB_INTERPOLATED_STRING_NODE: {
+        rb_interpolated_string_node_t *string = RB_NODE_INTERPOLATED_STRING(node);
+        rb_interpolated_regular_expression_node_t *dreg = RB_NEW_NODE_NEWNODE(RB_INTERPOLATED_REGULAR_EXPRESSION_NODE, rb_interpolated_regular_expression_node_t, loc);
+        dreg->base.flags = string->base.flags;
+        dreg->opening_loc = *opening_loc;
+        dreg->closing_loc = *closing_loc;
+        dreg->implicit_call_loc = NULL_LOC;
+        rb_node_list_init_with_src(&dreg->parts, &string->parts);
+        node = (rb_node_t *)dreg;
         rb_node_set_fl(node, regx_option_flags(options));
-        dregex_fragment_setenc(p, dreg, options);
+        dregex_fragment_setenc(p, &dreg->parts, options);
         break;
+      }
     }
     return node;
 }
@@ -17019,6 +17023,9 @@ cond0(struct parser_params *p, NODE *node, enum cond_type type, const YYLTYPE *l
         if (!e_option_supplied(p)) SWITCH_BY_COND_TYPE(type, warning, "regex ");
         /* Conditional regexp lowering discards the legacy once wrapper. */
         RB_NODE(node)->flags &= ~RB_REGULAR_EXPRESSION_FLAGS_ONCE;
+        _Static_assert(sizeof(rb_interpolated_regular_expression_node_t) == sizeof(rb_interpolated_match_last_line_node_t),
+                       "conditional regexp nodes must support in-place conversion");
+        RB_NODE_INTERPOLATED_REGULAR_EXPRESSION(node)->implicit_call_loc = *loc;
         rb_nd_set_type((rb_node_t *)node, RB_INTERPOLATED_MATCH_LAST_LINE_NODE);
         break;
       case RB_AND_NODE:
