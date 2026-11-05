@@ -1421,7 +1421,7 @@ static rb_block_node_t *rb_new_node_block_new(struct parser_params *p, rb_node_t
 static rb_begin_node_t *rb_new_node_begin_new(struct parser_params *p, rb_statements_node_t *nd_stmts, rb_rescue_node_t *nd_rescue, rb_else_node_t *nd_else, rb_ensure_node_t *nd_ensure, const YYLTYPE *loc);
 static rb_rescue_node_t *rb_new_node_rescue_new(struct parser_params *p, rb_array_node_t *exceptions, rb_node_t *nd_exc_var, rb_statements_node_t *nd_body, rb_rescue_node_t *nd_next, const YYLTYPE *loc);
 static rb_ensure_node_t *rb_new_node_ensure_new(struct parser_params *p, rb_statements_node_t *nd_ensr, const YYLTYPE *loc);
-static rb_rescue_modifier_node_t *rb_new_node_rescue_modifier_new(struct parser_params *p, rb_node_t *nd_ex, rb_node_t *nd_rex, const YYLTYPE *loc);
+static rb_rescue_modifier_node_t *rb_new_node_rescue_modifier_new(struct parser_params *p, rb_node_t *nd_ex, rb_node_t *nd_rex, const YYLTYPE *loc, const YYLTYPE *keyword_loc);
 static rb_and_node_t *rb_new_node_and_new(struct parser_params *p, rb_node_t *nd_1st, rb_node_t *nd_2nd, const YYLTYPE *loc, const YYLTYPE *operator_loc);
 static rb_or_node_t *rb_new_node_or_new(struct parser_params *p, rb_node_t *nd_1st, rb_node_t *nd_2nd, const YYLTYPE *loc, const YYLTYPE *operator_loc);
 
@@ -1575,7 +1575,7 @@ static rb_source_encoding_node_t *rb_new_node_source_encoding_new(struct parser_
 #define NEW_RB_BEGIN(s,r,el,en,loc) (rb_node_t *)rb_new_node_begin_new(p,s,r,el,en,loc)
 #define NEW_RB_RESCUE(ex,v,b,n,loc) rb_new_node_rescue_new(p,ex,v,b,n,loc)
 #define NEW_RB_ENSURE(en,loc) rb_new_node_ensure_new(p,en,loc)
-#define NEW_RB_RESCUE_MODIFIER(e,re,loc) (rb_node_t *)rb_new_node_rescue_modifier_new(p,e,re,loc)
+#define NEW_RB_RESCUE_MODIFIER(e,re,loc,kw_loc) (rb_node_t *)rb_new_node_rescue_modifier_new(p,e,re,loc,kw_loc)
 #define NEW_RB_AND(f,s,loc,op_loc) (rb_node_t *)rb_new_node_and_new(p,f,s,loc,op_loc)
 #define NEW_RB_OR(f,s,loc,op_loc) (rb_node_t *)rb_new_node_or_new(p,f,s,loc,op_loc)
 
@@ -2154,7 +2154,7 @@ rescued_expr(struct parser_params *p, rb_node_t *arg, rb_node_t *rescue,
              const YYLTYPE *arg_loc, const YYLTYPE *mod_loc, const YYLTYPE *res_loc)
 {
     YYLTYPE loc = code_loc_gen(arg_loc, res_loc);
-    return NEW_RB_RESCUE_MODIFIER(arg, remove_begin(rescue), &loc);
+    return NEW_RB_RESCUE_MODIFIER(arg, remove_begin(rescue), &loc, mod_loc);
 }
 
 static rb_node_t *add_block_exit(struct parser_params *p, rb_node_t *node);
@@ -3949,7 +3949,7 @@ stmt		: keyword_alias[kw] fitem[new] {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fit
                     {
                         p->ctxt.in_rescue = $ctxt.in_rescue;
                         NODE *resq;
-                        $$ = NEW_RB_RESCUE_MODIFIER(remove_begin($body), remove_begin($resbody), &@$);
+                        $$ = NEW_RB_RESCUE_MODIFIER(remove_begin($body), remove_begin($resbody), &@$, &@mod);
                     /*% ripper: rescue_mod!($:body, $:resbody) %*/
                     }
                 | k_END[k_end] block_open[lbrace] compstmt(stmts)[body] '}'[rbrace]
@@ -3976,7 +3976,7 @@ stmt		: keyword_alias[kw] fitem[new] {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fit
                     {
                         p->ctxt.in_rescue = $after_rescue.in_rescue;
                         YYLTYPE loc = code_loc_gen(&@mrhs_arg, &@resbody);
-                        $mrhs_arg = NEW_RB_RESCUE_MODIFIER($mrhs_arg, $resbody, &loc);
+                        $mrhs_arg = NEW_RB_RESCUE_MODIFIER($mrhs_arg, $resbody, &loc, &@modifier_rescue);
                         $$ = node_assign(p, (rb_node_t *)$lhs, $mrhs_arg, $lex_ctxt, &@$);
                     /*% ripper: massign!($:lhs, rescue_mod!($:mrhs_arg, $:resbody)) %*/
                     }
@@ -4017,7 +4017,7 @@ command_rhs	: command_call_value   %prec tOP_ASGN
                     {
                         p->ctxt.in_rescue = $3.in_rescue;
                         YYLTYPE loc = code_loc_gen(&@2, &@4);
-                        $$ = NEW_RB_RESCUE_MODIFIER($1, remove_begin($4), &@$);
+                        $$ = NEW_RB_RESCUE_MODIFIER($1, remove_begin($4), &@$, &@2);
                     /*% ripper: rescue_mod!($:1, $:4) %*/
                     }
                 | command_asgn
@@ -6538,6 +6538,7 @@ exc_list	: arg_value
 exc_var		: tASSOC lhs
                     {
                         $$ = write2target(p, $2);
+                        RB_NODE($$)->location = @$;
                     /*% ripper: $:2 %*/
                     }
                 | none
@@ -14106,12 +14107,12 @@ rb_new_node_ensure_new(struct parser_params *p, rb_statements_node_t *nd_ensr, c
 }
 
 static rb_rescue_modifier_node_t *
-rb_new_node_rescue_modifier_new(struct parser_params *p, rb_node_t *nd_ex, rb_node_t *nd_rex, const YYLTYPE *loc)
+rb_new_node_rescue_modifier_new(struct parser_params *p, rb_node_t *nd_ex, rb_node_t *nd_rex, const YYLTYPE *loc, const YYLTYPE *keyword_loc)
 {
     rb_rescue_modifier_node_t *n = RB_NEW_NODE_NEWNODE((enum rb_node_type)RB_RESCUE_MODIFIER_NODE, rb_rescue_modifier_node_t, loc);
     n->expression = nd_ex;
     n->rescue_expression = nd_rex;
-    n->keyword_loc = NULL_LOC;
+    n->keyword_loc = *keyword_loc;
 
     return n;
 }
@@ -17745,26 +17746,31 @@ new_op_assign(struct parser_params *p, rb_node_t *lhs, ID op, rb_node_t *rhs, st
               case RB_LOCAL_VARIABLE_WRITE_NODE: {
                 rb_local_variable_write_node_t *cast = (rb_local_variable_write_node_t *)lhs;
                 asgn = NEW_RB_LOCAL_VARIABLE_OR_WRITE(cast->name, rhs, cast->depth, loc);
+                RB_NODE_LOCAL_VARIABLE_OR_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_INSTANCE_VARIABLE_WRITE_NODE: {
                 rb_instance_variable_write_node_t *cast = (rb_instance_variable_write_node_t *)lhs;
                 asgn = NEW_RB_INSTANCE_VARIABLE_OR_WRITE(cast->name, rhs, loc);
+                RB_NODE_INSTANCE_VARIABLE_OR_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_CLASS_VARIABLE_WRITE_NODE: {
                 rb_class_variable_write_node_t *cast = (rb_class_variable_write_node_t *)lhs;
                 asgn = NEW_RB_CLASS_VARIABLE_OR_WRITE(cast->name, rhs, loc);
+                RB_NODE_CLASS_VARIABLE_OR_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_GLOBAL_VARIABLE_WRITE_NODE: {
                 rb_global_variable_write_node_t *cast = (rb_global_variable_write_node_t *)lhs;
                 asgn = NEW_RB_GLOBAL_VARIABLE_OR_WRITE(cast->name, rhs, loc);
+                RB_NODE_GLOBAL_VARIABLE_OR_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_CONSTANT_WRITE_NODE: {
                 rb_constant_write_node_t *cast = (rb_constant_write_node_t *)lhs;
                 asgn = NEW_RB_CONSTANT_OR_WRITE(cast->name, rhs, loc);
+                RB_NODE_CONSTANT_OR_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_SHAREABLE_CONSTANT_NODE: {
@@ -17782,26 +17788,31 @@ new_op_assign(struct parser_params *p, rb_node_t *lhs, ID op, rb_node_t *rhs, st
               case RB_LOCAL_VARIABLE_WRITE_NODE: {
                 rb_local_variable_write_node_t *cast = (rb_local_variable_write_node_t *)lhs;
                 asgn = NEW_RB_LOCAL_VARIABLE_AND_WRITE(cast->name, rhs, cast->depth, loc);
+                RB_NODE_LOCAL_VARIABLE_AND_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_INSTANCE_VARIABLE_WRITE_NODE: {
                 rb_instance_variable_write_node_t *cast = (rb_instance_variable_write_node_t *)lhs;
                 asgn = NEW_RB_INSTANCE_VARIABLE_AND_WRITE(cast->name, rhs, loc);
+                RB_NODE_INSTANCE_VARIABLE_AND_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_CLASS_VARIABLE_WRITE_NODE: {
                 rb_class_variable_write_node_t *cast = (rb_class_variable_write_node_t *)lhs;
                 asgn = NEW_RB_CLASS_VARIABLE_AND_WRITE(cast->name, rhs, loc);
+                RB_NODE_CLASS_VARIABLE_AND_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_GLOBAL_VARIABLE_WRITE_NODE: {
                 rb_global_variable_write_node_t *cast = (rb_global_variable_write_node_t *)lhs;
                 asgn = NEW_RB_GLOBAL_VARIABLE_AND_WRITE(cast->name, rhs, loc);
+                RB_NODE_GLOBAL_VARIABLE_AND_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_CONSTANT_WRITE_NODE: {
                 rb_constant_write_node_t *cast = (rb_constant_write_node_t *)lhs;
                 asgn = NEW_RB_CONSTANT_AND_WRITE(cast->name, rhs, loc);
+                RB_NODE_CONSTANT_AND_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_SHAREABLE_CONSTANT_NODE: {
@@ -17819,26 +17830,31 @@ new_op_assign(struct parser_params *p, rb_node_t *lhs, ID op, rb_node_t *rhs, st
               case RB_LOCAL_VARIABLE_WRITE_NODE: {
                 rb_local_variable_write_node_t *cast = (rb_local_variable_write_node_t *)lhs;
                 asgn = NEW_RB_LOCAL_VARIABLE_OPERATOR_WRITE(cast->name, op, rhs, cast->depth, loc);
+                RB_NODE_LOCAL_VARIABLE_OPERATOR_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_INSTANCE_VARIABLE_WRITE_NODE: {
                 rb_instance_variable_write_node_t *cast = (rb_instance_variable_write_node_t *)lhs;
                 asgn = NEW_RB_INSTANCE_VARIABLE_OPERATOR_WRITE(cast->name, op, rhs, loc);
+                RB_NODE_INSTANCE_VARIABLE_OPERATOR_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_CLASS_VARIABLE_WRITE_NODE: {
                 rb_class_variable_write_node_t *cast = (rb_class_variable_write_node_t *)lhs;
                 asgn = NEW_RB_CLASS_VARIABLE_OPERATOR_WRITE(cast->name, op, rhs, loc);
+                RB_NODE_CLASS_VARIABLE_OPERATOR_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_GLOBAL_VARIABLE_WRITE_NODE: {
                 rb_global_variable_write_node_t *cast = (rb_global_variable_write_node_t *)lhs;
                 asgn = NEW_RB_GLOBAL_VARIABLE_OPERATOR_WRITE(cast->name, op, rhs, loc);
+                RB_NODE_GLOBAL_VARIABLE_OPERATOR_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_CONSTANT_WRITE_NODE: {
                 rb_constant_write_node_t *cast = (rb_constant_write_node_t *)lhs;
                 asgn = NEW_RB_CONSTANT_OPERATOR_WRITE(cast->name, op, rhs, loc);
+                RB_NODE_CONSTANT_OPERATOR_WRITE(asgn)->name_loc = lhs->location;
                 break;
               }
               case RB_SHAREABLE_CONSTANT_NODE: {
