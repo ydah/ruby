@@ -1312,6 +1312,7 @@ static rb_statements_node_t *rb_new_node_statements_new(struct parser_params *p,
 static rb_if_node_t *rb_new_node_if_new(struct parser_params *p, rb_node_t *nd_cond, rb_statements_node_t *nd_body, rb_node_t *nd_else, const YYLTYPE *loc, const YYLTYPE *if_keyword_loc, const YYLTYPE *then_keyword_loc, const YYLTYPE *end_keyword_loc);
 static rb_unless_node_t *rb_new_node_unless_new(struct parser_params *p, rb_node_t *nd_cond, rb_statements_node_t *nd_body, rb_else_node_t *nd_else, const YYLTYPE *loc, const YYLTYPE *keyword_loc, const YYLTYPE *then_keyword_loc, const YYLTYPE *end_keyword_loc);
 static rb_else_node_t *rb_new_node_else_new(struct parser_params *p, rb_statements_node_t *nd_body, const YYLTYPE *loc, const YYLTYPE *else_keyword_loc, const YYLTYPE *end_keyword_loc);
+static rb_parentheses_node_t *rb_new_node_parentheses_new(struct parser_params *p, rb_node_t *body, const YYLTYPE *loc, const YYLTYPE *opening_loc, const YYLTYPE *closing_loc);
 
 static rb_return_node_t *rb_new_node_return_new(struct parser_params *p, rb_arguments_node_t *nd_arguments, const YYLTYPE *loc, const YYLTYPE *keyword_loc);
 
@@ -3561,13 +3562,13 @@ stmt		: keyword_alias[kw] fitem[new] {SET_LEX_STATE(EXPR_FNAME|EXPR_FITEM);} fit
                     }
                 | stmt[body] modifier_if[mod] expr_value[cond]
                     {
-                        $$ = new_if2(p, $cond, remove_begin($body), 0, &@$, &@mod, &NULL_LOC, &NULL_LOC);
+                        $$ = new_if2(p, $cond, new_statements(p, (rb_node_t *)$body), 0, &@$, &@mod, &NULL_LOC, &NULL_LOC);
                         fixpos($$, $cond);
                     /*% ripper: if_mod!($:cond, $:body) %*/
                     }
                 | stmt[body] modifier_unless[mod] expr_value[cond]
                     {
-                        $$ = new_unless2(p, $cond, remove_begin($body), 0, &@$, &@mod, &NULL_LOC, &NULL_LOC);
+                        $$ = new_unless2(p, $cond, new_statements(p, (rb_node_t *)$body), 0, &@$, &@mod, &NULL_LOC, &NULL_LOC);
                         fixpos($$, $cond);
                     /*% ripper: unless_mod!($:cond, $:body) %*/
                     }
@@ -4630,14 +4631,12 @@ primary		: inline_primary
                 }
             | tLPAREN_ARG compstmt(stmts)[body] {SET_LEX_STATE(EXPR_ENDARG);} ')'
                 {
-                    if (nd_type_p($body, NODE_SELF)) RNODE_SELF($body)->nd_state = 0;
-                    $$ = $body;
+                    $$ = (rb_node_t *)rb_new_node_parentheses_new(p, (rb_node_t *)$body, &@$, &@1, &@4);
                 /*% ripper: paren!($:body) %*/
                 }
             | tLPAREN compstmt(stmts)[body] ')'
                 {
-                    if (nd_type_p($body, NODE_SELF)) RNODE_SELF($body)->nd_state = 0;
-                    $$ = NEW_BLOCK($body, &@$);
+                    $$ = (rb_node_t *)rb_new_node_parentheses_new(p, (rb_node_t *)$body, &@$, &@1, &@3);
                 /*% ripper: paren!($:body) %*/
                 }
             | primary_value[recv] tCOLON2[op] tCONSTANT[name]
@@ -6590,7 +6589,7 @@ largs_tail	: args_tail_basic(arg_value, none)
                     }
                 ;
 
-%rule tail-only-args(tail) <node_args>
+%rule tail-only-args(tail) <node_params>
                 : tail
                     {
                         $$ = new_args2(p, 0, 0, 0, 0, $tail, &@$);
@@ -12964,6 +12963,19 @@ rb_new_node_else_new(struct parser_params *p, rb_statements_node_t *nd_body, con
 
 // static pm_nil_node_t *
 // pm_nil_node_create(pm_parser_t *parser, const pm_token_t *token)
+static rb_parentheses_node_t *
+rb_new_node_parentheses_new(struct parser_params *p, rb_node_t *body, const YYLTYPE *loc, const YYLTYPE *opening_loc, const YYLTYPE *closing_loc)
+{
+    rb_parentheses_node_t *n = RB_NEW_NODE_NEWNODE(RB_PARENTHESES_NODE, rb_parentheses_node_t, loc);
+    n->body = body;
+    n->opening_loc = *opening_loc;
+    n->closing_loc = *closing_loc;
+    if (body && RB_NODE_TYPE_P(body, RB_STATEMENTS_NODE) && RB_NODE_STATEMENTS(body)->body.size > 1) {
+        n->base.flags |= RB_PARENTHESES_NODE_FLAGS_MULTIPLE_STATEMENTS;
+    }
+    return n;
+}
+
 static rb_nil_node_t *
 rb_new_node_nil_new(struct parser_params *p, const YYLTYPE *loc)
 {
@@ -13896,7 +13908,7 @@ gettable(struct parser_params *p, ID id, const YYLTYPE *loc)
         if (dyna_in_block(p) && dvar_defined_ref(p, id, &vidp)) {
             if (NUMPARAM_ID_P(id) && (numparam_nested_p(p) || it_used_p(p))) return 0;
             if (vidp) *vidp |= LVAR_USED;
-            node = NEW_DVAR(id, loc);
+            node = dvar_curr(p, id) ? NEW_RB_LOCAL_VARIABLE_READ(id, loc) : (rb_node_t *)NEW_DVAR(id, loc);
             return node;
         }
         if (local_id_ref(p, id, &vidp)) {
@@ -14406,11 +14418,11 @@ assignable0(struct parser_params *p, ID id, const char **err)
                               NUMPARAM_ID_TO_IDX(id));
                 return -1;
             }
-            if (dvar_curr(p, id)) return NODE_DASGN;
+            if (dvar_curr(p, id)) return RB_LOCAL_VARIABLE_WRITE_NODE;
             if (dvar_defined(p, id)) return NODE_DASGN;
             if (local_id(p, id)) return RB_LOCAL_VARIABLE_WRITE_NODE;
             dyna_var(p, id);
-            return NODE_DASGN;
+            return RB_LOCAL_VARIABLE_WRITE_NODE;
         }
         else {
             if (!local_id(p, id)) local_var(p, id);
@@ -15574,6 +15586,7 @@ new_args_tail2(struct parser_params *p, rb_array_node_t *kw_args, rb_node_t *kw_
     if (p->error_p) return node;
 
     node->block = block;
+    bool has_block_local = block && block->name != idNil;
     if (kw_args) {
         /*
          * def foo(k1: 1, kr1:, k2: 2, **krest, &b)
@@ -15586,8 +15599,8 @@ new_args_tail2(struct parser_params *p, rb_array_node_t *kw_args, rb_node_t *kw_
         struct vtable *vtargs = p->lvtbl->args;
         rb_array_node_t *kwn = kw_args;
 
-        if (block) block_id = vtargs->tbl[vtargs->pos-1];
-        vtable_pop(vtargs, !!block + !!kw_rest_arg);
+        if (has_block_local) block_id = vtargs->tbl[vtargs->pos-1];
+        vtable_pop(vtargs, has_block_local + !!kw_rest_arg);
         required_kw_vars = kw_vars = &vtargs->tbl[vtargs->pos];
 
         for (size_t i = 0; i < RB_NODE_LIST_LEN(&kwn->elements); i++) {
@@ -15611,7 +15624,7 @@ new_args_tail2(struct parser_params *p, rb_array_node_t *kw_args, rb_node_t *kw_
         rb_node_list_move(&node->keywords, &kw_args->elements);
         arg_var(p, kw_bits);
         if (kw_rest_arg) arg_var(p, get_kw_nd_vid(p, kw_rest_arg));
-        if (block) arg_var(p, block_id);
+        if (has_block_local) arg_var(p, block_id);
 
         // args->kw_rest_arg = NEW_DVAR(kw_rest_arg, kw_rest_loc);
     }
