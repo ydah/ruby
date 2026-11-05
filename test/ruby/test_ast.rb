@@ -613,6 +613,21 @@ class TestAst < Test::Unit::TestCase
     end
   end
 
+  def test_interpolated_regexp_condition_projection
+    source = 'if /x#{1}y/;2;end'
+    match = parse(source).children.last.children.first
+    assert_equal(:MATCH2, match.type)
+    regexp, last_line = match.children
+    assert_equal(:DREGX, regexp.type)
+    assert_equal([3, 11], [regexp.first_column, regexp.last_column])
+    assert_equal("x", regexp.children.first)
+    assert_equal(:GVAR, last_line.type)
+    assert_equal([:$_], last_line.children)
+    [match, last_line].each do |node|
+      assert_equal([0, source.bytesize], [node.first_column, node.last_column])
+    end
+  end
+
   def test_scope_local_variables
     node = RubyVM::AbstractSyntaxTree.parse("_x = 0")
     lv, _, body = *node.children

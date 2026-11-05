@@ -408,6 +408,9 @@ ast_view(const struct ASTNodeData *parent, const rb_node_t *node, enum node_type
       case RB_FORWARDING_ARGUMENTS_NODE:
         if (parent->node == node && (type == NODE_ARGSPUSH || type == NODE_ARGSCAT || type == NODE_BLOCK_PASS)) data->location = parent->location;
         break;
+      case RB_INTERPOLATED_MATCH_LAST_LINE_NODE:
+        if (type == NODE_MATCH2 || type == NODE_GVAR) data->location = RB_NODE_INTERPOLATED_MATCH_LAST_LINE(node)->implicit_call_loc;
+        break;
       case RB_BEGIN_NODE:
         if (type == NODE_BLOCK && RB_NODE_BEGIN(node)->statements) data->location.end_pos = RB_NODE_BEGIN(node)->statements->base.location.end_pos;
         if (type == NODE_RESCUE && RB_NODE_BEGIN(node)->ensure_clause) {
@@ -501,7 +504,8 @@ ast_list(const struct ASTNodeData *parent, const rb_node_t *owner, const rb_node
     data->location.beg_pos = list->nodes[index]->location.beg_pos;
     data->location.end_pos = list->nodes[index + count - 1]->location.end_pos;
     if (owner->type == RB_INTERPOLATED_STRING_NODE || owner->type == RB_INTERPOLATED_SYMBOL_NODE ||
-        owner->type == RB_INTERPOLATED_X_STRING_NODE || owner->type == RB_INTERPOLATED_REGULAR_EXPRESSION_NODE) {
+        owner->type == RB_INTERPOLATED_X_STRING_NODE || owner->type == RB_INTERPOLATED_REGULAR_EXPRESSION_NODE ||
+        owner->type == RB_INTERPOLATED_MATCH_LAST_LINE_NODE) {
         data->location.end_pos = list->nodes[index]->location.end_pos;
     }
     return object;
@@ -1387,6 +1391,10 @@ node_children(const struct ASTNodeData *data)
         return CHILDREN(3, head, index < parts->size ? CHILD(parts->nodes[index]) : Qnil,
             ast_list(data, node, parts, index + 1, parts->size > index ? parts->size - index - 1 : 0, NODE_LIST));
       }
+      case RB_INTERPOLATED_MATCH_LAST_LINE_NODE:
+        if (data->type == NODE_MATCH2) return CHILDREN(2, VIEW(node, NODE_DREGX), VIEW(node, NODE_GVAR));
+        if (data->type == NODE_GVAR) return CHILDREN(1, special_name("$_"));
+        /* fall through */
       case RB_INTERPOLATED_REGULAR_EXPRESSION_NODE: {
         if (data->type == NODE_ONCE) return CHILDREN(1, VIEW(node, NODE_DREGX));
         const rb_node_list2_t *parts = &RB_NODE_INTERPOLATED_REGULAR_EXPRESSION(node)->parts;
