@@ -593,6 +593,46 @@ class TestAst < Test::Unit::TestCase
     assert_equal(:LASGN, body.type)
   end
 
+  def test_destructured_parameters
+    ["def m((a,b),x=1,(c,d));end", "proc{|(a,b),x=1,(c,d)|a}"].each do |source|
+      scope = parse(source).children.last.children.last
+      args = scope.children[1].children
+      assert_equal([1, nil, 1], args.values_at(0, 3, 4))
+      [args[1], args[5]].each do |assignment|
+        assert_equal(:MASGN, assignment.type)
+        temporary, targets, rest = assignment.children
+        assert_equal(source.start_with?("def") ? :LVAR : :DVAR, temporary.type)
+        assert_equal([nil], temporary.children)
+        assert_equal(assignment.first_column, temporary.first_column)
+        assert_equal(temporary.first_column, temporary.last_column)
+        assert_equal(:LIST, targets.type)
+        assert_nil(rest)
+      end
+      assert_equal([:a, :b], args[1].children[1].children.compact.map { |n| n.children.first })
+      assert_equal([:c, :d], args[5].children[1].children.compact.map { |n| n.children.first })
+    end
+  end
+
+  def test_multiple_destructured_parameters
+    scope = parse("def m((a,b),x,(c,d));end").children.last.children.last
+    assignments = scope.children[1].children[1]
+    assert_equal(:BLOCK, assignments.type)
+    assert_equal([:MASGN, :MASGN], assignments.children.map(&:type))
+    assert_equal([7, 18], [assignments.first_column, assignments.last_column])
+  end
+
+  def test_implicit_parameter_projection
+    {"proc{it}" => :"<it>", "proc {_1}" => :_1}.each do |source, name|
+      scope = parse(source).children.last.children.last
+      locals, args, body = scope.children
+      assert_equal([name], locals)
+      assert_equal([name], body.children)
+      assert_equal([1, nil, nil, nil, 0, nil, nil, nil, nil, nil], args.children)
+      assert_equal([1, source.bytesize, 1, source.bytesize],
+                   [args.first_lineno, args.first_column, args.last_lineno, args.last_column])
+    end
+  end
+
   def test_call
     node = RubyVM::AbstractSyntaxTree.parse("nil.foo")
     _, _, body = *node.children

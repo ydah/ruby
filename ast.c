@@ -423,6 +423,7 @@ ast_view(const struct ASTNodeData *parent, const rb_node_t *node, enum node_type
         if (type == NODE_RESBODY) data->location.beg_pos = RB_NODE_RESCUE_MODIFIER(node)->keyword_loc.beg_pos;
         break;
       case RB_MULTI_TARGET_NODE: case RB_MULTI_WRITE_NODE:
+        if (type == NODE_LVAR || type == NODE_DVAR) data->location.end_pos = data->location.beg_pos;
         if (type == NODE_POSTARG && RB_NODE_MULTI_TARGET(node)->rights.size) {
             const rb_node_list2_t *rights = &RB_NODE_MULTI_TARGET(node)->rights;
             data->location.end_pos = rights->nodes[rights->size - 1]->location.end_pos;
@@ -813,6 +814,20 @@ parameter_name(const rb_node_t *node)
 }
 
 static VALUE
+parameter_initializers(const struct ASTNodeData *data, const rb_node_list2_t *parameters)
+{
+    size_t first = parameters->size, last = 0, count = 0;
+    for (size_t i = 0; i < parameters->size; i++) {
+        if (parameters->nodes[i]->type != RB_MULTI_TARGET_NODE) continue;
+        if (!count++) first = i;
+        last = i;
+    }
+    if (!count) return Qnil;
+    if (count == 1) return owned_child(data, parameters->nodes[first], data->node);
+    return ast_list(data, data->node, parameters, first, last - first + 1, NODE_BLOCK);
+}
+
+static VALUE
 parameters_children(const struct ASTNodeData *data)
 {
     if (data->node->type == RB_FOR_NODE) {
@@ -837,10 +852,10 @@ parameters_children(const struct ASTNodeData *data)
     }
     if (node->block && parameter_name((const rb_node_t *)node->block) == idNil) block = Qfalse;
     VALUE keywords = ast_list(data, data->node, &node->keywords, 0, node->keywords.size, NODE_KW_ARG);
-    return CHILDREN(10, SIZET2NUM(node->requireds.size), Qnil,
+    return CHILDREN(10, SIZET2NUM(node->requireds.size), parameter_initializers(data, &node->requireds),
         ast_list(data, data->node, &node->optionals, 0, node->optionals.size, NODE_OPT_ARG),
         node->posts.size ? var_name(parameter_name(node->posts.nodes[0])) : Qnil,
-        SIZET2NUM(node->posts.size), Qnil, rest, kwrest == Qfalse ? Qfalse : keywords, kwrest, block);
+        SIZET2NUM(node->posts.size), parameter_initializers(data, &node->posts), rest, kwrest == Qfalse ? Qfalse : keywords, kwrest, block);
 }
 
 static VALUE
@@ -924,7 +939,10 @@ node_children(const struct ASTNodeData *data)
             CHILD(list->nodes[start]), ast_list(data, node, list, start + 1, count - 1, data->type));
         VALUE array = rb_ary_new_capa(count + 1);
         for (size_t i = start; i < start + count; i++) {
-            rb_ary_push(array, node->type == RB_MATCH_WRITE_NODE ? owned_child(data, list->nodes[i], node) : CHILD(list->nodes[i]));
+            if (node->type == RB_PARAMETERS_NODE && data->type == NODE_BLOCK) {
+                if (list->nodes[i]->type == RB_MULTI_TARGET_NODE) rb_ary_push(array, owned_child(data, list->nodes[i], node));
+            }
+            else rb_ary_push(array, node->type == RB_MATCH_WRITE_NODE ? owned_child(data, list->nodes[i], node) : CHILD(list->nodes[i]));
         }
         if (data->type == NODE_LIST) rb_ary_push(array, Qnil);
         return array;
@@ -997,12 +1015,14 @@ node_children(const struct ASTNodeData *data)
       }
       case RB_MULTI_WRITE_NODE: case RB_MULTI_TARGET_NODE: {
         const rb_multi_target_node_t *n = RB_NODE_MULTI_TARGET(node);
+        if (data->type == NODE_LVAR || data->type == NODE_DVAR) return CHILDREN(1, Qnil);
         VALUE rest = Qnil;
         if (n->rights.size) rest = VIEW(node, NODE_POSTARG);
         else if (n->rest && n->rest->type != RB_IMPLICIT_REST_NODE) rest = pattern_rest(data, (const rb_node_t *)n->rest);
         if (data->type == NODE_POSTARG) return CHILDREN(2, pattern_rest(data, (const rb_node_t *)n->rest), ast_list(data, node, &n->rights, 0, n->rights.size, NODE_LIST));
         return CHILDREN(3, node->type == RB_MULTI_WRITE_NODE ? CHILD(RB_NODE_MULTI_WRITE(node)->value) :
-            data->owner->type == RB_FOR_NODE ? VIEW(data->owner, NODE_FOR_MASGN) : Qnil,
+            data->owner->type == RB_FOR_NODE ? VIEW(data->owner, NODE_FOR_MASGN) :
+            data->owner->type == RB_PARAMETERS_NODE ? VIEW(node, data->dynamic ? NODE_DVAR : NODE_LVAR) : Qnil,
             ast_list(data, node, &n->lefts, 0, n->lefts.size, NODE_LIST), rest);
       }
       case RB_ALTERNATION_PATTERN_NODE: return CHILDREN(2, CHILD(RB_NODE_ALTERNATION_PATTERN(node)->left), CHILD(RB_NODE_ALTERNATION_PATTERN(node)->right));
@@ -1290,7 +1310,7 @@ node_children(const struct ASTNodeData *data)
       case RB_REST_PARAMETER_NODE: return CHILDREN(1, var_name(RB_NODE_REST_PARAMETER(node)->name));
       case RB_FORWARDING_PARAMETER_NODE: return CHILDREN(1, special_name("**"));
       case RB_NO_KEYWORDS_PARAMETER_NODE: return rb_ary_new();
-      case RB_IT_LOCAL_VARIABLE_READ_NODE: return CHILDREN(1, special_name("it"));
+      case RB_IT_LOCAL_VARIABLE_READ_NODE: return CHILDREN(1, ID2SYM(idItImplicit));
       case RB_INTEGER_NODE: return CHILDREN(1, rb_node_integer_literal_val2(node));
       case RB_FLOAT_NODE: return CHILDREN(1, rb_node_float_literal_val2(node));
       case RB_RATIONAL_NODE: return CHILDREN(1, rb_node_rational_literal_val2(node));
