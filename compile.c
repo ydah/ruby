@@ -11205,6 +11205,7 @@ compile_shareable_constant_value(rb_iseq_t *iseq, LINK_ANCHOR *ret, enum rb_pars
     }
 }
 
+static VALUE parse_integer_value(const pm_integer_t *integer);
 static int iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, int popped);
 /**
   compile each node
@@ -11538,27 +11539,7 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const no
       case RB_INTEGER_NODE: {
         if (!popped) {
             rb_integer_node_t *int_node = (rb_integer_node_t *)node;
-            VALUE value;
-
-            if (int_node->value.values == NULL) {
-                value = UINT2NUM(int_node->value.value);
-            }
-            else {
-                VALUE string = rb_str_new(NULL, int_node->value.length * 8);
-                unsigned char *bytes = (unsigned char *) RSTRING_PTR(string);
-
-                size_t offset = int_node->value.length * 8;
-                for (size_t value_index = 0; value_index < int_node->value.length; value_index++) {
-                    uint32_t val = int_node->value.values[value_index];
-
-                    for (int index = 0; index < 8; index++) {
-                        int byte = (val >> (4 * index)) & 0xf;
-                        bytes[--offset] = byte < 10 ? byte + '0' : byte - 10 + 'a';
-                    }
-                }
-
-                value = rb_cstr_to_inum(RSTRING_PTR(string), 16, false);
-            }
+            VALUE value = parse_integer_value(&int_node->value);
 
             ADD_INSN1(ret, node, putobject, value);
             RB_OBJ_WRITTEN(iseq, Qundef, value);
