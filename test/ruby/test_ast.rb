@@ -698,6 +698,51 @@ class TestAst < Test::Unit::TestCase
     RubyVM.keep_script_lines = keep_script_lines
   end
 
+  def test_for_nonlocal_target_initializer
+    {"@a" => :IASGN, "$a" => :GASGN, "@@a" => :CVASGN,
+     "A" => :CDECL, "A::B" => :CDECL, "::A" => :CDECL,
+     "a.x" => :ATTRASGN, "a[0]" => :ATTRASGN}.each do |target, type|
+      args = parse("for #{target} in b;end").children.last.children.last.children[1]
+      assert_equal(0, args.children[0])
+      initializer = args.children[1]
+      assert_equal(:MASGN, initializer.type)
+      value, targets, rest = initializer.children
+      assert_equal(:DVAR, value.type)
+      assert_equal([nil], value.children)
+      assert_equal(:LIST, targets.type)
+      assert_equal([type, nil], targets.children.map { |child| child&.type })
+      assert_nil(rest)
+      [args, initializer, value, targets].each do |node|
+        assert_equal([4, 4 + target.bytesize], [node.first_column, node.last_column])
+      end
+    end
+  end
+
+  def test_destructured_assignment_list_locations
+    ["(a,b),c=d", "((a,b),c)=d"].each_with_index do |source, column|
+      targets = parse(source).children.last.children[1]
+      assert_equal(column, targets.first_column)
+      assert_equal(column + 1, targets.children.first.first_column)
+    end
+    args = parse("for (a,b) in c;end").children.last.children.last.children[1]
+    initializer = args.children[1]
+    [args, initializer, initializer.children.first].each do |node|
+      assert_equal([4, 9], [node.first_column, node.last_column])
+    end
+    assert_equal([5, 8], [initializer.children[1].first_column, initializer.children[1].last_column])
+  end
+
+  def test_keyword_argument_and_pin_ranges
+    source = "f 1, k: 2 do;end"
+    call = parse(source).children.last.children.first
+    assert_equal([0, 9], [call.first_column, call.last_column])
+    assert_equal(9, call.children.last.last_column)
+    pattern = parse("proc { case x; in a, ^a; end }").children.last.children.last.children.last.children.last.children.first
+    targets = pattern.children[1]
+    assert_equal(23, targets.last_column)
+    assert_equal(23, targets.children[-2].last_column)
+  end
+
   def test_pinned_expression_and_hash_pattern_rest
     pattern = parse("case x; in ^(1+2); end").children.last.children.last.children.first
     assert_equal(:BLOCK, pattern.type)

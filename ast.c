@@ -426,7 +426,7 @@ ast_view(const struct ASTNodeData *parent, const rb_node_t *node, enum node_type
             RB_NODE_INDEX_TARGET(node)->arguments->arguments.size) data->location.beg_pos = RB_NODE_INDEX_TARGET(node)->arguments->arguments.nodes[0]->location.beg_pos;
         break;
       case RB_FOR_NODE:
-        if (type == NODE_ARGS || type == NODE_DVAR || type == NODE_FOR_MASGN) data->location = RB_NODE_FOR(node)->index->location;
+        if (type == NODE_ARGS || type == NODE_DVAR || type == NODE_FOR_MASGN || type == NODE_MASGN || type == NODE_LIST) data->location = RB_NODE_FOR(node)->index->location;
         break;
       case RB_BEGIN_NODE:
         if (type == NODE_BLOCK && RB_NODE_BEGIN(node)->statements) data->location.end_pos = RB_NODE_BEGIN(node)->statements->base.location.end_pos;
@@ -519,6 +519,9 @@ ast_list(const struct ASTNodeData *parent, const rb_node_t *owner, const rb_node
     data->index = index;
     data->count = count;
     data->location.beg_pos = list->nodes[index]->location.beg_pos;
+    if (list->nodes[index]->type == RB_MULTI_TARGET_NODE && !NULL_LOC_P(&RB_NODE_MULTI_TARGET(list->nodes[index])->lparen_loc)) {
+        data->location.beg_pos = RB_NODE_MULTI_TARGET(list->nodes[index])->lparen_loc.beg_pos;
+    }
     if (list->nodes[index]->type == RB_PRE_EXECUTION_NODE) data->location.beg_pos = RB_NODE_PRE_EXECUTION(list->nodes[index])->opening_loc.beg_pos;
     data->location.end_pos = list->nodes[index + count - 1]->location.end_pos;
     if (owner->type == RB_INTERPOLATED_STRING_NODE || owner->type == RB_INTERPOLATED_SYMBOL_NODE ||
@@ -893,7 +896,9 @@ parameters_children(const struct ASTNodeData *data)
 {
     if (data->node->type == RB_FOR_NODE) {
         const rb_node_t *index = RB_NODE_FOR(data->node)->index;
-        return CHILDREN(10, INT2FIX(index->type == RB_MULTI_TARGET_NODE ? 0 : 1), owned_child(data, index, data->node),
+        bool local = index->type == RB_LOCAL_VARIABLE_WRITE_NODE || index->type == RB_LOCAL_VARIABLE_TARGET_NODE;
+        VALUE initializer = local || index->type == RB_MULTI_TARGET_NODE ? owned_child(data, index, data->node) : VIEW(data->node, NODE_MASGN);
+        return CHILDREN(10, INT2FIX(local ? 1 : 0), initializer,
             Qnil, Qnil, INT2FIX(0), Qnil, Qnil, Qnil, Qnil, Qnil);
     }
     if (data->node->type != RB_PARAMETERS_NODE) {
@@ -1264,6 +1269,8 @@ node_children(const struct ASTNodeData *data)
       case RB_FOR_NODE:
         if (data->type == NODE_DVAR) return CHILDREN(1, Qnil);
         if (data->type == NODE_FOR_MASGN) return CHILDREN(1, VIEW(node, NODE_DVAR));
+        if (data->type == NODE_MASGN) return CHILDREN(3, VIEW(node, NODE_DVAR), VIEW(node, NODE_LIST), Qnil);
+        if (data->type == NODE_LIST) return CHILDREN(2, CHILD(RB_NODE_FOR(node)->index), Qnil);
         return CHILDREN(2, CHILD(RB_NODE_FOR(node)->collection), VIEW(node, NODE_SCOPE));
       case RB_STATEMENTS_NODE: {
         if (data->type == NODE_BEGIN) return CHILDREN(1, Qnil);
