@@ -7148,7 +7148,7 @@ f_kwrest	: kwrest_mark tIDENTIFIER
                 | kwrest_mark
                     {
                         arg_var(p, idFWD_KWREST);
-                        $$ = NEW_RB_KEYWORD_REST_PARAMETER(0, &@$, &@1, &@2);
+                        $$ = NEW_RB_KEYWORD_REST_PARAMETER(0, &@$, &@1, &NULL_LOC);
                     /*% ripper: kwrest_param!(Qnil) %*/
                     }
                 ;
@@ -14973,7 +14973,7 @@ statements_node_body_append(struct parser_params *p, rb_statements_node_t *node,
             case RB_REDO_NODE:
             case RB_RETRY_NODE:
             case RB_RETURN_NODE:
-                rb_warning0L(rb_nd_line(node), "statement not reached");
+                rb_warning0L(rb_nd_line(statement), "statement not reached");
                 break;
             default:
                 break;
@@ -16371,26 +16371,32 @@ aryset_target(struct parser_params *p, rb_node_t *recv, rb_arguments_node_t *idx
     return NEW_RB_INDEX_TARGET(recv, idx, 0, loc);
 }
 
-static rb_node_t *
-get_block(struct parser_params *p, rb_node_t *node)
+static bool
+block_argument_given_p(rb_node_t *node)
 {
+    rb_arguments_node_t *arguments = NULL;
     switch (RB_NODE_TYPE(node)) {
       case RB_CALL_NODE:
-        return RB_NODE_CALL(node)->block;
+        if (RB_NODE_CALL(node)->block) return true;
+        arguments = RB_NODE_CALL(node)->arguments;
+        break;
       case RB_SUPER_NODE:
-        return RB_NODE_SUPER(node)->block;
+        if (RB_NODE_SUPER(node)->block) return true;
+        arguments = RB_NODE_SUPER(node)->arguments;
+        break;
       case RB_FORWARDING_SUPER_NODE:
-        return RB_NODE_FORWARDING_SUPER(node)->block;
+        return RB_NODE_FORWARDING_SUPER(node)->block != NULL;
       default:
         rb_bug("unexpected node: %s", rb_node_type_to_str(RB_NODE_TYPE(node)));
-        UNREACHABLE_RETURN(0);
     }
+    rb_node_t *last = arguments ? rb_node_list_last(&arguments->arguments) : NULL;
+    return last && RB_NODE_TYPE_P(last, RB_FORWARDING_ARGUMENTS_NODE);
 }
 
 static void
 block_dup_check(struct parser_params *p, rb_node_t *node1, rb_node_t *node2)
 {
-    if (node2 && node1 && get_block(p, node1)) {
+    if (node2 && node1 && block_argument_given_p(node1)) {
         compile_error(p, "both block arg and actual block given");
     }
 }
@@ -17359,13 +17365,10 @@ args_info_empty_p(rb_parameters_node_t *args)
 static rb_parameters_node_t *
 new_args2(struct parser_params *p, rb_array_node_t *pre_args, rb_array_node_t *opt_args, rb_node_t *rest_arg, rb_array_node_t *post_args, rb_parameters_node_t *tail, const YYLTYPE *loc)
 {
-//     if (args->forwarding) {
-//         if (rest_arg) {
-//             yyerror1(&RNODE(tail)->nd_loc, "... after rest argument");
-//             return tail;
-//         }
-//         rest_arg = idFWD_REST;
-//     }
+    if (rest_arg && tail->keyword_rest && RB_NODE_TYPE_P(tail->keyword_rest, RB_FORWARDING_PARAMETER_NODE)) {
+        yyerror1(&tail->keyword_rest->location, "... after rest argument");
+        return tail;
+    }
 
     if (pre_args) rb_node_list_move(&tail->requireds, &pre_args->elements);
     if (post_args) rb_node_list_move(&tail->posts, &post_args->elements);
@@ -17385,8 +17388,10 @@ get_kw_nd_vid(struct parser_params *p, rb_node_t *node)
         return RB_NODE_OPTIONAL_KEYWORD_PARAMETER(node)->name;
       case RB_REQUIRED_KEYWORD_PARAMETER_NODE:
         return RB_NODE_REQUIRED_KEYWORD_PARAMETER(node)->name;
-      case RB_KEYWORD_REST_PARAMETER_NODE:
-        return RB_NODE_KEYWORD_REST_PARAMETER(node)->name;
+      case RB_KEYWORD_REST_PARAMETER_NODE: {
+        ID name = RB_NODE_KEYWORD_REST_PARAMETER(node)->name;
+        return name ? name : idFWD_KWREST;
+      }
       default:
         compile_error(p, "get_kw_nd_vid: unexpected node: %s", parser_node_name(nd_type(node)));
         return 0;
@@ -17593,39 +17598,25 @@ nd_value(struct parser_params *p, rb_node_t *node)
 }
 
 static void
-warn_duplicate_keys(struct parser_params *p, rb_array_node_t *hash)
+warn_duplicate_keys_in_list(struct parser_params *p, const rb_node_list2_t *list)
 {
-    /* See https://bugs.ruby-lang.org/issues/20331 for discussion about what is warned. */
-    const rb_node_list2_t *list = &hash->elements;
-    p->warn_duplicate_keys_table = st_init_table_with_size(&literal_type, RB_NODE_LIST_LEN(list));
     for (size_t i = 0; i < RB_NODE_LIST_LEN(list); i++) {
         rb_node_t *node = list->nodes[i];
         rb_node_t *head;
-        rb_node_t *value;
-        st_data_t key;
-        st_data_t data;
+        st_data_t key, data;
 
-        switch (nd_type(node)) {
-          case RB_ASSOC_NODE:
-            head = RB_NODE_ASSOC(node)->key;
-            value = RB_NODE_ASSOC(node)->value;
-            break;
-          case RB_ASSOC_SPLAT_NODE:
-            head = RB_NODE_ASSOC_SPLAT(node)->value;
-            value = RB_NODE_ASSOC_SPLAT(node)->value;
-            break;
-          default:
-            rb_bug("unexpected node: %s", ruby_node_name(nd_type(node)));
-        }
-
-        /* keyword splat, e.g. {k: 1, **, k: 2} */
-        if (!head) {
+        if (RB_NODE_TYPE_P(node, RB_ASSOC_SPLAT_NODE)) {
+            rb_node_t *value = RB_NODE_ASSOC_SPLAT(node)->value;
+            /* The legacy assoc list expands static hash splats only after
+             * its first association, independently at each nesting level. */
+            if (i > 0 && value && RB_NODE_TYPE_P(value, RB_HASH_NODE)) {
+                warn_duplicate_keys_in_list(p, &RB_NODE_HASH(value)->elements);
+            }
             continue;
         }
-
+        head = RB_NODE_ASSOC(node)->key;
         if (nd_type_st_key_enable_p(head)) {
             key = (st_data_t)head;
-
             if (st_delete(p->warn_duplicate_keys_table, &key, &data)) {
                 rb_warn2L(nd_line((rb_node_t *)data),
                           "key %+"PRIsWARN" is duplicated and overwritten on line %d",
@@ -17634,6 +17625,14 @@ warn_duplicate_keys(struct parser_params *p, rb_array_node_t *hash)
             st_insert(p->warn_duplicate_keys_table, (st_data_t)key, (st_data_t)node);
         }
     }
+}
+
+static void
+warn_duplicate_keys(struct parser_params *p, rb_array_node_t *hash)
+{
+    /* See https://bugs.ruby-lang.org/issues/20331 for discussion about what is warned. */
+    p->warn_duplicate_keys_table = st_init_table_with_size(&literal_type, hash->elements.size);
+    warn_duplicate_keys_in_list(p, &hash->elements);
     st_free_table(p->warn_duplicate_keys_table);
     p->warn_duplicate_keys_table = NULL;
 }
