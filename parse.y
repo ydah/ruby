@@ -4274,6 +4274,8 @@ mlhs_item	: mlhs_node
                 | tLPAREN mlhs_inner rparen
                     {
                         $$ = (rb_node_t *)$2;
+                        RB_NODE_MULTI_TARGET($$)->lparen_loc = @1;
+                        RB_NODE_MULTI_TARGET($$)->rparen_loc = @3;
                     /*% ripper: mlhs_paren!($:2) %*/
                     }
                 ;
@@ -5116,6 +5118,7 @@ primary		: inline_primary
                             ? (rb_node_t *)multi_write2multi_target(p, RB_NODE_MULTI_WRITE(index))
                             : write2target(p, index);
                     }
+                    index->location = @for_var;
                     YYLTYPE do_keyword_loc = $do == keyword_do_cond ? @do : NULL_LOC;
                     $$ = NEW_RB_FOR(index, $expr_value, $compstmt, &@$, &@k_for, &@keyword_in, &do_keyword_loc, &@k_end);
                     fixpos($$, $for_var);
@@ -6383,7 +6386,7 @@ p_var_ref	: '^' tIDENTIFIER
                             compile_error(p, "%"PRIsVALUE": no such local variable", rb_id2str($2));
                         }
                         else {
-                            n = NEW_RB_PINNED_VARIABLE(n, &@1, &@$);
+                            n = NEW_RB_PINNED_VARIABLE(n, &@$, &@1);
                         }
                         $$ = n;
                     /*% ripper: var_ref!($:2) %*/
@@ -6395,7 +6398,7 @@ p_var_ref	: '^' tIDENTIFIER
                             $$ = NEW_ERROR(&@$);
                         }
                         else {
-                            $$ = NEW_RB_PINNED_VARIABLE(n, &@1, &@$);
+                            $$ = NEW_RB_PINNED_VARIABLE(n, &@$, &@1);
                         }
                     /*% ripper: var_ref!($:2) %*/
                     }
@@ -16263,6 +16266,7 @@ static rb_arguments_node_t *
 arg_append2(struct parser_params *p, rb_arguments_node_t *args, rb_node_t *node, const YYLTYPE *loc)
 {
     rb_node_list_append(&args->arguments, node);
+    rb_nd_set_loc(args, loc);
     return args;
 }
 
