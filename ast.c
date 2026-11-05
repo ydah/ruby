@@ -428,6 +428,9 @@ ast_view(const struct ASTNodeData *parent, const rb_node_t *node, enum node_type
       case RB_STATEMENTS_NODE:
         if (type == NODE_BLOCK && parent->node->type == RB_DEFINED_NODE && RB_NODE_STATEMENTS(node)->body.size == 1) data->location = parent->node->location;
         break;
+      case RB_FOR_NODE:
+        if (type == NODE_ARGS || type == NODE_DVAR || type == NODE_FOR_MASGN) data->location = RB_NODE_FOR(node)->index->location;
+        break;
       case RB_BEGIN_NODE:
         if (type == NODE_BLOCK && RB_NODE_BEGIN(node)->statements) data->location.end_pos = RB_NODE_BEGIN(node)->statements->base.location.end_pos;
         if (type == NODE_RESCUE && RB_NODE_BEGIN(node)->ensure_clause) {
@@ -1361,7 +1364,11 @@ node_children(const struct ASTNodeData *data)
         if (args && args->type == RB_ARGUMENTS_NODE && RB_NODE_ARGUMENTS(args)->arguments.size == 1) args = RB_NODE_ARGUMENTS(args)->arguments.nodes[0];
         return CHILDREN(1, CHILD(args));
       }
-      case RB_IF_NODE: return CHILDREN(3, CHILD(RB_NODE_IF(node)->predicate), CHILD(RB_NODE_IF(node)->statements), CHILD(RB_NODE_IF(node)->subsequent));
+      case RB_IF_NODE: {
+        const rb_if_node_t *n = RB_NODE_IF(node);
+        bool empty_error_body = n->predicate && n->predicate->type == RB_MISSING_NODE && n->statements && !n->statements->body.size;
+        return CHILDREN(3, CHILD(n->predicate), empty_error_body ? Qnil : CHILD(n->statements), CHILD(n->subsequent));
+      }
       case RB_UNLESS_NODE: return CHILDREN(3, CHILD(RB_NODE_UNLESS(node)->predicate), CHILD(RB_NODE_UNLESS(node)->statements), CHILD(RB_NODE_UNLESS(node)->else_clause));
       case RB_EMBEDDED_STATEMENTS_NODE: return CHILDREN(1, CHILD(RB_NODE_EMBEDDED_STATEMENTS(node)->statements));
       case RB_EMBEDDED_VARIABLE_NODE: return CHILDREN(1, CHILD(RB_NODE_EMBEDDED_VARIABLE(node)->variable));
@@ -1389,7 +1396,8 @@ node_children(const struct ASTNodeData *data)
             data->owner->type == RB_FOR_NODE ? VIEW(data->owner, NODE_DVAR) :
             data->owner->type == RB_MATCH_WRITE_NODE ? VIEW(node, NODE_SYM) :
             data->owner->type == RB_RESCUE_NODE ? VIEW(node, NODE_ERRINFO) : Qnil);
-      case RB_LOCAL_VARIABLE_WRITE_NODE: return CHILDREN(2, var_name(RB_NODE_LOCAL_VARIABLE_WRITE(node)->name), CHILD(RB_NODE_LOCAL_VARIABLE_WRITE(node)->value));
+      case RB_LOCAL_VARIABLE_WRITE_NODE: return CHILDREN(2, var_name(RB_NODE_LOCAL_VARIABLE_WRITE(node)->name),
+          data->owner->type == RB_FOR_NODE ? VIEW(data->owner, NODE_DVAR) : CHILD(RB_NODE_LOCAL_VARIABLE_WRITE(node)->value));
       case RB_CLASS_VARIABLE_READ_NODE: return CHILDREN(1, var_name(RB_NODE_CLASS_VARIABLE_READ(node)->name));
       case RB_CLASS_VARIABLE_TARGET_NODE: return CHILDREN(2, var_name(RB_NODE_CLASS_VARIABLE_TARGET(node)->name), data->owner->type == RB_RESCUE_NODE ? VIEW(node, NODE_ERRINFO) : Qnil);
       case RB_CLASS_VARIABLE_WRITE_NODE: return CHILDREN(2, var_name(RB_NODE_CLASS_VARIABLE_WRITE(node)->name), CHILD(RB_NODE_CLASS_VARIABLE_WRITE(node)->value));
