@@ -6310,7 +6310,7 @@ p_kwargs	: p_kwarg ',' p_any_kwrest
                     }
                 | p_any_kwrest
                     {
-                        $$ =  new_hash_pattern_tail(p, new_hash(p, 0, &@$), $1, &@$);
+                        $$ =  new_hash_pattern_tail(p, NULL, $1, &@$);
                     /*% ripper: [[], $:1] %*/
                     }
                 ;

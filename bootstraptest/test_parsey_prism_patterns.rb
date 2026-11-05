@@ -284,3 +284,16 @@ assert_equal 'SyntaxError', %q{
   }
 end
 assert_equal ':ok', 'RubyVM::InstructionSequence.compile_parsey("case [1]; in [_value] | [1]; :ok; end").eval.inspect'
+
+# Rest-only hash patterns have no key vector and accept nonempty hashes.
+assert_equal '[{a: 1}, {}, true]', %q{
+  RubyVM::InstructionSequence.compile_parsey('a = case {a:1}; in **rest; rest; end; b = case {}; in **rest; rest; end; c = case {a:1}; in **; true; else; false; end; [a,b,c]').eval.inspect
+}
+
+assert_equal '[false, true, false, true]', %q{
+  RubyVM::InstructionSequence.compile_parsey('[case {a:1}; in **nil; true; else; false; end, case {}; in **nil; true; else; false; end, case {a:1}; in {}; true; else; false; end, case {}; in {}; true; else; false; end]').eval.inspect
+}
+
+assert_equal '[[], nil, [:a], nil]', %q{
+  RubyVM::InstructionSequence.compile_parsey('calls=[]; o=Object.new; o.define_singleton_method(:deconstruct_keys) { |keys| calls << keys; {a:1} }; case o; in **; end; case o; in **rest; end; case o; in a:; end; case o; in {}; else; end; calls').eval.inspect
+}

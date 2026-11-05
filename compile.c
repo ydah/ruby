@@ -8592,7 +8592,7 @@ iseq_compile_pattern_each(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *n
         match_failed = NEW_LABEL(line);
         type_error = NEW_LABEL(line);
 
-        if (!RB_NODE_LIST_EMPTY_P(elements) && !has_rest) {
+        if ((!RB_NODE_LIST_EMPTY_P(elements) || nd_rest) && !has_rest) {
             keys = rb_ary_new_capa(RB_NODE_LIST_LEN(elements));
             for (size_t i = 0; i < RB_NODE_LIST_LEN(elements); i++) {
                 const NODE *elem = elements->nodes[i];
@@ -8681,7 +8681,7 @@ iseq_compile_pattern_each(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *n
             }
             ADD_SEQ(ret, match_values);
         }
-        else {
+        else if (!nd_rest) {
             ADD_INSN(ret, line_node, dup);
             ADD_SEND(ret, line_node, idEmptyP, INT2FIX(0)); // (9)
             if (in_single_pattern) {
