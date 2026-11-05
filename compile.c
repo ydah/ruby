@@ -7828,7 +7828,7 @@ compile_if(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, int 
                 nd_code_loc(coverage_node),
                 nd_node_id(coverage_node),
                 0,
-                type == NODE_IF ? "then" : "else",
+                type == RB_IF_NODE ? "then" : "else",
                 branches);
             end_label = NEW_LABEL(line);
             ADD_INSNL(then_seq, line_node, jump, end_label);
@@ -7854,7 +7854,7 @@ compile_if(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, int 
                 nd_code_loc(coverage_node),
                 nd_node_id(coverage_node),
                 1,
-                type == NODE_IF ? "else" : "then",
+                type == RB_IF_NODE ? "else" : "then",
                 branches);
         }
         ADD_SEQ(ret, else_seq);
@@ -8688,7 +8688,7 @@ iseq_compile_pattern_each(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *n
             match_succeeded = NEW_LABEL(line);
 
             ADD_INSN(ret, line_node, dup);
-            if (nd_type_p(node, NODE_IF)) {
+            if (nd_type_p(node, RB_IF_NODE)) {
                 ADD_INSNL(ret, line_node, branchif, match_succeeded);
             }
             else {
@@ -9140,7 +9140,7 @@ compile_match_predicate(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const rb_match_
     INIT_ANCHOR(body_seq);
     INIT_ANCHOR(cond_seq);
 
-    branches = decl_branch_base(iseq, PTR2NUM(node), nd_code_loc(node), "case");
+    branches = decl_branch_base(iseq, nd_node_id(node), nd_code_loc(node), "case");
     line = nd_line(line_node);
 
     endlabel = NEW_LABEL(line);
@@ -9217,7 +9217,7 @@ compile_match_required(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const rb_match_p
     INIT_ANCHOR(body_seq);
     INIT_ANCHOR(cond_seq);
 
-    branches = decl_branch_base(iseq, PTR2NUM(node), nd_code_loc(node), "case");
+    branches = decl_branch_base(iseq, nd_node_id(node), nd_code_loc(node), "case");
     line = nd_line(line_node);
 
     endlabel = NEW_LABEL(line);

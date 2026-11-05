@@ -6337,9 +6337,9 @@ p_kw_label	: tLABEL
                 | tSTRING_BEG string_contents tLABEL_END
                     {
                         YYLTYPE loc = code_loc_gen(&@1, &@3);
-                        if (!$2 || nd_type_p($2, NODE_STR)) {
+                        if (!$2 || nd_type_p($2, RB_STRING_NODE)) {
                             NODE *node = dsym_node(p, $2, &loc, &@1, &@2, &@3);
-                            $$ = rb_sym2id(rb_node_sym_string_val(node));
+                            $$ = rb_sym2id(rb_node_sym_string_val2(node));
                         }
                         else {
                             yyerror1(&loc, "symbol literal with interpolation is not allowed");
@@ -17619,31 +17619,49 @@ error_duplicate_pattern_variable(struct parser_params *p, ID id, const YYLTYPE *
 static int
 pattern_has_capture(struct parser_params *p, NODE *node)
 {
-    if (!node || node == NODE_SPECIAL_NO_NAME_REST || node == NODE_SPECIAL_NO_REST_KEYWORD) return 0;
+    if (!node) return 0;
+    const rb_node_list2_t *lists[2] = {NULL, NULL};
     switch (nd_type(node)) {
-      case RB_LOCAL_VARIABLE_WRITE_NODE:
-        return !is_private_local_id(p, RB_NODE_LOCAL_VARIABLE_WRITE(node)->name);
-      case NODE_LIST:
-        for (; node; node = RNODE_LIST(node)->nd_next) {
-            if (pattern_has_capture(p, RNODE_LIST(node)->nd_head)) return 1;
-        }
-        return 0;
-      case NODE_HASH: /* `pattern => var` and hash pattern key/value list */
-        return pattern_has_capture(p, RNODE_HASH(node)->nd_head);
-      case NODE_ARYPTN:
-        return pattern_has_capture(p, RNODE_ARYPTN(node)->pre_args) ||
-            pattern_has_capture(p, RNODE_ARYPTN(node)->rest_arg) ||
-            pattern_has_capture(p, RNODE_ARYPTN(node)->post_args);
-      case NODE_FNDPTN:
-        return pattern_has_capture(p, RNODE_FNDPTN(node)->pre_rest_arg) ||
-            pattern_has_capture(p, RNODE_FNDPTN(node)->args) ||
-            pattern_has_capture(p, RNODE_FNDPTN(node)->post_rest_arg);
-      case NODE_HSHPTN:
-        return pattern_has_capture(p, RNODE_HSHPTN(node)->nd_pkwargs) ||
-            pattern_has_capture(p, RNODE_HSHPTN(node)->nd_pkwrestarg);
+      case RB_LOCAL_VARIABLE_TARGET_NODE:
+        return !is_private_local_id(p, RB_NODE_LOCAL_VARIABLE_TARGET(node)->name);
+      case RB_ARRAY_PATTERN_NODE:
+        if (pattern_has_capture(p, RB_NODE_ARRAY_PATTERN(node)->rest)) return 1;
+        lists[0] = &RB_NODE_ARRAY_PATTERN(node)->requireds;
+        lists[1] = &RB_NODE_ARRAY_PATTERN(node)->posts;
+        break;
+      case RB_FIND_PATTERN_NODE:
+        if (pattern_has_capture(p, RB_NODE_FIND_PATTERN(node)->left) ||
+            pattern_has_capture(p, RB_NODE_FIND_PATTERN(node)->right)) return 1;
+        lists[0] = &RB_NODE_FIND_PATTERN(node)->requireds;
+        break;
+      case RB_HASH_PATTERN_NODE:
+        if (pattern_has_capture(p, RB_NODE_HASH_PATTERN(node)->rest)) return 1;
+        lists[0] = &RB_NODE_HASH_PATTERN(node)->elements;
+        break;
+      case RB_ASSOC_NODE:
+        return pattern_has_capture(p, RB_NODE_ASSOC(node)->value);
+      case RB_ASSOC_SPLAT_NODE:
+        return pattern_has_capture(p, RB_NODE_ASSOC_SPLAT(node)->value);
+      case RB_SPLAT_NODE:
+        return pattern_has_capture(p, RB_NODE_SPLAT(node)->expression);
+      case RB_IMPLICIT_NODE:
+        return pattern_has_capture(p, RB_NODE_IMPLICIT(node)->value);
+      case RB_CAPTURE_PATTERN_NODE:
+        return pattern_has_capture(p, RB_NODE_CAPTURE_PATTERN(node)->value) ||
+            pattern_has_capture(p, RB_NODE_CAPTURE_PATTERN(node)->target);
+      case RB_ALTERNATION_PATTERN_NODE:
+        return pattern_has_capture(p, RB_NODE_ALTERNATION_PATTERN(node)->left) ||
+            pattern_has_capture(p, RB_NODE_ALTERNATION_PATTERN(node)->right);
       default: /* values, constants, pins (`^x`, `^(expr)`) bind nothing */
         return 0;
     }
+    for (size_t i = 0; i < 2; i++) {
+        if (!lists[i]) continue;
+        for (size_t j = 0; j < lists[i]->size; j++) {
+            if (pattern_has_capture(p, lists[i]->nodes[j])) return 1;
+        }
+    }
+    return 0;
 }
 
 static void
@@ -17834,6 +17852,7 @@ new_attr_op_assign(struct parser_params *p, rb_node_t *lhs,
       }
     }
 
+    if (CALL_Q_P(atype)) rb_node_set_fl(asgn, RB_CALL_NODE_FLAGS_SAFE_NAVIGATION);
     fixpos(asgn, lhs);
     return asgn;
 }
