@@ -4940,6 +4940,10 @@ primary		: inline_primary
                     CMDARG_POP();
                     set_line_body($body, @kw.end_pos.lineno);
                     $$ = $body;
+                    if (RB_NODE_TYPE_P($$, RB_BEGIN_NODE)) {
+                        RB_NODE_BEGIN($$)->begin_keyword_loc = @kw;
+                        RB_NODE_BEGIN($$)->end_keyword_loc = @k_end;
+                    }
                     nd_set_line($$, @kw.end_pos.lineno);
                 /*% ripper: begin!($:body) %*/
                 }
@@ -15501,35 +15505,28 @@ new_defined(struct parser_params *p, NODE *expr, const YYLTYPE *loc, const YYLTY
 {
     int had_trailing_semicolon = p->ctxt.has_trailing_semicolon;
     p->ctxt.has_trailing_semicolon = 0;
-    NODE *n = expr;
-    while (n) {
-        if (nd_type_p(n, RB_PARENTHESES_NODE)) {
-            n = RB_NODE_PARENTHESES(n)->body;
-        }
-        else if (nd_type_p(n, RB_BEGIN_NODE) && !RB_NODE_BEGIN(n)->rescue_clause && !RB_NODE_BEGIN(n)->ensure_clause) {
-            n = (NODE *)RB_NODE_BEGIN(n)->statements;
-        }
-        else if (nd_type_p(n, RB_STATEMENTS_NODE)) {
-            rb_node_list2_t *body = &RB_NODE_STATEMENTS(n)->body;
-            if (body->size > 1) break;
-            n = body->size ? body->nodes[0] : NULL;
-        }
-        else {
-            break;
-        }
-    }
+    NODE *node = NEW_RB_DEFINED(expr, loc, keyword_loc);
     NODE *wrapper = expr;
-    while (wrapper && nd_type_p(wrapper, RB_PARENTHESES_NODE) &&
-           (rb_node_get_fl(wrapper) & RB_PARENTHESES_NODE_FLAGS_ARGUMENT)) {
-        wrapper = RB_NODE_PARENTHESES(wrapper)->body;
-        if (wrapper && nd_type_p(wrapper, RB_STATEMENTS_NODE) && RB_NODE_STATEMENTS(wrapper)->body.size == 1) {
+    bool argument = false;
+    while (wrapper) {
+        if (nd_type_p(wrapper, RB_PARENTHESES_NODE) && (rb_node_get_fl(wrapper) & RB_PARENTHESES_NODE_FLAGS_ARGUMENT)) {
+            argument = true;
+            wrapper = RB_NODE_PARENTHESES(wrapper)->body;
+        }
+        else if (argument && nd_type_p(wrapper, RB_STATEMENTS_NODE) && RB_NODE_STATEMENTS(wrapper)->body.size == 1) {
             wrapper = RB_NODE_STATEMENTS(wrapper)->body.nodes[0];
         }
+        else if (argument && nd_type_p(wrapper, RB_BEGIN_NODE) && !RB_NODE_BEGIN(wrapper)->rescue_clause &&
+                 !RB_NODE_BEGIN(wrapper)->ensure_clause && RB_NODE_BEGIN(wrapper)->statements &&
+                 RB_NODE_BEGIN(wrapper)->statements->body.size) {
+            wrapper = (NODE *)RB_NODE_BEGIN(wrapper)->statements;
+        }
+        else break;
     }
     if (had_trailing_semicolon && wrapper && !nd_type_p(wrapper, RB_STATEMENTS_NODE) && !nd_type_p(wrapper, RB_PARENTHESES_NODE)) {
-        n = (NODE *)NEW_RB_STATEMENTS(expr, loc);
+        rb_node_set_fl(node, RB_DEFINED_NODE_FLAGS_FORCE_EXPRESSION);
     }
-    return NEW_RB_DEFINED(n, loc, keyword_loc);
+    return node;
 }
 
 static NODE*

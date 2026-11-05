@@ -705,6 +705,11 @@ flags:
       - name: HEXADECIMAL
         comment: "0x prefix"
     comment: Flags for integer nodes that correspond to the base of the integer.
+  - name: DefinedNodeFlags
+    values:
+      - name: FORCE_EXPRESSION
+        comment: "a trailing statement separator makes defined? report an expression without inspecting its value"
+    comment: Flags for defined? expressions.
   - name: InterpolatedStringNodeFlags
     values:
       - name: FROZEN
@@ -2346,6 +2351,7 @@ nodes:
           end
           ^^^^^^^^^^
   - name: DefinedNode
+    flags: DefinedNodeFlags
     fields:
       - name: lparen_loc
         type: location?

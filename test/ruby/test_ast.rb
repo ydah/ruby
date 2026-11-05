@@ -666,6 +666,38 @@ class TestAst < Test::Unit::TestCase
     assert_equal([0, 13], [defined.children.first.first_column, defined.children.first.last_column])
   end
 
+  def test_defined_preserves_begin_expression
+    ["defined?(begin missing; end)", "defined? begin a;b end"].each do |source|
+      expression = parse(source).children.last.children.first
+      assert_equal(:BLOCK, expression.type)
+      assert_equal([0, source.bytesize], [expression.first_column, expression.last_column])
+      original = expression.children.first
+      assert_equal(:BEGIN, original.type)
+      assert_equal(9, original.first_column)
+      assert_equal(source.start_with?("defined?(") ? :VCALL : :BLOCK, original.children.first.type)
+    end
+    expression = parse("defined? (begin a;b end)").children.last.children.first
+    assert_equal([:VCALL, :VCALL], expression.children.map(&:type))
+    assert_equal([16, 19], [expression.first_column, expression.last_column])
+    expression = parse("defined? (begin;end)").children.last.children.first
+    assert_equal([nil], expression.children.first.children)
+  end
+
+  def test_nested_defined_lookup
+    keep_script_lines = RubyVM.keep_script_lines
+    omit if ParserSupport.prism_enabled?
+    RubyVM.keep_script_lines = true
+    expression = 80.times.inject("nil") { |inner| "defined?(begin #{inner};end)" }
+    eval("def self.ast_defined_lookup; #{expression}; caller_locations(0).first; end", binding, "ast-defined-depth.rb")
+    location = ast_defined_lookup
+    node = RubyVM::AbstractSyntaxTree.of(location)
+    assert_equal(:FCALL, node.type)
+    assert_equal(RubyVM::AbstractSyntaxTree.node_id_for_backtrace_location(location), node.node_id)
+  ensure
+    singleton_class.remove_method(:ast_defined_lookup) if singleton_class.method_defined?(:ast_defined_lookup)
+    RubyVM.keep_script_lines = keep_script_lines
+  end
+
   def test_pinned_expression_and_hash_pattern_rest
     pattern = parse("case x; in ^(1+2); end").children.last.children.last.children.first
     assert_equal(:BLOCK, pattern.type)
