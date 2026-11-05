@@ -628,6 +628,61 @@ class TestAst < Test::Unit::TestCase
     end
   end
 
+  def test_explicit_nil_method_body
+    ["def m;nil;end", "def m\nnil\nend"].each do |source|
+      body = parse(source).children.last.children.last.children.last
+      assert_equal(:NIL, body.type)
+    end
+  end
+
+  def test_constant_path_assignment_target
+    assignment = parse("a,A::B=x").children.last.children[1].children[1]
+    assert_equal(:CDECL, assignment.type)
+    assert_equal([:COLON2, :B, nil], [assignment.children[0].type, *assignment.children[1..]])
+  end
+
+  def test_rescue_attribute_assignment_target
+    ["obj.x", "obj[0]", "A::B"].each do |target|
+      assignment = parse("begin;rescue => #{target};end").children.last.children[1].children[1]
+      value = assignment.children.last
+      value = value.children[-2] if value.type == :LIST
+      assert_equal(:ERRINFO, value.type)
+      assert_equal([], value.children)
+    end
+    assignment = parse("begin;rescue => obj[];end").children.last.children[1].children[1]
+    assert_equal([13, 21], [assignment.children.last.first_column, assignment.children.last.last_column])
+    assignment = parse("begin;rescue => obj[*x,1];end").children.last.children[1].children[1]
+    arguments = assignment.children.last
+    assert_equal(:ARGSCAT, arguments.type)
+    assert_equal([:SPLAT, :LIST], arguments.children.map(&:type))
+    assert_equal([:INTEGER, :ERRINFO], arguments.children.last.children.compact.map(&:type))
+  end
+
+  def test_synthetic_condition_views
+    flip = parse("if (1..2);3;end").children.last.children.first.children.first
+    assert_equal([:CALL, :CALL], flip.children.map(&:type))
+    defined = parse("defined? (a;)").children.last
+    assert_equal(:BLOCK, defined.children.first.type)
+    assert_equal([0, 13], [defined.children.first.first_column, defined.children.first.last_column])
+  end
+
+  def test_pinned_expression_and_hash_pattern_rest
+    pattern = parse("case x; in ^(1+2); end").children.last.children.last.children.first
+    assert_equal(:BLOCK, pattern.type)
+    pattern = parse("case x;in {a:,**r};end").children.last.children.last.children.first
+    rest = pattern.children.last
+    assert_equal(:LASGN, rest.type)
+    assert_equal([11, 17], [rest.first_column, rest.last_column])
+  end
+
+  def test_pre_execution_projection
+    body = parse("BEGIN {1}; 2").children.last
+    assert_equal(:BLOCK, body.type)
+    assert_equal([6, 12], [body.first_column, body.last_column])
+    assert_equal([:BEGIN, :BEGIN, :INTEGER], body.children.map(&:type))
+    assert_equal([6, 9], [body.children.first.first_column, body.children.first.last_column])
+  end
+
   def test_scope_local_variables
     node = RubyVM::AbstractSyntaxTree.parse("_x = 0")
     lv, _, body = *node.children
