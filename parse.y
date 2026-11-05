@@ -1813,11 +1813,17 @@ static NODE *
 last_expr_node(NODE *expr)
 {
     while (expr) {
-        if (nd_type_p(expr, NODE_BLOCK)) {
-            expr = RNODE_BLOCK(RNODE_BLOCK(expr)->nd_end)->nd_head;
+        if (nd_type_p(expr, RB_STATEMENTS_NODE)) {
+            rb_node_list2_t *body = &RB_NODE_STATEMENTS(expr)->body;
+            if (!body->size) break;
+            expr = body->nodes[body->size - 1];
         }
-        else if (nd_type_p(expr, NODE_BEGIN) && RNODE_BEGIN(expr)->nd_body) {
-            expr = RNODE_BEGIN(expr)->nd_body;
+        else if (nd_type_p(expr, RB_PARENTHESES_NODE) && RB_NODE_PARENTHESES(expr)->body) {
+            expr = RB_NODE_PARENTHESES(expr)->body;
+        }
+        else if (nd_type_p(expr, RB_BEGIN_NODE) && RB_NODE_BEGIN(expr)->statements &&
+                 !RB_NODE_BEGIN(expr)->rescue_clause && !RB_NODE_BEGIN(expr)->ensure_clause) {
+            expr = (NODE *)RB_NODE_BEGIN(expr)->statements;
         }
         else {
             break;
@@ -3132,27 +3138,27 @@ rb_parser_ary_free(rb_parser_t *p, rb_parser_ary_t *ary)
 } <id>
 %printer {
     switch (nd_type(RNODE($$))) {
-      case NODE_INTEGER:
-        rb_parser_printf(p, "%+"PRIsVALUE, rb_node_integer_literal_val($$));
+      case RB_INTEGER_NODE:
+        rb_parser_printf(p, "%+"PRIsVALUE, rb_node_integer_literal_val2($$));
         break;
-      case NODE_FLOAT:
-        rb_parser_printf(p, "%+"PRIsVALUE, rb_node_float_literal_val($$));
+      case RB_FLOAT_NODE:
+        rb_parser_printf(p, "%+"PRIsVALUE, rb_node_float_literal_val2($$));
         break;
-      case NODE_RATIONAL:
-        rb_parser_printf(p, "%+"PRIsVALUE, rb_node_rational_literal_val($$));
+      case RB_RATIONAL_NODE:
+        rb_parser_printf(p, "%+"PRIsVALUE, rb_node_rational_literal_val2($$));
         break;
-      case NODE_IMAGINARY:
-        rb_parser_printf(p, "%+"PRIsVALUE, rb_node_imaginary_literal_val($$));
+      case RB_IMAGINARY_NODE:
+        rb_parser_printf(p, "%+"PRIsVALUE, rb_node_imaginary_literal_val2($$));
         break;
       default:
         break;
     }
 } tINTEGER tFLOAT tRATIONAL tIMAGINARY tSTRING_CONTENT tCHAR
 %printer {
-    rb_parser_printf(p, "$%ld", RNODE_NTH_REF($$)->nd_nth);
+    rb_parser_printf(p, "$%ld", (long)RB_NODE_NUMBERED_REFERENCE_READ($$)->number);
 } tNTH_REF
 %printer {
-    rb_parser_printf(p, "$%c", (int)RNODE_BACK_REF($$)->nd_nth);
+    rb_parser_printf(p, "%s", rb_id2name(RB_NODE_BACK_REFERENCE_READ($$)->name));
 } tBACK_REF
 
 %destructor {
@@ -5761,13 +5767,14 @@ do_block	: k_do_block do_body k_end
 
 block_call	: command do_block
                     {
-                        if (nd_type_p($1, NODE_YIELD)) {
+                        if (nd_type_p($1, RB_YIELD_NODE)) {
                             compile_error(p, "block given to yield");
+                            $$ = $1;
                         }
                         else {
                             block_dup_check(p, $1, $2);
+                            $$ = method_add_block(p, $1, $2, &@$);
                         }
-                        $$ = method_add_block(p, $1, $2, &@$);
                         fixpos($$, $1);
                     /*% ripper: method_add_block!($:1, $:2) %*/
                     }
@@ -7194,23 +7201,22 @@ singleton	: value_expr(singleton_expr)
                     {
                         NODE *expr = last_expr_node($1);
                         switch (nd_type(expr)) {
-                          case NODE_STR:
-                          case NODE_DSTR:
-                          case NODE_XSTR:
-                          case NODE_DXSTR:
-                          case NODE_REGX:
-                          case NODE_DREGX:
+                          case RB_STRING_NODE:
+                          case RB_INTERPOLATED_STRING_NODE:
+                          case RB_X_STRING_NODE:
+                          case RB_INTERPOLATED_X_STRING_NODE:
+                          case RB_REGULAR_EXPRESSION_NODE:
+                          case RB_INTERPOLATED_REGULAR_EXPRESSION_NODE:
                           case RB_SYMBOL_NODE:
-                          case NODE_LINE:
-                          case NODE_FILE:
-                          case NODE_ENCODING:
-                          case NODE_INTEGER:
-                          case NODE_FLOAT:
-                          case NODE_RATIONAL:
-                          case NODE_IMAGINARY:
-                          case NODE_DSYM:
-                          case NODE_LIST:
-                          case NODE_ZLIST:
+                          case RB_SOURCE_LINE_NODE:
+                          case RB_SOURCE_FILE_NODE:
+                          case RB_SOURCE_ENCODING_NODE:
+                          case RB_INTEGER_NODE:
+                          case RB_FLOAT_NODE:
+                          case RB_RATIONAL_NODE:
+                          case RB_IMAGINARY_NODE:
+                          case RB_INTERPOLATED_SYMBOL_NODE:
+                          case RB_ARRAY_NODE:
                             yyerror1(&expr->nd_loc, "can't define singleton method for literals");
                             break;
                           default:
@@ -16344,10 +16350,10 @@ rb_backref_error(struct parser_params *p, NODE *node)
 # define ERR(...) rb_sprintf(__VA_ARGS__)
 #endif
     switch (nd_type(node)) {
-      case NODE_NTH_REF:
-        return ERR("Can't set variable $%ld", RNODE_NTH_REF(node)->nd_nth);
-      case NODE_BACK_REF:
-        return ERR("Can't set variable $%c", (int)RNODE_BACK_REF(node)->nd_nth);
+      case RB_NUMBERED_REFERENCE_READ_NODE:
+        return ERR("Can't set variable $%ld", (long)RB_NODE_NUMBERED_REFERENCE_READ(node)->number);
+      case RB_BACK_REFERENCE_READ_NODE:
+        return ERR("Can't set variable %s", rb_id2name(RB_NODE_BACK_REFERENCE_READ(node)->name));
     }
 #undef ERR
     UNREACHABLE_RETURN(Qfalse); /* only called on syntax error */
