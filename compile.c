@@ -7402,6 +7402,7 @@ setup_args_core(rb_iseq_t *iseq, LINK_ANCHOR *const args, const rb_arguments_nod
         }
         else {
             *flag_ptr |= VM_CALL_KW_SPLAT;
+            if (!keyword_node_single_splat_p(kwnode)) *flag_ptr |= VM_CALL_KW_SPLAT_MUT;
             compile_hash(iseq, args, kwnode, &kwnode->elements, TRUE, FALSE);
             len++;
         }
@@ -7554,6 +7555,15 @@ setup_args_dup_rest_p(const NODE *argn)
       case RB_NUMBERED_REFERENCE_READ_NODE:
       case RB_BACK_REFERENCE_READ_NODE:
         return false;
+      case RB_CONSTANT_PATH_NODE:
+        return setup_args_dup_rest_p(RB_NODE_CONSTANT_PATH(argn)->parent);
+      case RB_ARRAY_NODE: {
+        const rb_node_list2_t *elements = &RB_NODE_ARRAY(argn)->elements;
+        for (size_t i = 0; i < elements->size; i++) {
+            if (setup_args_dup_rest_p(elements->nodes[i])) return true;
+        }
+        return false;
+      }
       default:
         return true;
     }
