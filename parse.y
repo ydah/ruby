@@ -2102,6 +2102,7 @@ node_def_setup(struct parser_params *p, rb_def_node_t *nd_def, rb_def_parameters
     nd_def->rparen_loc = nd_parameters.rparen_loc;
     nd_def->body = nd_body;
     nd_def->locals = local_tbl(p);
+    set_line_body((NODE *)nd_body, nd_def->base.location.beg_pos.lineno);
 }
 
 static rb_node_t *

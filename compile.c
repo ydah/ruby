@@ -1146,7 +1146,7 @@ rb_iseq_compile_node(rb_iseq_t *iseq, const NODE *node)
                 ADD_TRACE(ret, RUBY_EVENT_CLASS);
                 CHECK(COMPILE(ret, "scoped node", body));
                 ADD_TRACE(ret, RUBY_EVENT_END);
-                ISEQ_COMPILE_DATA(iseq)->last_line = nd_line(node);
+                ISEQ_COMPILE_DATA(iseq)->last_line = nd_code_loc(node)->end_pos.lineno;
                 break;
             }
           case ISEQ_TYPE_METHOD:
@@ -1156,7 +1156,7 @@ rb_iseq_compile_node(rb_iseq_t *iseq, const NODE *node)
                 CHECK(COMPILE(ret, "scoped node", body));
                 ISEQ_COMPILE_DATA(iseq)->root_node = body;
                 ADD_TRACE(ret, RUBY_EVENT_RETURN);
-                ISEQ_COMPILE_DATA(iseq)->last_line = nd_line(node);
+                ISEQ_COMPILE_DATA(iseq)->last_line = nd_code_loc(node)->end_pos.lineno;
                 break;
             }
           default: {
