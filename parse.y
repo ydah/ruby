@@ -15622,7 +15622,9 @@ new_regexp(struct parser_params *p, rb_node_t *node, int options, const YYLTYPE 
         }
         break;
       default:
-        node = NEW_RB_INTERPOLATED_STRING0(node, loc);
+        /* The prefix carries the regexp encoding even when interpolation is empty. */
+        node = rb_node_embedded_string(node) ? NEW_RB_INTERPOLATED_STRING0(node, loc) :
+            NEW_RB_INTERPOLATED_STRING(NEW_RB_STRING(STRING_NEW0(), loc), node, loc);
         /* fall through */
       case RB_INTERPOLATED_STRING_NODE: {
         rb_interpolated_string_node_t *string = RB_NODE_INTERPOLATED_STRING(node);
