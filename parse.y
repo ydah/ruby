@@ -6689,7 +6689,10 @@ string_content	: tSTRING_CONTENT[content]
                         p->lex.lpar_beg = $lpar;
                         p->heredoc_indent = $indent;
                         p->heredoc_line_indent = -1;
-                        if ($compstmt) rb_node_unset_fl_newline((rb_node_t *)$compstmt);
+                        if ($compstmt) {
+                            rb_node_unset_fl_newline((rb_node_t *)$compstmt);
+                            if ($compstmt->body.size == 1) rb_node_unset_fl_newline($compstmt->body.nodes[0]);
+                        }
                         $$ = NEW_RB_EMBEDDED_STATEMENTS($compstmt, &@$, &@state, &@string_dend);
                     /*% ripper: string_embexpr!($:compstmt) %*/
                     }

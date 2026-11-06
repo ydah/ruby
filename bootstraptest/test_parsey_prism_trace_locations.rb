@@ -25,3 +25,19 @@ assert_equal '1', %q{
     parsey_rescue_location.lineno
   RUBY
 }
+
+assert_equal '[[1], [1, 2, 3], [1, 2]]', %q{
+  sources = [
+    "value = \"#{'#{'}\nObject.new\n}\"",
+    "value = \"#{'#{'}\nObject.new;\nObject.new\n}\"",
+    "value = \"#{'#{'};\nObject.new\n}\""
+  ]
+  sources.map do |source|
+    events = []
+    code = RubyVM::InstructionSequence.compile_parsey(source, 'interpolation.rb')
+    TracePoint.new(:line) do |event|
+      events << event.lineno if event.path == 'interpolation.rb'
+    end.enable { code.eval }
+    events
+  end.inspect
+}

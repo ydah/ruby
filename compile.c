@@ -7856,7 +7856,8 @@ static int
 compile_if(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, int popped, const enum rb_node_type type)
 {
     const NODE *const node_body = type == RB_IF_NODE ? RB_NODE_IF(node)->statements : unless_node_else_statements(RB_NODE_UNLESS(node));
-    const NODE *const node_else = type == RB_IF_NODE ? RB_NODE_IF(node)->subsequent : RB_NODE_UNLESS(node)->statements;
+    const NODE *node_else = type == RB_IF_NODE ? RB_NODE_IF(node)->subsequent : RB_NODE_UNLESS(node)->statements;
+    if (node_else && nd_type_p(node_else, RB_ELSE_NODE)) node_else = RB_NODE_ELSE(node_else)->statements;
 
     const int line = nd_line(node);
     const NODE *line_node = node;
@@ -8023,7 +8024,8 @@ compile_case(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const orig_nod
     if (nd_else) {
         ADD_LABEL(cond_seq, elselabel);
         ADD_INSN(cond_seq, (NODE *)nd_else->statements, pop);
-        add_trace_branch_coverage(iseq, cond_seq, nd_code_loc(nd_else), nd_node_id(nd_else), branch_id, "else", branches);
+        const NODE *coverage_node = (const NODE *)nd_else->statements;
+        add_trace_branch_coverage(iseq, cond_seq, nd_code_loc(coverage_node), nd_node_id(coverage_node), branch_id, "else", branches);
         CHECK(COMPILE_(cond_seq, "else", nd_else, popped));
         ADD_INSNL(cond_seq, nd_else, jump, endlabel);
     }
@@ -8061,7 +8063,8 @@ compile_case2(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const orig_no
     DECL_ANCHOR(body_seq);
     VALUE branches = Qfalse;
     int branch_id = 0;
-    const NODE *const nd_else = (NODE *)RB_NODE_CASE(node)->else_clause;
+    const rb_else_node_t *else_clause = RB_NODE_CASE(node)->else_clause;
+    const NODE *const nd_else = else_clause ? (const NODE *)else_clause->statements : NULL;
 
     branches = decl_branch_base(iseq, nd_node_id(orig_node), nd_code_loc(orig_node), "case");
 
@@ -9107,7 +9110,7 @@ compile_case3(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const orig_no
     }
     /* else */
     if (nd_else) {
-        node = (NODE *)nd_else;
+        node = (NODE *)nd_else->statements;
         line_node = node;
 
         ADD_LABEL(cond_seq, elselabel);
@@ -10238,17 +10241,35 @@ compile_evstr(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, i
     return COMPILE_OK;
 }
 
+#define NULL_LOC_P(loc) ((loc)->beg_pos.lineno == 0 && (loc)->beg_pos.column == -1 && (loc)->end_pos.lineno == 0 && (loc)->end_pos.column == -1)
+
+static rb_code_location_t
+qcall_code_location(const NODE *node)
+{
+    rb_code_location_t loc = *nd_code_loc(node);
+    if (nd_type_p(node, RB_CALL_NODE)) {
+        const rb_call_node_t *call = RB_NODE_CALL(node);
+        if (call->block && nd_type_p(call->block, RB_BLOCK_NODE)) {
+            if (!NULL_LOC_P(&call->closing_loc)) loc.end_pos = call->closing_loc.end_pos;
+            else if (call->arguments) loc.end_pos = call->arguments->base.location.end_pos;
+            else if (!NULL_LOC_P(&call->message_loc)) loc.end_pos = call->message_loc.end_pos;
+        }
+    }
+    return loc;
+}
+
 static LABEL *
 qcall_branch_start(rb_iseq_t *iseq, LINK_ANCHOR *const recv, VALUE *branches, const NODE *node, const NODE *line_node)
 {
     LABEL *else_label = NEW_LABEL(nd_line(line_node));
     VALUE br = 0;
+    rb_code_location_t loc = qcall_code_location(node);
 
-    br = decl_branch_base(iseq, nd_node_id(node), nd_code_loc(node), "&.");
+    br = decl_branch_base(iseq, nd_node_id(node), &loc, "&.");
     *branches = br;
     ADD_INSN(recv, line_node, dup);
     ADD_INSNL(recv, line_node, branchnil, else_label);
-    add_trace_branch_coverage(iseq, recv, nd_code_loc(node), nd_node_id(node), 0, "then", br);
+    add_trace_branch_coverage(iseq, recv, &loc, nd_node_id(node), 0, "then", br);
     return else_label;
 }
 
@@ -10257,14 +10278,13 @@ qcall_branch_end(rb_iseq_t *iseq, LINK_ANCHOR *const ret, LABEL *else_label, VAL
 {
     LABEL *end_label;
     if (!else_label) return;
+    rb_code_location_t loc = qcall_code_location(node);
     end_label = NEW_LABEL(nd_line(line_node));
     ADD_INSNL(ret, line_node, jump, end_label);
     ADD_LABEL(ret, else_label);
-    add_trace_branch_coverage(iseq, ret, nd_code_loc(node), nd_node_id(node), 1, "else", branches);
+    add_trace_branch_coverage(iseq, ret, &loc, nd_node_id(node), 1, "else", branches);
     ADD_LABEL(ret, end_label);
 }
-
-#define NULL_LOC_P(loc) ((loc)->beg_pos.lineno == 0 && (loc)->beg_pos.column == -1 && (loc)->end_pos.lineno == 0 && (loc)->end_pos.column == -1)
 
 static enum node_call_type
 get_node_call_type(rb_call_node_t *node)
