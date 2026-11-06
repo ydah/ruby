@@ -16126,7 +16126,7 @@ aryset_target(struct parser_params *p, rb_node_t *recv, rb_arguments_node_t *idx
 }
 
 static bool
-block_argument_given_p(rb_node_t *node)
+block_argument_given_p(struct parser_params *p, rb_node_t *node)
 {
     rb_arguments_node_t *arguments = NULL;
     switch (RB_NODE_TYPE(node)) {
@@ -16150,7 +16150,7 @@ block_argument_given_p(rb_node_t *node)
 static void
 block_dup_check(struct parser_params *p, rb_node_t *node1, rb_node_t *node2)
 {
-    if (node2 && node1 && block_argument_given_p(node1)) {
+    if (node2 && node1 && block_argument_given_p(p, node1)) {
         compile_error(p, "both block arg and actual block given");
     }
 }
