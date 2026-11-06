@@ -15593,9 +15593,13 @@ dregex_fragment_setenc(struct parser_params *p, const rb_node_list2_t *list, int
 {
     for (size_t i = 0; i < RB_NODE_LIST_LEN(list); i++) {
         rb_node_t *frag = list->nodes[i];
+        const rb_string_node_t *embedded = rb_node_embedded_string(frag);
 
         if (nd_type_p(frag, RB_STRING_NODE)) {
             reg_fragment_setenc(p, RB_NODE_STRING(frag)->unescaped, options);
+        }
+        else if (embedded) {
+            reg_fragment_setenc(p, embedded->unescaped, options);
         }
         else if (nd_type_p(frag, RB_INTERPOLATED_STRING_NODE)) {
             dregex_fragment_setenc(p, &RB_NODE_INTERPOLATED_STRING(frag)->parts, options);
@@ -15636,7 +15640,10 @@ new_regexp(struct parser_params *p, rb_node_t *node, int options, const YYLTYPE 
         rb_node_list_init_with_src(&dreg->parts, &string->parts);
         node = (rb_node_t *)dreg;
         rb_node_set_fl(node, regx_option_flags(options));
-        dregex_fragment_setenc(p, &dreg->parts, options);
+        /* A lone literal interpolation retains the string's original encoding. */
+        if (dreg->parts.size != 1 || !rb_node_embedded_string(dreg->parts.nodes[0])) {
+            dregex_fragment_setenc(p, &dreg->parts, options);
+        }
         break;
       }
     }
