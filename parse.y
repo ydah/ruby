@@ -1931,7 +1931,7 @@ static rb_ast_id_table_t *local_tbl(struct parser_params*);
 static VALUE reg_compile(struct parser_params*, rb_parser_string_t*, int);
 static void reg_fragment_setenc(struct parser_params*, rb_parser_string_t*, int);
 
-// static int literal_concat0(struct parser_params *p, rb_parser_string_t *head, rb_parser_string_t *tail);
+static int literal_concat0(struct parser_params *p, rb_parser_string_t *head, rb_parser_string_t *tail);
 static rb_node_t *heredoc_dedent(struct parser_params*,rb_node_t*);
 
 static void check_literal_when(struct parser_params *p, NODE *args, const YYLTYPE *loc);
@@ -9495,11 +9495,20 @@ heredoc_dedent(struct parser_params *p, rb_node_t *root)
                 dedent_string(p, str, indent);
                 if (PARSER_STRING_LEN(str) == 0) continue;
             }
+            rb_node_t *previous = rb_node_list_last(&nd_ary->elements);
+            if (previous && RB_NODE_TYPE_P(previous, RB_STRING_NODE)) {
+                if (!literal_concat0(p, RB_NODE_STRING(previous)->unescaped, RB_NODE_STRING(node)->unescaped)) return NULL;
+                continue;
+            }
         }
         rb_node_list_append(&nd_ary->elements, node);
     }
 
     rb_node_list_replace(&RB_NODE_INTERPOLATED_STRING(root)->parts, &nd_ary->elements);
+    if (RB_NODE_LIST_EMPTY_P(list)) return NEW_RB_STRING(STRING_NEW0(), &root->location);
+    if (RB_NODE_LIST_LEN(list) == 1 && RB_NODE_TYPE_P(list->nodes[0], RB_STRING_NODE)) {
+        return rb_nd_set_loc(list->nodes[0], &root->location);
+    }
     return root;
 }
 
@@ -14818,21 +14827,21 @@ statements_node_body_append(struct parser_params *p, rb_statements_node_t *node,
 //     return head;
 // }
 
-// static int
-// literal_concat0(struct parser_params *p, rb_parser_string_t *head, rb_parser_string_t *tail)
-// {
-//     if (!tail) return 1;
-//     if (!rb_parser_enc_compatible(p, head, tail)) {
-//         compile_error(p, "string literal encodings differ (%s / %s)",
-//                       rb_enc_name(rb_parser_str_get_encoding(head)),
-//                       rb_enc_name(rb_parser_str_get_encoding(tail)));
-//         rb_parser_str_resize(p, head, 0);
-//         rb_parser_str_resize(p, tail, 0);
-//         return 0;
-//     }
-//     rb_parser_str_buf_append(p, head, tail);
-//     return 1;
-// }
+static int
+literal_concat0(struct parser_params *p, rb_parser_string_t *head, rb_parser_string_t *tail)
+{
+    if (!tail) return 1;
+    if (!rb_parser_enc_compatible(p, head, tail)) {
+        compile_error(p, "string literal encodings differ (%s / %s)",
+                      rb_enc_name(rb_parser_str_get_encoding(head)),
+                      rb_enc_name(rb_parser_str_get_encoding(tail)));
+        rb_parser_str_resize(p, head, 0);
+        rb_parser_str_resize(p, tail, 0);
+        return 0;
+    }
+    rb_parser_str_buf_append(p, head, tail);
+    return 1;
+}
 
 // static rb_parser_string_t *
 // string_literal_head(struct parser_params *p, enum node_type htype, NODE *head)
@@ -14864,16 +14873,25 @@ rb_parser_string_deep_copy(struct parser_params *p, const rb_parser_string_t *or
 static rb_node_t *
 literal_concat(struct parser_params *p, rb_node_t *head, rb_node_t *tail, const YYLTYPE *loc)
 {
-    enum node_type htype;
-    rb_parser_string_t *lit;
-
     if (!head) return tail;
     if (!tail) return head;
+    if (p->heredoc_indent <= 0 && RB_NODE_TYPE_P(head, RB_STRING_NODE) && RB_NODE_TYPE_P(tail, RB_STRING_NODE)) {
+        if (!literal_concat0(p, RB_NODE_STRING(head)->unescaped, RB_NODE_STRING(tail)->unescaped)) return NULL;
+        return head;
+    }
 
     switch (RB_NODE_TYPE(head)) {
-      case RB_INTERPOLATED_STRING_NODE:
-        rb_node_list_append(&RB_NODE_INTERPOLATED_STRING(head)->parts, tail);
-        return head;
+      case RB_INTERPOLATED_STRING_NODE: {
+        rb_node_list2_t *parts = &RB_NODE_INTERPOLATED_STRING(head)->parts;
+        rb_node_t *last = rb_node_list_last(parts);
+        if (p->heredoc_indent <= 0 && last && RB_NODE_TYPE_P(last, RB_STRING_NODE) && RB_NODE_TYPE_P(tail, RB_STRING_NODE)) {
+            if (!literal_concat0(p, RB_NODE_STRING(last)->unescaped, RB_NODE_STRING(tail)->unescaped)) return NULL;
+        }
+        else {
+            rb_node_list_append(parts, tail);
+        }
+        return rb_nd_set_loc(head, loc);
+      }
       default:
         return NEW_RB_INTERPOLATED_STRING(head, tail, loc);
     }
