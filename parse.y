@@ -6378,7 +6378,8 @@ p_var_ref	: '^' tIDENTIFIER
                         if (!n) {
                             n = NEW_ERROR(&@$);
                         }
-                        else if (!(nd_type_p(n, RB_LOCAL_VARIABLE_READ_NODE))) {
+                        else if (!nd_type_p(n, RB_LOCAL_VARIABLE_READ_NODE) &&
+                                 !nd_type_p(n, RB_IT_LOCAL_VARIABLE_READ_NODE)) {
                             compile_error(p, "%"PRIsVALUE": no such local variable", rb_id2str($2));
                         }
                         else {
