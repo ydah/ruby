@@ -1758,10 +1758,23 @@ anddot_multiple_assignment_check(struct parser_params* p, const YYLTYPE *loc, ID
 static inline void
 set_line_body(NODE *body, int line)
 {
-    if (!body) return;
-    if (nd_type_p(body, RB_BEGIN_NODE)) {
-        const rb_begin_node_t *begin = RB_NODE_BEGIN(body);
-        if (begin->rescue_clause || begin->ensure_clause) nd_set_line(body, line);
+    while (body) {
+        if (nd_type_p(body, RB_STATEMENTS_NODE)) {
+            const rb_node_list2_t *statements = &RB_NODE_STATEMENTS(body)->body;
+            if (statements->size != 1) return;
+            body = statements->nodes[0];
+        }
+        else if (nd_type_p(body, RB_BEGIN_NODE)) {
+            const rb_begin_node_t *begin = RB_NODE_BEGIN(body);
+            if (begin->rescue_clause || begin->ensure_clause) {
+                nd_set_line(body, line);
+                return;
+            }
+            body = (NODE *)begin->statements;
+        }
+        else {
+            return;
+        }
     }
 }
 

@@ -9957,8 +9957,12 @@ compile_rescue_reference(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *no
 static int
 compile_begin_rescue(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, int popped)
 {
-    const int line = nd_line(node);
-    const NODE *line_node = node;
+    /* A combined Begin represents an outer ensure and an inner rescue. The
+     * inner rescue keeps its own line when the outer body line is adjusted. */
+    const int line = nd_type_p(node, RB_BEGIN_NODE) && RB_NODE_BEGIN(node)->ensure_clause
+        ? nd_code_loc(RB_NODE_BEGIN(node)->rescue_clause)->beg_pos.lineno : nd_line(node);
+    NODE dummy_line_node = generate_dummy_line_node(line, nd_node_id(node));
+    const NODE *line_node = &dummy_line_node;
     LABEL *lstart = NEW_LABEL(line);
     LABEL *lend = NEW_LABEL(line);
     LABEL *lcont = NEW_LABEL(line);
@@ -9991,7 +9995,13 @@ compile_begin_rescue(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const 
     bool prev_in_rescue = ISEQ_COMPILE_DATA(iseq)->in_rescue;
     ISEQ_COMPILE_DATA(iseq)->in_rescue = true;
     {
-        CHECK(COMPILE(ret, "rescue head", nd_stmts));
+        if (nd_stmts && nd_type_p(nd_stmts, RB_STATEMENTS_NODE) &&
+            RB_NODE_LIST_EMPTY_P(&RB_NODE_STATEMENTS(nd_stmts)->body)) {
+            ADD_INSN(ret, line_node, putnil);
+        }
+        else {
+            CHECK(COMPILE(ret, "rescue head", nd_stmts));
+        }
     }
     ISEQ_COMPILE_DATA(iseq)->in_rescue = prev_in_rescue;
 
@@ -10092,9 +10102,29 @@ compile_rescue(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, 
 }
 
 static int
+body_start_lineno(const NODE *node)
+{
+    while (node) {
+        if (nd_type_p(node, RB_STATEMENTS_NODE)) {
+            const rb_node_list2_t *body = &RB_NODE_STATEMENTS(node)->body;
+            if (!body->size) break;
+            node = body->nodes[0];
+        }
+        else if (nd_type_p(node, RB_BEGIN_NODE) &&
+                 !RB_NODE_BEGIN(node)->rescue_clause && !RB_NODE_BEGIN(node)->ensure_clause) {
+            node = (const NODE *)RB_NODE_BEGIN(node)->statements;
+        }
+        else {
+            break;
+        }
+    }
+    return nd_line(node);
+}
+
+static int
 compile_begin_ensure(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const rb_begin_node_t *const node, int popped)
 {
-    const int line = nd_line(node->ensure_clause);
+    const int line = body_start_lineno((const NODE *)node->ensure_clause->statements);
     const NODE *line_node = node;
     DECL_ANCHOR(ensr);
     const rb_iseq_t *ensure = NEW_CHILD_ISEQ(node->ensure_clause,

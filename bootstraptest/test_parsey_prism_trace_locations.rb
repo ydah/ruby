@@ -41,3 +41,17 @@ assert_equal '[[1], [1, 2, 3], [1, 2]]', %q{
     events
   end.inspect
 }
+
+assert_equal '[[["rescue in foo", 1]], [["ensure in foo", 6]]]', %q{
+  sources = [
+    "def foo\n begin\n rescue\n  p :rescue\n end\nend",
+    "def foo\n begin\n  p :body\n ensure\n  begin\n   p :ensure\n  end\n end\nend"
+  ]
+  sources.map do |source|
+    handlers = []
+    RubyVM::InstructionSequence.compile_parsey(source).each_child do |method|
+      method.each_child { |handler| handlers << [handler.label, handler.first_lineno] }
+    end
+    handlers
+  end.inspect
+}
